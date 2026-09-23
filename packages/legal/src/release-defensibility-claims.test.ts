@@ -146,6 +146,22 @@ describe('defensibility log (L11): append-only, hash-chained, tamper-evident', (
     expect(() => parsePayload('program.reflowed', { programId, sessionId: 'w01.s3', outcome: 'moved', engineVersion: '0.1.0' })).toThrow();
     expect(() => parsePayload('program.generated', { programId: 'P3', engineVersion: '0.1.0', rulesVersion: '0.1.0', templateId: 'muscle_gain.3d', reasonCodes: [] })).toThrow();
   });
+
+  it('M02: an executed prescription carries its engine and session-rules versions; an attested review is a safety record', () => {
+    const log = sampleLog();
+    const prescriptionId = newId();
+    log.append({ type: 'prescription.issued', chain: SUBJECT, occurredAt: '2026-09-28T08:00:00.000Z', payload: { prescriptionId, engineVersion: '0.2.0', rulesVersion: '0.1.0', reasonCodes: ['session.program.from_program', 'session.progression.load_increased'] } });
+    log.append({ type: 'safety.event', chain: SUBJECT, occurredAt: '2026-09-28T08:40:00.000Z', payload: { invariant: 'S3', reasonCode: 'safety.s3.chest_pain_pressure', action: 'session_ended', engineVersion: '0.2.0' } });
+    log.append({ type: 'safety.attested', chain: SUBJECT, occurredAt: '2026-09-30T08:00:00.000Z', payload: { invariant: 'S3', reasonCode: 'safety.s3.medical_review_attested', engineVersion: '0.2.0' } });
+    const out = buildLegalHoldExport(SUBJECT, log.events(SUBJECT), '2026-10-03T00:00:00.000Z');
+    expect(out.integrity.ok).toBe(true);
+    expect(out.prescriptions.at(-1)!.payload).toEqual({ prescriptionId, engineVersion: '0.2.0', rulesVersion: '0.1.0', reasonCodes: ['session.program.from_program', 'session.progression.load_increased'] });
+    expect(out.safetyEvents.map((e) => e.type).slice(-2)).toEqual(['safety.event', 'safety.attested']);
+    expect(out.engineVersions.find((v) => v.engineVersion === '0.2.0')).toMatchObject({ lastSeen: '2026-09-30T08:00:00.000Z' });
+    expect(() => parsePayload('prescription.issued', { prescriptionId, engineVersion: '0.2.0', rulesVersion: 'latest', reasonCodes: [] })).toThrow();
+    expect(() => parsePayload('safety.attested', { invariant: 'S3', reasonCode: 'x', engineVersion: '0.2.0', note: 'my doctor said fine' })).toThrow();
+    expect(() => parsePayload('safety.attested', { invariant: 'S5', reasonCode: 'x', engineVersion: '0.2.0' })).toThrow();
+  });
 });
 
 const entry = (phrase: string, locale: SubstantiationEntry['locale'], evidence = 'docs/specs/00-legal-framework.md L1'): SubstantiationEntry => ({

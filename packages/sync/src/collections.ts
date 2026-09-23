@@ -25,6 +25,10 @@ export const SYNC_COLLECTIONS: CollectionRegistry = Object.freeze({
   programs: Object.freeze({ appendOnly: true }),
   /** M08 reflows (a session the user could not do and what the engine decided): append-only, replayed in order. */
   program_reflows: Object.freeze({ appendOnly: true }),
+  /** M02 started sessions (the executed prescription with its inputs): append-only. */
+  workout_sessions: Object.freeze({ appendOnly: true }),
+  /** M02 execution events (swaps, skips, pain flags, stops, S3 red flags and attestations): append-only. */
+  execution_logs: Object.freeze({ appendOnly: true }),
 });
 
 export function policyFor(registry: CollectionRegistry, collection: string): CollectionPolicy | undefined {

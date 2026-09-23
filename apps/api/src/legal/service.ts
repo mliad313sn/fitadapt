@@ -203,10 +203,15 @@ export class LegalService {
     await (tx ? this.log.append(tx, input) : this.log.appendNow(input));
   }
 
-  /** For the engine (M02, M07): a prescription with its engine version and reason codes; same transaction rule as recordSafetyEvent. */
+  /** For the engine (M02, M07): a prescription with its engine and rules versions and reason codes; same transaction rule as recordSafetyEvent (M02's sync listener always passes the sync transaction). */
   async recordPrescription(userId: string, payload: DefensibilityPayload<'prescription.issued'>, tx?: Tx): Promise<void> {
     const input = { type: 'prescription.issued' as const, chain: this.subjectRef(userId), occurredAt: this.deps.now().toISOString(), payload };
     await (tx ? this.log.append(tx, input) : this.log.appendNow(input));
+  }
+
+  /** M02 (S3 hook): the user attested the review that lifts a safety lock; written with the record that carries the attestation. */
+  async recordSafetyAttested(userId: string, payload: DefensibilityPayload<'safety.attested'>, tx: Tx): Promise<void> {
+    await this.log.append(tx, { type: 'safety.attested', chain: this.subjectRef(userId), occurredAt: this.deps.now().toISOString(), payload });
   }
 
   /**

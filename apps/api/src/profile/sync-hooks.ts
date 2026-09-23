@@ -9,6 +9,7 @@ import {
   PROFILE_COLLECTIONS,
   PROGRAM_COLLECTIONS,
   ProfileSchema,
+  SESSION_COLLECTIONS,
   ScreeningRecordSchema,
   type SafetyProfile,
   type SyncMutation,
@@ -21,14 +22,25 @@ import type { LegalService } from '../legal/service.js';
 import type { ConsentWithdrawalHandler, PrivacyService } from '../privacy/service.js';
 import type { PgServerTx } from '../sync/pg-store.js';
 import { onProgramApplied, validateProgram, validateReflow } from './program-hooks.js';
+import { onSessionApplied, validateExecutionLog, validateWorkoutSession } from './session-hooks.js';
 
 /**
  * Collections holding health data (screening answers, biometrics, M07
  * assessment results, M08 programs, which embed the SafetyProfile, and their
- * reflows): need the health consent (L9, ADR-004) and are erased when it is
- * withdrawn.
+ * reflows, M02 started sessions and execution logs): need the health consent
+ * (L9, ADR-004) and are erased when it is withdrawn. M00 set logs
+ * (reps, load, reserve) stay outside, as before (open question, B1).
  */
-export const HEALTH_COLLECTIONS: readonly string[] = [PROFILE_COLLECTIONS.profile, PROFILE_COLLECTIONS.screenings, ASSESSMENT_COLLECTION, PROGRAM_COLLECTIONS.programs, PROGRAM_COLLECTIONS.reflows];
+export const HEALTH_COLLECTIONS: readonly string[] = [
+  PROFILE_COLLECTIONS.profile,
+  PROFILE_COLLECTIONS.screenings,
+  ASSESSMENT_COLLECTION,
+  PROGRAM_COLLECTIONS.programs,
+  PROGRAM_COLLECTIONS.reflows,
+  // M02: started sessions embed the SafetyProfile and joint flags; execution logs hold pain flags and S3 red flags.
+  SESSION_COLLECTIONS.workoutSessions,
+  SESSION_COLLECTIONS.executionLogs,
+];
 
 /**
  * The latest calendar date anywhere on Earth right now (UTC+14). A user who is
@@ -127,6 +139,10 @@ export function profileSyncValidator(deps: ProfileSyncDeps): MutationValidator {
         return (await consentRequired(userId, m)) ?? validateProgram(deps.db, userId, m.data, await latestSafetyProfile(deps.db, userId));
       case PROGRAM_COLLECTIONS.reflows:
         return (await consentRequired(userId, m)) ?? validateReflow(deps.db, userId, m.data);
+      case SESSION_COLLECTIONS.workoutSessions:
+        return (await consentRequired(userId, m)) ?? validateWorkoutSession(deps.db, deps.legal, userId, m.data, await latestSafetyProfile(deps.db, userId));
+      case SESSION_COLLECTIONS.executionLogs:
+        return (await consentRequired(userId, m)) ?? validateExecutionLog(m.data);
       default:
         return null;
     }
@@ -165,6 +181,9 @@ export function profileSyncListener(deps: ProfileSyncDeps): MutationListener<PgS
     } else if (m.collection === PROGRAM_COLLECTIONS.programs || m.collection === PROGRAM_COLLECTIONS.reflows) {
       // M08: "program generated" (engine and rules versions) and its S1 caps, or the reflow, in the same transaction as the record.
       await onProgramApplied(deps.legal, userId, m.collection, m.data, tx);
+    } else if (m.collection === SESSION_COLLECTIONS.workoutSessions || m.collection === SESSION_COLLECTIONS.executionLogs) {
+      // M02: "prescription issued" (engine and rules versions) and its safety events, or the S3 events, in the same transaction as the record.
+      await onSessionApplied(deps.legal, userId, m.collection, m.data, tx);
     }
   };
 }
