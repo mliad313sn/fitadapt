@@ -311,3 +311,36 @@ describe.each(kinds)('local key/value state — %s', (kind) => {
     expect(store.transaction((tx) => tx.getState('device_id'))).toBe('b');
   });
 });
+
+describe('M01 collections and server-side validation', () => {
+  it('registers profile and equipment profiles as mutable and screenings as append-only', async () => {
+    const { SYNC_COLLECTIONS } = await import('../index.js');
+    expect(SYNC_COLLECTIONS.profile).toEqual({ appendOnly: false });
+    expect(SYNC_COLLECTIONS.equipment_profiles).toEqual({ appendOnly: false });
+    expect(SYNC_COLLECTIONS.screenings).toEqual({ appendOnly: true });
+  });
+
+  it('rejects a mutation the validator refuses, finally, and reports applied ones to the listener', async () => {
+    const { SyncServer, MemoryServerStore } = await import('../index.js');
+    const applied: string[] = [];
+    const server = new SyncServer({
+      store: new MemoryServerStore(),
+      validate: (_user, m) => ((m.data as { ok?: boolean } | null)?.ok === false ? 'profile.invalid' : null),
+      onApplied: (_user, m) => {
+        applied.push(m.collection);
+      },
+    });
+    const mutation = (data: Record<string, unknown>) => ({ mutationId: randomUUID(), collection: 'screenings', recordId: randomUUID(), op: 'insert' as const, baseRevision: null, data, clientCreatedAt: new Date().toISOString() });
+    const bad = mutation({ ok: false });
+    const res = await server.push(USER, { deviceId: randomUUID(), mutations: [bad, mutation({ ok: true })] });
+    expect(res.results.map((r) => [r.status, r.reason])).toEqual([
+      ['rejected', 'profile.invalid'],
+      ['applied', undefined],
+    ]);
+    expect(applied).toEqual(['screenings']);
+    // A replay of the rejected mutation stays rejected (idempotency ledger).
+    const replay = await server.push(USER, { deviceId: randomUUID(), mutations: [bad] });
+    expect(replay.results[0]).toMatchObject({ status: 'rejected', reason: 'profile.invalid' });
+    expect(applied).toEqual(['screenings']);
+  });
+});

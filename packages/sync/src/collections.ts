@@ -13,6 +13,12 @@ export const SYNC_COLLECTIONS: CollectionRegistry = Object.freeze({
   set_logs: Object.freeze({ appendOnly: true }),
   /** Per-user settings (locale, units, gym mode): mutable, revision-checked. */
   preferences: Object.freeze({ appendOnly: false }),
+  /** M01 profile (one record per user, PROFILE_RECORD_ID): mutable, revision-checked, server wins. */
+  profile: Object.freeze({ appendOnly: false }),
+  /** M01 equipment profiles (one per location): mutable, revision-checked. */
+  equipment_profiles: Object.freeze({ appendOnly: false }),
+  /** M01 screenings: append-only history; a re-screen is a new record and the latest counts. */
+  screenings: Object.freeze({ appendOnly: true }),
 });
 
 export function policyFor(registry: CollectionRegistry, collection: string): CollectionPolicy | undefined {

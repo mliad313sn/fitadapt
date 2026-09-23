@@ -9,9 +9,21 @@ import {
 import { policyFor, SYNC_COLLECTIONS, type CollectionRegistry } from '../collections.js';
 import type { ServerStore, ServerTx } from './types.js';
 
+/**
+ * Server-side check of a mutation before it is applied (schema, consent,
+ * safety re-checks). Returns a stable reason code to reject it, or null.
+ * A rejection is final for that mutation id (idempotency ledger).
+ */
+export type MutationValidator = (userId: string, mutation: SyncMutation) => Promise<string | null> | string | null;
+
+/** Called after a mutation was applied, outside the sync transaction (e.g. defensibility log entries). */
+export type MutationListener = (userId: string, mutation: SyncMutation) => Promise<void> | void;
+
 export interface SyncServerOptions {
   store: ServerStore;
   collections?: CollectionRegistry;
+  validate?: MutationValidator;
+  onApplied?: MutationListener;
 }
 
 /**
@@ -21,17 +33,23 @@ export interface SyncServerOptions {
 export class SyncServer {
   private readonly store: ServerStore;
   private readonly collections: CollectionRegistry;
+  private readonly validate?: MutationValidator;
+  private readonly onApplied?: MutationListener;
 
-  constructor({ store, collections = SYNC_COLLECTIONS }: SyncServerOptions) {
+  constructor({ store, collections = SYNC_COLLECTIONS, validate, onApplied }: SyncServerOptions) {
     this.store = store;
     this.collections = collections;
+    this.validate = validate;
+    this.onApplied = onApplied;
   }
 
   async push(userId: string, input: unknown): Promise<PushResponse> {
     const request = PushRequestSchema.parse(input);
     const results: PushResult[] = [];
     for (const mutation of request.mutations) {
-      results.push(await this.store.transaction(userId, (tx) => this.applyOne(tx, userId, request.deviceId, mutation)));
+      const result = await this.store.transaction(userId, (tx) => this.applyOne(tx, userId, request.deviceId, mutation));
+      results.push(result);
+      if (result.status === 'applied') await this.onApplied?.(userId, mutation);
     }
     return { results };
   }
@@ -64,6 +82,10 @@ export class SyncServer {
     }
     if (m.op !== 'delete' && m.data === null) {
       return { mutationId: m.mutationId, status: 'rejected', reason: 'missing_data' };
+    }
+    const invalid = this.validate ? await this.validate(userId, m) : null;
+    if (invalid !== null) {
+      return { mutationId: m.mutationId, status: 'rejected', reason: invalid };
     }
     const current = await tx.latestChange(userId, m.collection, m.recordId);
 
