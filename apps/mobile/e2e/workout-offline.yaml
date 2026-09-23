@@ -1,0 +1,77 @@
+# M02 goal condition 6 on a device: a full session runs offline. NOT EXECUTED
+# in this environment (no device or emulator); the same journey runs in
+# jest-expo through the real root layout, router and on-device database with
+# the network down (__tests__/workout.e2e.test.tsx), and the rest timer after
+# backgrounding is proven with fake timers (__tests__/workout.test.tsx).
+# Needs a training day of the plan (the app never invents a session on a rest
+# day); on a rest day the flow stops at "workout-rest-day".
+# Airplane mode is Android-only in Maestro; on iOS disable the network by hand.
+# Run with: maestro test apps/mobile/e2e/workout-offline.yaml
+appId: dev.companion.app
+---
+- clearState
+- launchApp
+- tapOn: { id: "age-gate-day" }
+- inputText: "14"
+- tapOn: { id: "age-gate-month" }
+- inputText: "3"
+- tapOn: { id: "age-gate-year" }
+- inputText: "1988"
+- tapOn: { id: "age-gate-continue" }
+- assertVisible: { id: "home-screen" }
+- runFlow:
+    file: onboarding-steps.yaml
+    env:
+      SKIP_MEASUREMENTS: "true"
+- tapOn: { id: "first-workout-home" }
+# The plan (M08), then the network goes away.
+- tapOn: { id: "open-calendar" }
+- tapOn: { id: "calendar-create" }
+- scrollUntilVisible: { element: { id: "calendar-back" } }
+- tapOn: { id: "calendar-back" }
+- setAirplaneMode: enabled
+# Today's session, from the engine on the device.
+- tapOn: { id: "open-workout" }
+- assertVisible: { id: "workout-preview" }
+# L3: the first-workout notice before the first session.
+- assertVisible: { id: "notice-first_workout" }
+- tapOn: { id: "notice-first_workout-ack" }
+- tapOn: { id: "workout-why-0" }
+- scrollUntilVisible: { element: { id: "workout-start" } }
+- tapOn: { id: "workout-start" }
+# Set 1 in two taps: reps, then reps in reserve (the load defaults to the plan).
+- assertVisible: { id: "workout-stop" }
+- tapOn: { id: "workout-reps-.*", index: 2 }
+- tapOn: { id: "workout-rir-2" }
+# Rest: the timer runs on the device; background the app and come back.
+- assertVisible: { id: "workout-rest-remaining" }
+- pressKey: Home
+- launchApp: { stopApp: false }
+- assertVisible: { id: "workout-rest-remaining" }
+- assertVisible: { id: "workout-stop" }
+- tapOn: { id: "workout-skip" }
+# Swap the exercise.
+- tapOn: { id: "workout-swap" }
+- assertVisible: { id: "workout-sheet-stop" }
+- tapOn: { id: "workout-swap-option-.*", index: 0 }
+- tapOn: { id: "workout-reps-.*", index: 2 }
+- tapOn: { id: "workout-rir-3" }
+- tapOn: { id: "workout-skip" }
+# Skip the rest of the exercise.
+- tapOn: { id: "workout-skip-exercise" }
+# Pain flag: lower back 7 (S2 swaps or skips what loads it for the rest of the session).
+- tapOn: { id: "workout-pain" }
+- tapOn: { id: "workout-pain-joint-lumbar" }
+- tapOn: { id: "workout-pain-score-7" }
+- tapOn: { id: "workout-pain-save" }
+- assertVisible: { id: "workout-message" }
+# Skip what is left until the end.
+- repeat:
+    while:
+      notVisible: { id: "workout-done" }
+    commands:
+      - assertVisible: { id: "workout-stop" }
+      - tapOn: { id: "workout-skip" }
+- assertVisible: { id: "workout-summary" }
+- tapOn: { id: "workout-back" }
+- setAirplaneMode: disabled
