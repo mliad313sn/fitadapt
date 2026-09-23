@@ -6,3 +6,4 @@ export * from './config.js';
 export * from './privacy.js';
 export * from './exercise.js';
 export * from './profile.js';
+export * from './assessment.js';
