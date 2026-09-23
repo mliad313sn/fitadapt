@@ -17,3 +17,4 @@ One ADR per significant decision (template: context, decision, alternatives, con
 | [ADR-011](ADR-011-exercise-knowledge-graph.md) | Exercise knowledge graph, substitution and offline library | M06 |
 | [ADR-012](ADR-012-onboarding-screening-and-safety-profile.md) | Onboarding, health screening and the SafetyProfile | M01 |
 | [ADR-013](ADR-013-mobile-sign-in-and-account-sync.md) | Sign-in in the app and account sync of the device ledgers | M01 |
+| [ADR-014](ADR-014-assessment-capacity-and-first-session.md) | Assessment protocols, CapacityModel and the first session | M07 |
