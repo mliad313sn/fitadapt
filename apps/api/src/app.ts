@@ -31,6 +31,7 @@ import { LegalService } from './legal/service.js';
 import { legalRoutes } from './routes/legal.js';
 import { privacyRoutes } from './routes/privacy.js';
 import { syncRoutes } from './routes/sync.js';
+import { healthWithdrawalHandler, profileSyncListener, profileSyncValidator } from './profile/sync-hooks.js';
 import { PgServerStore } from './sync/pg-store.js';
 
 export interface AppDeps {
@@ -119,7 +120,6 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     pepper: deps.pepper,
     now,
   });
-  const sync = new SyncServer({ store: new PgServerStore(deps.db) });
   const legal = new LegalService({ db: deps.db, pepper: deps.pepper, now, registry: deps.legalRegistry, notices: deps.notices, consentPolicies: deps.consentPolicies });
   const privacy = new PrivacyService({
     db: deps.db,
@@ -128,10 +128,15 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     pepper: deps.pepper,
     now,
     policies: deps.consentPolicies,
-    withdrawalHandlers: deps.withdrawalHandlers,
+    // M01: withdrawing health consent erases the synced health collections (profile, screenings).
+    withdrawalHandlers: { ...deps.withdrawalHandlers, health: [healthWithdrawalHandler(), ...(deps.withdrawalHandlers?.health ?? [])] },
     // L2/L11: every consent decision also goes to the defensibility log, in the same transaction.
     onConsentRecorded: (tx, userId, record, at) => legal.logConsent(tx, userId, record, at),
   });
+  // M01: profile, equipment profiles and screenings are validated on the server (schema, health consent,
+  // S7 age check, SafetyProfile re-evaluation) and screenings write their safety gates to the defensibility log.
+  const profileHooks = { privacy, legal, now };
+  const sync = new SyncServer({ store: new PgServerStore(deps.db), validate: profileSyncValidator(profileHooks), onApplied: profileSyncListener(profileHooks) });
   app.decorate('services', { privacy, legal });
 
   app.get('/health', { schema: { hide: true } }, async () => ({ status: 'ok' }));

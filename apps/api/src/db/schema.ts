@@ -134,6 +134,8 @@ export const consentRecords = pgTable(
     jurisdiction: text('jurisdiction').notNull(),
     source: text('source', { enum: ['mobile', 'web', 'api'] }).notNull(),
     recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+    /** M01: when the server received it (recordedAt is the device time for decisions made offline). */
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('consent_records_user_idx').on(t.userId, t.dataType, t.recordedAt)],
 );
@@ -194,6 +196,8 @@ export const legalAcceptances = pgTable(
     source: text('source', { enum: ['mobile', 'web', 'api'] }).notNull(),
     contentHash: text('content_hash').notNull(),
     acceptedAt: timestamp('accepted_at', { withTimezone: true }).notNull(),
+    /** M01: when the server received it (acceptedAt is the device time for acceptances given offline). */
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('legal_acceptances_user_idx').on(t.userId, t.documentId, t.acceptedAt)],
 );
@@ -214,6 +218,8 @@ export const noticeImpressions = pgTable(
     jurisdiction: text('jurisdiction').notNull(),
     contentHash: text('content_hash').notNull(),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+    /** M01: when the server received it (occurredAt is the device time for notices shown offline). */
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('notice_impressions_user_idx').on(t.userId, t.noticeId)],
 );

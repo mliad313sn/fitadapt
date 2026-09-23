@@ -47,6 +47,9 @@ importers:
       '@fitadapt/privacy':
         specifier: workspace:*
         version: link:../../packages/privacy
+      '@fitadapt/safety':
+        specifier: workspace:*
+        version: link:../../packages/safety
       '@fitadapt/shared':
         specifier: workspace:*
         version: link:../../packages/shared

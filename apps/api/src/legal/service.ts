@@ -28,6 +28,7 @@ import { keyedHash } from '../auth/crypto.js';
 import { ApiError } from '../auth/errors.js';
 import type { Database } from '../db/client.js';
 import { consentRecords, legalAcceptances, noticeImpressions } from '../db/schema.js';
+import { clientTime } from '../lib/client-time.js';
 import { DefensibilityLog } from './defensibility-log.js';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -54,6 +55,10 @@ export interface AcceptanceInput {
   jurisdiction: string;
   source: 'mobile' | 'web' | 'api';
   contentHash: string;
+  /** M01: device record id (a retried upload is recorded once). */
+  id?: string;
+  /** M01: when the user accepted on the device (acceptances given offline are uploaded later). */
+  acceptedAt?: string;
 }
 
 export interface NoticeInput {
@@ -63,6 +68,10 @@ export interface NoticeInput {
   locale: Locale;
   jurisdiction: string;
   contentHash: string;
+  /** M01: device record id (a retried upload is recorded once). */
+  id?: string;
+  /** M01: when the notice was shown or acknowledged on the device. */
+  occurredAt?: string;
 }
 
 export interface LegalStatus {
@@ -132,14 +141,22 @@ export class LegalService {
 
   async recordAcceptance(userId: string, input: AcceptanceInput): Promise<DocumentAcceptanceState> {
     const now = this.deps.now();
-    const check = checkAcceptance({ ...input, documentId: input.documentId as LegalDocumentId }, { jurisdiction: input.jurisdiction, now, registry: this.registry });
+    // M01: an acceptance given offline keeps its device time and is checked against the texts in force then.
+    const acceptedAt = clientTime(input.acceptedAt, now, 'legal.client_time_out_of_range');
+    const { id, acceptedAt: _deviceTime, ...fields } = input;
+    const check = checkAcceptance({ ...fields, documentId: input.documentId as LegalDocumentId }, { jurisdiction: input.jurisdiction, now: acceptedAt, registry: this.registry });
     if (!check.ok) throw check.code === 'legal.unknown_document' ? legalErrors.unknownDocument() : legalErrors.notAcceptable(check.code);
     await this.deps.db.transaction(async (tx) => {
-      await tx.insert(legalAcceptances).values({ id: randomUUID(), userId, ...input, acceptedAt: now });
+      const inserted = await tx
+        .insert(legalAcceptances)
+        .values({ id: id ?? randomUUID(), userId, ...fields, acceptedAt, receivedAt: now })
+        .onConflictDoNothing({ target: legalAcceptances.id })
+        .returning({ id: legalAcceptances.id });
+      if (inserted.length === 0) return; // already recorded (retried upload)
       await this.log.append(tx, {
         type: 'acceptance.recorded',
         chain: this.subjectRef(userId),
-        occurredAt: now.toISOString(),
+        occurredAt: acceptedAt.toISOString(),
         payload: { documentId: input.documentId, version: input.version, locale: input.locale, jurisdiction: input.jurisdiction, contentHash: input.contentHash, source: input.source },
       });
     });
@@ -152,12 +169,19 @@ export class LegalService {
     if (def.version !== input.version) throw legalErrors.notAcceptable('legal.version_not_acceptable');
     if (renderNotice(def, input.locale, input.jurisdiction).contentHash !== input.contentHash) throw legalErrors.notAcceptable('legal.content_mismatch');
     const now = this.deps.now();
+    const occurredAt = clientTime(input.occurredAt, now, 'legal.client_time_out_of_range');
+    const { id, occurredAt: _deviceTime, ...fields } = input;
     await this.deps.db.transaction(async (tx) => {
-      await tx.insert(noticeImpressions).values({ id: randomUUID(), userId, ...input, occurredAt: now });
+      const inserted = await tx
+        .insert(noticeImpressions)
+        .values({ id: id ?? randomUUID(), userId, ...fields, occurredAt, receivedAt: now })
+        .onConflictDoNothing({ target: noticeImpressions.id })
+        .returning({ id: noticeImpressions.id });
+      if (inserted.length === 0) return;
       await this.log.append(tx, {
         type: input.kind === 'shown' ? 'notice.shown' : 'notice.acknowledged',
         chain: this.subjectRef(userId),
-        occurredAt: now.toISOString(),
+        occurredAt: occurredAt.toISOString(),
         payload: { noticeId: input.noticeId as NoticeId, version: input.version, locale: input.locale, jurisdiction: input.jurisdiction, contentHash: input.contentHash },
       });
     });

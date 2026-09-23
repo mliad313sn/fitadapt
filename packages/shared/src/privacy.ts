@@ -48,6 +48,10 @@ export const ConsentUpdateRequestSchema = z.object({
   locale: LocaleSchema,
   jurisdiction: JurisdictionSchema,
   source: ConsentSourceSchema.default('api'),
+  /** M01: the device's record id, so an upload retried after a lost response is recorded once. */
+  id: UuidSchema.optional(),
+  /** M01: when the decision was made on the device (offline decisions are uploaded later). */
+  recordedAt: IsoDateTimeSchema.optional(),
 });
 export type ConsentUpdateRequest = z.infer<typeof ConsentUpdateRequestSchema>;
 

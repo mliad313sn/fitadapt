@@ -23,6 +23,7 @@ import {
   type User,
 } from '@fitadapt/shared';
 import { and, asc, eq, isNotNull, lt, lte, or, sql } from 'drizzle-orm';
+import { clientTime } from '../lib/client-time.js';
 import { keyedHash } from '../auth/crypto.js';
 import { ApiError, authErrors } from '../auth/errors.js';
 import type { RateLimiter } from '../auth/rate-limit.js';
@@ -174,10 +175,18 @@ export class PrivacyService {
     const check = checkDecision(update.decision, update.dataType, update.version, update.jurisdiction, this.policies);
     if (!check.ok) throw privacyErrors.consentVersionOutdated();
     const now = this.deps.now();
+    // M01: a decision made offline keeps its device time; the upload can be retried with the same id.
+    const recordedAt = clientTime(update.recordedAt, now, 'privacy.client_time_out_of_range');
+    const { id, recordedAt: _deviceTime, ...fields } = update;
     await this.deps.db.transaction(async (tx) => {
-      await tx.insert(consentRecords).values({ id: randomUUID(), userId, ...update, recordedAt: now });
-      await this.audit(tx, userId, update.decision === 'granted' ? 'consent.granted' : 'consent.withdrawn', now, update.dataType, update.version);
-      await this.deps.onConsentRecorded?.(tx, userId, { dataType: update.dataType, decision: update.decision, version: update.version, locale: update.locale, jurisdiction: update.jurisdiction }, now);
+      const inserted = await tx
+        .insert(consentRecords)
+        .values({ id: id ?? randomUUID(), userId, ...fields, recordedAt, receivedAt: now })
+        .onConflictDoNothing({ target: consentRecords.id })
+        .returning({ id: consentRecords.id });
+      if (inserted.length === 0) return; // already recorded (retried upload)
+      await this.audit(tx, userId, update.decision === 'granted' ? 'consent.granted' : 'consent.withdrawn', recordedAt, update.dataType, update.version);
+      await this.deps.onConsentRecorded?.(tx, userId, { dataType: update.dataType, decision: update.decision, version: update.version, locale: update.locale, jurisdiction: update.jurisdiction }, recordedAt);
       if (update.decision === 'withdrawn') {
         for (const handler of this.deps.withdrawalHandlers?.[update.dataType] ?? []) await handler(tx, userId, update.dataType);
       }

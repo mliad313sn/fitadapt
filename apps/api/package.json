@@ -24,6 +24,7 @@
     "@fitadapt/engine": "workspace:*",
     "@fitadapt/legal": "workspace:*",
     "@fitadapt/privacy": "workspace:*",
+    "@fitadapt/safety": "workspace:*",
     "@fitadapt/shared": "workspace:*",
     "@fitadapt/sync": "workspace:*",
     "@opentelemetry/api": "1.9.1",

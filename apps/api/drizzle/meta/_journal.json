@@ -36,6 +36,13 @@
       "when": 1790183992317,
       "tag": "0004_m20_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790189668236,
+      "tag": "0005_m01_client_timestamps",
+      "breakpoints": true
     }
   ]
 }

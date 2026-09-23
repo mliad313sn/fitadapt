@@ -14,6 +14,9 @@ export const privacyConfig = defineConfig({
   analyticsBatchesPerWindow: { value: 120, unit: 'batches per user per window', source: SOURCE, validated: false },
   privacyRateLimitWindowSeconds: { value: 3600, unit: 's', source: SOURCE, validated: false },
   retentionJobIntervalSeconds: { value: 3600, unit: 's', source: SOURCE, validated: false },
+  // M01 (ADR-013): consents, acceptances and notices recorded offline on the device are uploaded later with their device time.
+  offlineRecordMaxAgeSeconds: { value: 2_592_000, unit: 's (30 days)', source: 'docs/adr/ADR-013-mobile-sign-in-and-account-sync.md (engineering default, no external source)', validated: false },
+  clientClockSkewSeconds: { value: 300, unit: 's', source: 'docs/adr/ADR-013-mobile-sign-in-and-account-sync.md (engineering default, no external source)', validated: false },
   hstsMaxAgeSeconds: { value: 31_536_000, unit: 's (365 days)', source: HEADERS, validated: false },
 });
 
