@@ -239,6 +239,9 @@ importers:
 
   packages/engine:
     dependencies:
+      '@fitadapt/safety':
+        specifier: workspace:*
+        version: link:../safety
       '@fitadapt/shared':
         specifier: workspace:*
         version: link:../shared
