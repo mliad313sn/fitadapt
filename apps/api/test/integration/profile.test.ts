@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import { ENGINE_VERSION } from '@fitadapt/engine';
 import { DEFAULT_REGISTRY, LegalRegistry, type LegalDocument } from '@fitadapt/legal';
 import { evaluateScreening } from '@fitadapt/safety';
+import { HttpTransport, MemoryLocalStore, SyncClient } from '@fitadapt/sync';
 import { EMPTY_BIOMETRICS, PROFILE_RECORD_ID, SCREENING_QUESTION_IDS, type ScreeningRecord } from '@fitadapt/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -144,6 +146,44 @@ describe('M01 profile sync with server-side validation', () => {
       { invariant: 'S7', reasonCode: 'safety.s7.pregnancy_postpartum', action: 'capped', engineVersion: '0.1.0' },
       { invariant: 'S4', reasonCode: 'safety.s4.deficit_disabled', action: 'blocked', engineVersion: '0.1.0' },
     ]);
+  });
+
+  it('stores a screening and its safety events atomically: a failed log write persists neither, the client retries and then both exist (L11, M01 deviation 14 fixed)', async () => {
+    const s = await session();
+    await grantHealth(s);
+    // A real device client over HTTP (fetch routed into the app), so the retry is the client's own.
+    const fetchIntoApp: typeof fetch = async (url, init) => {
+      const res = await h.app.inject({ method: 'POST', url: new URL(String(url)).pathname, headers: { ...(init?.headers as Record<string, string>) }, payload: String(init?.body) });
+      return new Response(res.body, { status: res.statusCode, headers: { 'content-type': 'application/json' } });
+    };
+    const client = new SyncClient({ deviceId: s.deviceId, store: new MemoryLocalStore(), transport: new HttpTransport({ baseUrl: 'http://api.test', getAccessToken: () => s.token, fetch: fetchIntoApp }), newId: randomUUID });
+    const recordId = client.insert('screenings', screening(['chest_discomfort']) as unknown as Record<string, unknown>);
+    const stored = async () => (await h.database.db.select().from(syncChanges).where(and(eq(syncChanges.userId, s.userId), eq(syncChanges.recordId, recordId)))).length;
+    const safetyEvents = async () => (await h.app.services.legal.log.chain(h.app.services.legal.subjectRef(s.userId))).filter((e) => e.type === 'safety.event');
+
+    // Inject a failure in the defensibility-log write, in the database itself.
+    await h.database.db.execute(sql`CREATE OR REPLACE FUNCTION test_fail_safety_event() RETURNS trigger AS $$ BEGIN IF NEW.type = 'safety.event' THEN RAISE EXCEPTION 'injected log failure'; END IF; RETURN NEW; END $$ LANGUAGE plpgsql`);
+    await h.database.db.execute(sql`CREATE TRIGGER test_fail_safety_event BEFORE INSERT ON defensibility_events FOR EACH ROW EXECUTE FUNCTION test_fail_safety_event()`);
+    try {
+      await expect(client.sync()).rejects.toMatchObject({ name: 'HttpError', status: 500 });
+      // Neither the screening nor its safety event, and the mutation is still waiting in the outbox.
+      expect(await stored()).toBe(0);
+      expect(await safetyEvents()).toEqual([]);
+      expect(client.pendingCount()).toBe(1);
+      const ledger = await h.database.db.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM sync_mutations WHERE user_id = ${s.userId}`);
+      expect(ledger.rows[0]!.n).toBe(0); // no idempotency record: the retry is applied, not answered "duplicate"
+    } finally {
+      await h.database.db.execute(sql`DROP TRIGGER IF EXISTS test_fail_safety_event ON defensibility_events`);
+      await h.database.db.execute(sql`DROP FUNCTION IF EXISTS test_fail_safety_event()`);
+    }
+
+    // The log works again: the client's retry stores both.
+    const retry = await client.sync();
+    expect(retry.push).toMatchObject({ acked: 1, rejected: 0 });
+    expect(client.pendingCount()).toBe(0);
+    expect(await stored()).toBe(1);
+    expect((await safetyEvents()).map((e) => e.payload)).toEqual([{ invariant: 'S1', reasonCode: 'safety.s1.unresolved_flag', action: 'capped', engineVersion: ENGINE_VERSION }]);
+    expect(await h.app.services.legal.log.verify(h.app.services.legal.subjectRef(s.userId))).toMatchObject({ ok: true });
   });
 
   it('erases the synced health collections when health consent is withdrawn, and keeps equipment profiles', async () => {

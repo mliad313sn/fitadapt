@@ -6,6 +6,11 @@ import { syncChanges, syncHeads, syncMutations } from '../db/schema.js';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
+/** The sync transaction, with the underlying PostgreSQL transaction for records that must commit with the change (L11). */
+export interface PgServerTx extends ServerTx {
+  readonly db: Tx;
+}
+
 function toChange(row: typeof syncChanges.$inferSelect): Change {
   return {
     revision: row.revision,
@@ -17,8 +22,9 @@ function toChange(row: typeof syncChanges.$inferSelect): Change {
   };
 }
 
-function txFor(tx: Tx): ServerTx {
+function txFor(tx: Tx): PgServerTx {
   return {
+    db: tx,
     async findMutationResult(userId, mutationId) {
       const [row] = await tx
         .select({ result: syncMutations.result })
@@ -60,10 +66,10 @@ function txFor(tx: Tx): ServerTx {
  * serialises pushes, so revisions are gap-free and committed in order and a
  * pull can never skip a change that commits later with a lower revision.
  */
-export class PgServerStore implements ServerStore {
+export class PgServerStore implements ServerStore<PgServerTx> {
   constructor(private readonly db: Database) {}
 
-  transaction<T>(userId: string, fn: (tx: ServerTx) => Promise<T>): Promise<T> {
+  transaction<T>(userId: string, fn: (tx: PgServerTx) => Promise<T>): Promise<T> {
     return this.db.transaction(async (tx) => {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${userId}, 0))`);
       return fn(txFor(tx));

@@ -16,27 +16,34 @@ import type { ServerStore, ServerTx } from './types.js';
  */
 export type MutationValidator = (userId: string, mutation: SyncMutation) => Promise<string | null> | string | null;
 
-/** Called after a mutation was applied, outside the sync transaction (e.g. defensibility log entries). */
-export type MutationListener = (userId: string, mutation: SyncMutation) => Promise<void> | void;
+/**
+ * Called once a mutation is applied, INSIDE the sync transaction, with the
+ * store's transaction handle (e.g. to write defensibility events, L11). If it
+ * throws, the whole transaction rolls back: the change, its idempotency
+ * record and whatever the listener wrote are all discarded, and the push
+ * fails so the client keeps the mutation in its outbox and retries. A change
+ * can therefore never be stored without the records that describe it.
+ */
+export type MutationListener<TTx extends ServerTx = ServerTx> = (userId: string, mutation: SyncMutation, tx: TTx) => Promise<void> | void;
 
-export interface SyncServerOptions {
-  store: ServerStore;
+export interface SyncServerOptions<TTx extends ServerTx = ServerTx> {
+  store: ServerStore<TTx>;
   collections?: CollectionRegistry;
   validate?: MutationValidator;
-  onApplied?: MutationListener;
+  onApplied?: MutationListener<TTx>;
 }
 
 /**
  * Revision-based sync (ADR-002). Push applies client mutations in order, each
  * exactly once (keyed by mutationId). Pull returns every change after a cursor.
  */
-export class SyncServer {
-  private readonly store: ServerStore;
+export class SyncServer<TTx extends ServerTx = ServerTx> {
+  private readonly store: ServerStore<TTx>;
   private readonly collections: CollectionRegistry;
   private readonly validate?: MutationValidator;
-  private readonly onApplied?: MutationListener;
+  private readonly onApplied?: MutationListener<TTx>;
 
-  constructor({ store, collections = SYNC_COLLECTIONS, validate, onApplied }: SyncServerOptions) {
+  constructor({ store, collections = SYNC_COLLECTIONS, validate, onApplied }: SyncServerOptions<TTx>) {
     this.store = store;
     this.collections = collections;
     this.validate = validate;
@@ -47,9 +54,13 @@ export class SyncServer {
     const request = PushRequestSchema.parse(input);
     const results: PushResult[] = [];
     for (const mutation of request.mutations) {
-      const result = await this.store.transaction(userId, (tx) => this.applyOne(tx, userId, request.deviceId, mutation));
+      const result = await this.store.transaction(userId, async (tx) => {
+        const outcome = await this.applyOne(tx, userId, request.deviceId, mutation);
+        // Same transaction as the change (L11): both commit, or neither does.
+        if (outcome.status === 'applied') await this.onApplied?.(userId, mutation, tx);
+        return outcome;
+      });
       results.push(result);
-      if (result.status === 'applied') await this.onApplied?.(userId, mutation);
     }
     return { results };
   }
@@ -64,7 +75,7 @@ export class SyncServer {
     return { changes, cursor: last ? last.revision : request.since, hasMore };
   }
 
-  private async applyOne(tx: ServerTx, userId: string, deviceId: string, m: SyncMutation): Promise<PushResult> {
+  private async applyOne(tx: TTx, userId: string, deviceId: string, m: SyncMutation): Promise<PushResult> {
     const previous = await tx.findMutationResult(userId, m.mutationId);
     if (previous) {
       // Idempotent: replaying a mutation returns the original outcome and changes nothing.
@@ -75,7 +86,7 @@ export class SyncServer {
     return result;
   }
 
-  private async decide(tx: ServerTx, userId: string, deviceId: string, m: SyncMutation): Promise<PushResult> {
+  private async decide(tx: TTx, userId: string, deviceId: string, m: SyncMutation): Promise<PushResult> {
     const policy = policyFor(this.collections, m.collection);
     if (!policy) {
       return { mutationId: m.mutationId, status: 'rejected', reason: 'unknown_collection' };

@@ -134,7 +134,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     onConsentRecorded: (tx, userId, record, at) => legal.logConsent(tx, userId, record, at),
   });
   // M01: profile, equipment profiles and screenings are validated on the server (schema, health consent,
-  // S7 age check, SafetyProfile re-evaluation) and screenings write their safety gates to the defensibility log.
+  // S7 age check, SafetyProfile re-evaluation) and screenings write their safety gates to the defensibility log
+  // in the sync transaction (L11: a screening and its safety events commit together or not at all).
   const profileHooks = { privacy, legal, now };
   const sync = new SyncServer({ store: new PgServerStore(deps.db), validate: profileSyncValidator(profileHooks), onApplied: profileSyncListener(profileHooks) });
   app.decorate('services', { privacy, legal });

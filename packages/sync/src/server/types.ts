@@ -13,8 +13,13 @@ export interface ServerTx {
   appendChange(userId: string, change: NewChange): Promise<Change>;
 }
 
-export interface ServerStore {
+/**
+ * `TTx` lets a store hand its own transaction handle (e.g. the PostgreSQL
+ * transaction in apps/api) to `onApplied`, so records that describe a change
+ * (defensibility events, L11) commit or roll back with it.
+ */
+export interface ServerStore<TTx extends ServerTx = ServerTx> {
   /** Runs `fn` atomically and serialised per user, so revisions are assigned in commit order. */
-  transaction<T>(userId: string, fn: (tx: ServerTx) => Promise<T>): Promise<T>;
+  transaction<T>(userId: string, fn: (tx: TTx) => Promise<T>): Promise<T>;
   listChanges(userId: string, since: number, limit: number): Promise<Change[]>;
 }

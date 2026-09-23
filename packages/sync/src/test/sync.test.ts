@@ -343,4 +343,30 @@ describe('M01 collections and server-side validation', () => {
     expect(replay.results[0]).toMatchObject({ status: 'rejected', reason: 'profile.invalid' });
     expect(applied).toEqual(['screenings']);
   });
+
+  it('runs the listener inside the sync transaction: if it fails, the change is not stored and a retry applies it (L11)', async () => {
+    const { SyncServer, MemoryServerStore } = await import('../index.js');
+    const store = new MemoryServerStore();
+    let failNext = true;
+    const seen: string[] = [];
+    const server = new SyncServer({
+      store,
+      onApplied: (_user, m, tx) => {
+        expect(typeof tx.appendChange).toBe('function');
+        if (failNext) {
+          failNext = false;
+          throw new Error('log write failed');
+        }
+        seen.push(m.recordId);
+      },
+    });
+    const m = { mutationId: randomUUID(), collection: 'screenings', recordId: randomUUID(), op: 'insert' as const, baseRevision: null, data: { ok: true }, clientCreatedAt: new Date().toISOString() };
+    await expect(server.push(USER, { deviceId: randomUUID(), mutations: [m] })).rejects.toThrow('log write failed');
+    // Neither the change nor its idempotency record survived the failure.
+    expect(store.changeCount(USER)).toBe(0);
+    const retry = await server.push(USER, { deviceId: randomUUID(), mutations: [m] });
+    expect(retry.results[0]).toMatchObject({ status: 'applied', revision: 1 });
+    expect(store.changeCount(USER)).toBe(1);
+    expect(seen).toEqual([m.recordId]);
+  });
 });

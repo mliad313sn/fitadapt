@@ -14,6 +14,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { syncChanges } from '../db/schema.js';
 import type { LegalService } from '../legal/service.js';
 import type { ConsentWithdrawalHandler, PrivacyService } from '../privacy/service.js';
+import type { PgServerTx } from '../sync/pg-store.js';
 
 /** Collections holding health data (screening answers, biometrics): need the health consent (L9, ADR-004). */
 export const HEALTH_COLLECTIONS: readonly string[] = [PROFILE_COLLECTIONS.profile, PROFILE_COLLECTIONS.screenings];
@@ -83,13 +84,18 @@ export function safetyEventsFor(profile: SafetyProfile) {
   return events;
 }
 
-/** After a screening is stored: write the safety gates it switched on to the defensibility log. */
-export function profileSyncListener(deps: ProfileSyncDeps): MutationListener {
-  return async (userId, m) => {
+/**
+ * When a screening is stored: write the safety gates it switched on to the
+ * defensibility log IN THE SYNC TRANSACTION (L11). A failed log write rolls
+ * the screening back and fails the push, so the device retries; a screening
+ * is never stored without its safety events (fixes M01 deviation 14).
+ */
+export function profileSyncListener(deps: ProfileSyncDeps): MutationListener<PgServerTx> {
+  return async (userId, m, tx) => {
     if (m.collection !== PROFILE_COLLECTIONS.screenings) return;
     const record = ScreeningRecordSchema.parse(m.data);
     for (const event of safetyEventsFor(record.safetyProfile)) {
-      await deps.legal.recordSafetyEvent(userId, { ...event, engineVersion: ENGINE_VERSION });
+      await deps.legal.recordSafetyEvent(userId, { ...event, engineVersion: ENGINE_VERSION }, tx.db);
     }
   };
 }

@@ -192,14 +192,21 @@ export class LegalService {
     await this.log.append(tx, { type: 'consent.recorded', chain: this.subjectRef(userId), occurredAt: at.toISOString(), payload });
   }
 
-  /** For the engine and safety modules (M02, M05): a safety gate fired. */
-  async recordSafetyEvent(userId: string, payload: DefensibilityPayload<'safety.event'>): Promise<void> {
-    await this.log.appendNow({ type: 'safety.event', chain: this.subjectRef(userId), occurredAt: this.deps.now().toISOString(), payload });
+  /**
+   * For the engine and safety modules (M02, M05, M07): a safety gate fired.
+   * Pass the transaction of the change the event describes (L11: the change
+   * and its event commit together); without one the event is its own
+   * transaction, which is only right when no other data is written.
+   */
+  async recordSafetyEvent(userId: string, payload: DefensibilityPayload<'safety.event'>, tx?: Tx): Promise<void> {
+    const input = { type: 'safety.event' as const, chain: this.subjectRef(userId), occurredAt: this.deps.now().toISOString(), payload };
+    await (tx ? this.log.append(tx, input) : this.log.appendNow(input));
   }
 
-  /** For the engine (M02): a prescription with its engine version and reason codes. */
-  async recordPrescription(userId: string, payload: DefensibilityPayload<'prescription.issued'>): Promise<void> {
-    await this.log.appendNow({ type: 'prescription.issued', chain: this.subjectRef(userId), occurredAt: this.deps.now().toISOString(), payload });
+  /** For the engine (M02, M07): a prescription with its engine version and reason codes; same transaction rule as recordSafetyEvent. */
+  async recordPrescription(userId: string, payload: DefensibilityPayload<'prescription.issued'>, tx?: Tx): Promise<void> {
+    const input = { type: 'prescription.issued' as const, chain: this.subjectRef(userId), occurredAt: this.deps.now().toISOString(), payload };
+    await (tx ? this.log.append(tx, input) : this.log.appendNow(input));
   }
 
   /**
