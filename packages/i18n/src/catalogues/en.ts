@@ -1,3 +1,4 @@
+import { assessmentEn } from './assessment.en.js';
 import { legalEn } from './legal.en.js';
 import { libraryEn } from './library.en.js';
 import { onboardingEn } from './onboarding.en.js';
@@ -120,6 +121,9 @@ export const en = {
 
   // M01 health screening: original wording, licence check pending, awaiting seat A1 review (screening.en.ts).
   ...screeningEn,
+
+  // M07 assessment, capacity model and first session (engine reason codes included).
+  ...assessmentEn,
 } as const;
 
 export type MessageKey = keyof typeof en;
