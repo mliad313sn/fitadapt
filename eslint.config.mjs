@@ -41,7 +41,7 @@ export default defineConfig(
     },
   },
   {
-    files: ['**/*.cjs', '**/babel.config.js', '**/metro.config.js', '**/jest.config.js', '**/jest.setup.js'],
+    files: ['**/*.cjs', '**/babel.config.js', '**/metro.config.js', '**/jest.config.js', '**/jest.setup.js', 'apps/mobile/app.config.js'],
     languageOptions: { sourceType: 'commonjs' },
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
