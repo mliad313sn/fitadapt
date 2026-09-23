@@ -49,7 +49,7 @@ export function parseExportArgs(argv: readonly string[]): ExportArgs {
 export async function runLegalHoldExport(legal: LegalService, args: ExportArgs, cwd = process.env.INIT_CWD ?? process.cwd()): Promise<{ path: string; result: LegalHoldExport }> {
   const result = await legal.legalHoldExport(args.userId, args.actor);
   const stamp = result.generatedAt.replace(/[:.]/g, '-');
-  const path = args.out ? (isAbsolute(args.out) ? args.out : resolve(cwd, args.out)) : join(REPO_ROOT, 'reports/legal', `legal-hold-${result.subjectRef.slice(0, 12)}-${stamp}.json`);
+  const path = args.out ? (isAbsolute(args.out) ? args.out : resolve(cwd, args.out)) : join(REPO_ROOT, 'reports/legal', `legal-hold-${result.subjectRef.replace(/[^A-Za-z0-9]/g, '').slice(0, 12)}-${stamp}.json`);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${JSON.stringify(result, null, 2)}\n`);
   return { path, result };

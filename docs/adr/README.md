@@ -11,3 +11,6 @@ One ADR per significant decision (template: context, decision, alternatives, con
 | [ADR-005](ADR-005-data-subject-rights.md) | Export, correction, deletion and backup purge | M17 |
 | [ADR-006](ADR-006-encryption-and-key-management.md) | Encryption in transit and at rest, photos, keys and secrets | M17 |
 | [ADR-007](ADR-007-security-gates-and-telemetry-hygiene.md) | CI security gates, log scrubbing and analytics allowlist | M17 |
+| [ADR-008](ADR-008-legal-acceptance-model.md) | Legal documents, acceptance, notices and the production release guard | M20 |
+| [ADR-009](ADR-009-defensibility-log.md) | Defensibility log: append-only, hash-chained, pseudonymous | M20 |
+| [ADR-010](ADR-010-claims-and-licence-controls.md) | Claims linter, substantiation file and licence controls | M20 |
