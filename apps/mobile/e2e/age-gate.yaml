@@ -1,0 +1,32 @@
+# M17 goal condition 6 on a device or emulator (Maestro). Not run in this
+# environment (no device); the same flow runs in jest-expo in
+# __tests__/age-gate.e2e.test.tsx. Run with: maestro test apps/mobile/e2e/age-gate.yaml
+# The date below is a fixed date of birth that is under 16 until 2036-01-01.
+appId: dev.companion.app
+---
+- clearState
+- launchApp
+- assertVisible:
+    id: "age-gate"
+- tapOn:
+    id: "age-gate-day"
+- inputText: "1"
+- tapOn:
+    id: "age-gate-month"
+- inputText: "1"
+- tapOn:
+    id: "age-gate-year"
+- inputText: "2020"
+- tapOn:
+    id: "age-gate-continue"
+- assertVisible:
+    id: "age-gate-blocked"
+- assertNotVisible:
+    id: "home-screen"
+# Relaunch: still blocked, the form does not come back.
+- stopApp
+- launchApp
+- assertVisible:
+    id: "age-gate-blocked"
+- assertNotVisible:
+    id: "age-gate-year"

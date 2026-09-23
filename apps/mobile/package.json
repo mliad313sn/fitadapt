@@ -16,11 +16,13 @@
     "test": "jest --coverage"
   },
   "dependencies": {
+    "@expo/metro-runtime": "~57.0.16",
     "@fitadapt/i18n": "workspace:*",
+    "@fitadapt/privacy": "workspace:*",
+    "@fitadapt/safety": "workspace:*",
     "@fitadapt/shared": "workspace:*",
     "@fitadapt/sync": "workspace:*",
     "@fitadapt/ui": "workspace:*",
-    "@expo/metro-runtime": "~57.0.16",
     "@react-native-community/netinfo": "12.0.1",
     "drizzle-orm": "0.45.3",
     "expo": "57.0.24",
@@ -35,6 +37,7 @@
     "react-native": "0.86.3",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
+    "zod": "4.6.5",
     "zustand": "5.0.15"
   },
   "devDependencies": {

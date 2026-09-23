@@ -16,12 +16,30 @@ export interface DeviceSyncDeps {
   transport?: SyncTransport;
   apiUrl?: string;
   getAccessToken?: () => string | Promise<string>;
+  /** Defaults to React Native's __DEV__. */
+  isDevelopment?: boolean;
 }
 
 function notSignedIn(): never {
   // Sign-in screens arrive with M01; until then sync stays local-only.
   throw new Error('not signed in');
 }
+
+const LOCAL_HOSTS = new Set(['127.0.0.1', 'localhost', '10.0.2.2']);
+
+/**
+ * TLS only (MASVS-NETWORK-1). Plain HTTP is accepted for a loopback address in
+ * development builds only; anything else must be https.
+ */
+export function assertSecureApiUrl(url: string, isDevelopment: boolean): string {
+  const parsed = new URL(url);
+  if (parsed.protocol === 'https:') return url;
+  if (isDevelopment && parsed.protocol === 'http:' && LOCAL_HOSTS.has(parsed.hostname)) return url;
+  throw new Error('API URL must use https');
+}
+
+declare const __DEV__: boolean | undefined;
+const isDevelopmentBuild = () => typeof __DEV__ !== 'undefined' && __DEV__ === true;
 
 /** Builds the local-first sync client: SQLite store, persistent device id, HTTP transport. */
 export function createDeviceSyncClient(deps: DeviceSyncDeps): SyncClient {
@@ -36,6 +54,9 @@ export function createDeviceSyncClient(deps: DeviceSyncDeps): SyncClient {
   });
   const transport =
     deps.transport ??
-    new HttpTransport({ baseUrl: deps.apiUrl ?? 'http://127.0.0.1:3000', getAccessToken: deps.getAccessToken ?? notSignedIn });
+    new HttpTransport({
+      baseUrl: assertSecureApiUrl(deps.apiUrl ?? 'http://127.0.0.1:3000', deps.isDevelopment ?? isDevelopmentBuild()),
+      getAccessToken: deps.getAccessToken ?? notSignedIn,
+    });
   return new SyncClient({ deviceId, store, transport, newId: deps.randomUUID });
 }

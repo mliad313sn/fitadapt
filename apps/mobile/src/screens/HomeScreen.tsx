@@ -5,7 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSettings } from '../state/settings';
 import { useSync } from '../sync/SyncProvider';
 
-export function HomeScreen() {
+/** `onOpenPrivacy` is wired by the route (app/index.tsx); without it the entry is hidden. */
+export function HomeScreen({ onOpenPrivacy }: { onOpenPrivacy?: () => void } = {}) {
   const theme = useTheme();
   const { t, locale, setLocale, unitSystem, setUnitSystem } = useI18n();
   const { pendingCount } = useSync();
@@ -47,6 +48,9 @@ export function HomeScreen() {
           onPress={() => setUnitSystem(unitSystem === 'metric' ? 'imperial' : 'metric')}
           testID="toggle-units"
         />
+        {onOpenPrivacy ? (
+          <Button label={t('home.privacy.open')} hint={t('home.privacy.openHint')} variant="secondary" onPress={onOpenPrivacy} testID="open-privacy" />
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
