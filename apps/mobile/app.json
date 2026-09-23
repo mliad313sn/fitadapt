@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Companion (dev)",
+    "slug": "companion-dev",
+    "scheme": "companion",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "dev.companion.app"
+    },
+    "android": {
+      "package": "dev.companion.app"
+    },
+    "plugins": ["expo-router", "expo-localization", "expo-sqlite"],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

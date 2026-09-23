@@ -39,6 +39,10 @@ export default defineConfig(
     languageOptions: { sourceType: 'commonjs' },
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
+  {
+    files: ['**/jest.setup.js', '**/__tests__/**', '**/*.test.ts', '**/*.test.tsx'],
+    languageOptions: { globals: { ...globals.jest } },
+  },
   // CLAUDE.md rule 5: no user-facing string outside packages/i18n.
   // Test files are not shipped UI; they may use literal fixture labels.
   {

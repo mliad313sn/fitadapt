@@ -8,6 +8,7 @@ import type { LocalRecord, LocalStore, LocalTx } from './types.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type SyncSqliteDatabase = BaseSQLiteDatabase<'sync', any, any>;
 
+/** Reserved sync_state key; other keys are free for callers. */
 const CURSOR_KEY = 'pull_cursor';
 
 function toRecord(row: typeof syncRecords.$inferSelect): LocalRecord {
@@ -35,7 +36,7 @@ function toOutbox(row: typeof syncOutbox.$inferSelect): OutboxItem {
 }
 
 function txFor(db: SyncSqliteDatabase): LocalTx {
-  return {
+  const tx: LocalTx = {
     getRecord(collection, id) {
       const row = db
         .select()
@@ -87,18 +88,23 @@ function txFor(db: SyncSqliteDatabase): LocalTx {
       if (result.length === 0) throw new Error(`unknown outbox id ${id}`);
     },
     getCursor() {
-      const row = db.select().from(syncState).where(eq(syncState.key, CURSOR_KEY)).get() as
-        | typeof syncState.$inferSelect
-        | undefined;
-      return row ? Number(row.value) : 0;
+      const value = tx.getState(CURSOR_KEY);
+      return value === undefined ? 0 : Number(value);
     },
     setCursor(revision) {
-      db.insert(syncState)
-        .values({ key: CURSOR_KEY, value: String(revision) })
-        .onConflictDoUpdate({ target: syncState.key, set: { value: String(revision) } })
-        .run();
+      tx.setState(CURSOR_KEY, String(revision));
+    },
+    getState(key) {
+      const row = db.select().from(syncState).where(eq(syncState.key, key)).get() as
+        | typeof syncState.$inferSelect
+        | undefined;
+      return row?.value;
+    },
+    setState(key, value) {
+      db.insert(syncState).values({ key, value }).onConflictDoUpdate({ target: syncState.key, set: { value } }).run();
     },
   };
+  return tx;
 }
 
 /** LocalStore backed by SQLite through Drizzle. Call `migrate()` once after opening. */

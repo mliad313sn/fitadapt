@@ -300,3 +300,14 @@ describe('sync client edge cases', () => {
     expect(() => store.transaction((tx) => tx.updateOutbox(randomUUID(), { attempts: 1 }))).toThrow(/unknown outbox/);
   });
 });
+
+describe.each(kinds)('local key/value state — %s', (kind) => {
+  it('stores and overwrites values', async () => {
+    const { makeStore } = await import('./helpers.js');
+    const store = await makeStore(kind);
+    expect(store.transaction((tx) => tx.getState('device_id'))).toBeUndefined();
+    store.transaction((tx) => tx.setState('device_id', 'a'));
+    store.transaction((tx) => tx.setState('device_id', 'b'));
+    expect(store.transaction((tx) => tx.getState('device_id'))).toBe('b');
+  });
+});

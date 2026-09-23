@@ -26,6 +26,9 @@ export interface LocalTx {
   updateOutbox(id: string, patch: OutboxPatch): void;
   getCursor(): number;
   setCursor(revision: number): void;
+  /** Small key/value slots for sync metadata (e.g. the device id). */
+  getState(key: string): string | undefined;
+  setState(key: string, value: string): void;
 }
 
 /** Device-side storage. A transaction either fully applies or leaves nothing behind. */

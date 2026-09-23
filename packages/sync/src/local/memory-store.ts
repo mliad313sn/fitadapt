@@ -5,6 +5,7 @@ interface State {
   records: Map<string, LocalRecord>;
   outbox: OutboxItem[];
   cursor: number;
+  kv: Record<string, string>;
 }
 
 /** JSON clone: records and outbox items are plain JSON data (no structuredClone on older Hermes). */
@@ -14,13 +15,14 @@ const recordKey = (collection: string, id: string) => `${collection}/${id}`;
 
 /** In-memory LocalStore for tests and previews. Transactions roll back on throw. */
 export class MemoryLocalStore implements LocalStore {
-  private state: State = { records: new Map(), outbox: [], cursor: 0 };
+  private state: State = { records: new Map(), outbox: [], cursor: 0, kv: {} };
 
   transaction<T>(fn: (tx: LocalTx) => T): T {
     const working: State = {
       records: new Map([...this.state.records].map(([k, v]) => [k, clone(v)])),
       outbox: clone(this.state.outbox),
       cursor: this.state.cursor,
+      kv: { ...this.state.kv },
     };
     const result = fn(this.txFor(working));
     this.state = working;
@@ -56,6 +58,10 @@ export class MemoryLocalStore implements LocalStore {
       getCursor: () => state.cursor,
       setCursor: (revision) => {
         state.cursor = revision;
+      },
+      getState: (key) => state.kv[key],
+      setState: (key, value) => {
+        state.kv[key] = value;
       },
     };
   }
