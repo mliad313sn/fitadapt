@@ -4,6 +4,7 @@ import { IsoDateTimeSchema, UuidSchema } from './common.js';
 import { EquipmentIdSchema, JointFlagsSchema, JointSchema, MovementPatternSchema, SafetyProfileSchema, SlugSchema } from './exercise.js';
 import { CalendarDateSchema, EquipmentLoadsSchema, ExperienceLevelSchema } from './profile.js';
 import { ConditioningSchema, IsoDateSchema, MesocycleIntentSchema, MicrocycleKindSchema, ScheduledSessionSchema, SlotRoleSchema } from './program.js';
+import { CoolDownSchema, DeloadEventSchema, PainPhaseSchema, SessionModeSchema, WarmupPlanSchema } from './recovery.js';
 
 /**
  * M02 — Adaptive training engine and session execution contracts
@@ -57,7 +58,7 @@ export const PlannedExerciseSchema = z.strictObject({
 });
 export type PlannedExercise = z.infer<typeof PlannedExerciseSchema>;
 
-export const SESSION_KINDS = ['first_session', 'program_session'] as const;
+export const SESSION_KINDS = ['first_session', 'program_session', 'mobility_session'] as const;
 export const SessionKindSchema = z.enum(SESSION_KINDS);
 export type SessionKind = z.infer<typeof SessionKindSchema>;
 
@@ -76,6 +77,8 @@ export const WarmUpSchema = z.strictObject({
   minutes: z.number().min(0),
   /** Time-boxing never cuts the warm-up below this. */
   minimumMinutes: z.number().min(0),
+  /** M05: what the warm-up is (general movement, mobility for the day's patterns, ramp-up sets). Absent on plans made before engine 0.3.0. */
+  content: WarmupPlanSchema.optional(),
 });
 export type WarmUp = z.infer<typeof WarmUpSchema>;
 
@@ -100,10 +103,12 @@ export const SessionPlanSchema = z
     /** Aerobic work handed to M03 (steady or intervals; S1 already applied). */
     conditioning: ConditioningSchema.nullable(),
     exercises: z.array(PlannedExerciseSchema),
+    /** M05: easy mobility after the session, only when time is left (null: none; absent before engine 0.3.0). */
+    coolDown: CoolDownSchema.nullable().optional(),
     reasonCodes: z.array(ReasonCodeSchema).min(1),
   })
   .refine((p) => p.exercises.length > 0 || p.conditioning !== null, { message: 'a plan needs an exercise or a conditioning block' })
-  .refine((p) => p.kind !== 'first_session' || p.exercises.length > 0, { message: 'a first session needs an exercise' });
+  .refine((p) => p.kind === 'program_session' || p.exercises.length > 0, { message: 'a first or mobility session needs an exercise' });
 export type SessionPlan = z.infer<typeof SessionPlanSchema>;
 
 export const SessionSafetyEventSchema = z.strictObject({
@@ -213,6 +218,10 @@ export const GenerateSessionInputSchema = z.strictObject({
   intensityLock: IntensityLockSchema.optional(),
   /** M05/M12 readiness: 'reduced' → fewer sets and more reps in reserve. */
   readiness: z.enum(READINESS_LEVELS).optional(),
+  /** M05: a triggered deload (engine deloadStatus) → volume −40–50 %, no progression. */
+  deload: DeloadEventSchema.nullable().optional(),
+  /** M05: 'mobility_balance' → a standalone mobility and balance session instead of today's training. */
+  mode: SessionModeSchema.optional(),
 });
 export type GenerateSessionInputValue = z.infer<typeof GenerateSessionInputSchema>;
 
@@ -318,12 +327,25 @@ export const ExecutionLogSchema = z.discriminatedUnion('kind', [
   /** The user (or a pain flag) swapped an exercise: `replacement` is what the engine prescribed for it (replacementsFor). */
   z.strictObject({ kind: z.literal('swapped'), planId: UuidSchema, exerciseIndex: z.number().int().min(0).max(19), fromExerciseId: SlugSchema, replacement: PlannedExerciseSchema, reason: z.enum(SWAP_REASONS), at: IsoDateTimeSchema }),
   z.strictObject({ kind: z.literal('exercise_skipped'), planId: UuidSchema, exerciseIndex: z.number().int().min(0).max(19), at: IsoDateTimeSchema }),
-  /** M05 builds the pain model; M02 records the flag (0–10) and S2 acts on it in the next session. */
-  z.strictObject({ kind: z.literal('pain'), planId: UuidSchema.nullable(), joint: JointSchema, score: z.number().int().min(0).max(10), at: IsoDateTimeSchema }),
+  /**
+   * PainReport (M05 pain-monitoring model, packages/safety painTrafficLight): a 0–10 score for a joint during a
+   * session, in the check after it, or in the next-morning check (with `settled`: back to how it usually is?).
+   * Absent phase = during (M02 records).
+   */
+  z.strictObject({
+    kind: z.literal('pain'),
+    planId: UuidSchema.nullable(),
+    joint: JointSchema,
+    score: z.number().int().min(0).max(10),
+    at: IsoDateTimeSchema,
+    phase: PainPhaseSchema.optional(),
+    settled: z.boolean().optional(),
+  }),
   z.strictObject({ kind: z.literal('ended'), planId: UuidSchema, reason: z.enum(SESSION_END_REASONS), at: IsoDateTimeSchema }),
   /** S3: a red-flag symptom ended the session; intensity is locked until a medical review is attested. */
   z.strictObject({ kind: z.literal('red_flag'), planId: UuidSchema.nullable(), symptom: RedFlagSymptomSchema, at: IsoDateTimeSchema }),
-  z.strictObject({ kind: z.literal('medical_review_attested'), at: IsoDateTimeSchema }),
+  /** S3: the person confirmed the medical-review statement (M05: self-attestation, the version they confirmed). */
+  z.strictObject({ kind: z.literal('medical_review_attested'), at: IsoDateTimeSchema, statementVersion: z.number().int().positive().optional() }),
 ]);
 export type ExecutionLog = z.infer<typeof ExecutionLogSchema>;
 

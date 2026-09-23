@@ -13,7 +13,8 @@ import type { SafetyCheck } from './evaluate.js';
  *
  * The 10 %, the 7 days and the pain score 6 are the invariants themselves:
  * constants, never configuration, with no switch to relax them. M05 builds
- * the full pain model and red-flag flow on top of these primitives.
+ * the full pain-monitoring model (painTrafficLight, next-morning check,
+ * physiotherapist recommendation) and the red-flag flow on these primitives.
  */
 export const S5_MAX_INCREASE_FRACTION = 0.1 as const;
 export const S5_WINDOW_DAYS = 7 as const;
@@ -52,34 +53,141 @@ export const loadCeilingCheck: SafetyCheck<{ loadKg: number; references: readonl
 };
 
 export const PAIN_CONFIG = defineConfig({
-  /** A joint whose latest pain score is at least this (and below the S2 red score) is amber. */
-  amberPainScore: { value: 3, unit: 'score 0–10', source: 'M02 engineering default (conservative choice by the engineer); no external source; M05 builds the pain-monitoring model (Silbernagel et al. 2007 is cited by the vision document, not checked)', validated: false },
+  /**
+   * A score at least this (and below the S2 red score 6) is amber. M05 spec: "green ≤ 3, amber 4–5, red ≥ 6"
+   * (M02 had 3 as a placeholder; M05 sets the spec's boundary). Silbernagel et al. 2007 is cited by the vision
+   * document for the pain-monitoring model; neither the paper nor the thresholds were checked.
+   */
+  amberPainScore: { value: 4, unit: 'score 0–10', source: 'docs/specs/M05-recovery-mobility-pain-safety.md (Scope: "green ≤ 3, amber 4–5, red ≥ 6"); pain-monitoring model after Silbernagel et al. 2007 as cited by docs/specs/00-product-vision.md, not checked', validated: false },
+  /** Amber or red on the same joint for more than this many days → recommend seeing a physiotherapist. */
+  persistenceDays: { value: 14, unit: 'days', source: 'docs/specs/M05-recovery-mobility-pain-safety.md (Rules: "Amber or red on the same joint for more than two weeks → recommend seeing a physiotherapist")', validated: false },
 });
+
+/** When a pain score was given (M05): during a session, in the check after it, or at the next-morning check. */
+export type PainReportPhase = 'during' | 'after_session' | 'next_morning';
 
 export interface PainReport {
   readonly joint: Joint;
   /** 0–10. */
   readonly score: number;
   readonly at: string;
+  /** Absent = during a session (M02 records). */
+  readonly phase?: PainReportPhase;
+  /** Next-morning check: is it back to how it usually is? `false` = not settled → red (S2). */
+  readonly settled?: boolean;
+  /** The session the report belongs to (plan id), null or absent outside a session. */
+  readonly sessionId?: string | null;
+}
+
+export type PainLight = 'green' | 'amber' | 'red';
+
+/** The colour of one report on its own: ≥ 6 or not settled by the next morning → red; ≥ the amber score → amber. */
+export function classifyPainReport(r: Pick<PainReport, 'score' | 'phase' | 'settled'>): PainLight {
+  if (r.score >= S2_RED_PAIN_SCORE || (r.phase === 'next_morning' && r.settled === false)) return 'red';
+  return r.score >= PAIN_CONFIG.amberPainScore.value ? 'amber' : 'green';
+}
+
+export interface JointPainState {
+  readonly flag: PainLight;
+  /** Why the joint is red: a score ≥ 6, or not settled by the next morning. */
+  readonly redReason: 'score' | 'not_settled' | null;
+  /** Start of the current amber/red stretch (the first non-green report since the last green one); null when green. */
+  readonly since: string | null;
+  /** The latest report of this joint. */
+  readonly lastAt: string;
 }
 
 /**
- * S2 traffic light from pain reports, in the order they were recorded: the
- * latest report of a joint decides — ≥ 6 red, ≥ the amber score amber. A red
- * joint stays red until a later report for that joint is below 6 (M05 adds
- * the next-morning check and the full monitoring model).
+ * The M05 pain-monitoring traffic light (one model: M02's S2 flags are read
+ * from it). Reports are given in the order they were recorded.
+ *
+ * - A report of ≥ 6/10, or a next-morning check that says it has not
+ *   settled, makes the joint red (S2).
+ * - A red joint stays red for the next session: only a later report below 6
+ *   made in ANOTHER session (not one that rated it red, not a next-morning
+ *   check) can bring it back to amber or green. Fail closed: the clearing
+ *   report must be recorded later and not be dated before the red one (a
+ *   device clock moved back cannot clear it), and an unreadable time never
+ *   clears.
+ * - Otherwise the latest report decides: ≥ 4 amber, else green.
+ */
+export function painTrafficLight(reports: readonly PainReport[]): Partial<Record<Joint, JointPainState>> {
+  const out: Partial<Record<Joint, JointPainState>> = {};
+  const red: Partial<Record<Joint, { at: number; sessions: Set<string | null> }>> = {};
+  for (const r of reports) {
+    const prev = out[r.joint];
+    const t = Date.parse(r.at);
+    const light = classifyPainReport(r);
+    const session = r.sessionId ?? null;
+    let flag: PainLight;
+    let redReason: JointPainState['redReason'] = prev?.redReason ?? null;
+    if (light === 'red') {
+      flag = 'red';
+      redReason = r.score >= S2_RED_PAIN_SCORE ? 'score' : 'not_settled';
+      // An unreadable time can never be "before" a clearing report.
+      const streak = red[r.joint];
+      red[r.joint] = { at: Number.isNaN(t) ? Number.POSITIVE_INFINITY : Math.max(t, streak?.at ?? Number.NEGATIVE_INFINITY), sessions: new Set([...(streak?.sessions ?? []), session]) };
+    } else if (prev?.flag === 'red') {
+      const setBy = red[r.joint]!;
+      // Another session than every one that rated it red (reports outside a session only clear reds set outside one).
+      const otherSession = session === null ? [...setBy.sessions].every((x) => x === null) : !setBy.sessions.has(session);
+      const clears = r.phase !== 'next_morning' && !Number.isNaN(t) && t >= setBy.at && otherSession;
+      flag = clears ? light : 'red';
+      if (clears) {
+        redReason = null;
+        delete red[r.joint];
+      }
+    } else {
+      flag = light;
+      redReason = null;
+    }
+    const since = flag === 'green' ? null : prev && prev.flag !== 'green' ? prev.since : r.at;
+    out[r.joint] = { flag, redReason: flag === 'red' ? redReason : null, since, lastAt: r.at };
+  }
+  return out;
+}
+
+/**
+ * S2 traffic light from pain reports, in the order they were recorded
+ * (painTrafficLight): red and amber joints; green joints are left out.
  */
 export function jointFlagsFromPain(reports: readonly PainReport[]): JointFlags {
-  const latest = new Map<Joint, number>();
-  for (const r of reports) latest.set(r.joint, r.score);
+  const states = painTrafficLight(reports);
   const flags: Partial<Record<Joint, JointFlag>> = {};
   for (const joint of JOINTS) {
-    const score = latest.get(joint);
-    if (score === undefined) continue;
-    if (score >= S2_RED_PAIN_SCORE) flags[joint] = 'red';
-    else if (score >= PAIN_CONFIG.amberPainScore.value) flags[joint] = 'amber';
+    const s = states[joint];
+    if (s && s.flag !== 'green') flags[joint] = s.flag;
   }
   return flags;
+}
+
+export interface PhysioRecommendation {
+  readonly joint: Joint;
+  readonly flag: 'amber' | 'red';
+  readonly since: string;
+  readonly days: number;
+}
+
+const DAY = 86_400_000;
+
+/**
+ * M05 rule: amber or red on the same joint for more than two weeks →
+ * recommend seeing a physiotherapist (guidance only, no diagnosis). The
+ * stretch starts at its first amber/red report and lasts while no green
+ * report follows. An unreadable start time counts as long enough (the
+ * recommendation errs on the side of suggesting a professional).
+ */
+export function physioRecommendations(reports: readonly PainReport[], nowMs: number): PhysioRecommendation[] {
+  const states = painTrafficLight(reports);
+  const out: PhysioRecommendation[] = [];
+  for (const joint of JOINTS) {
+    const s = states[joint];
+    if (!s || s.flag === 'green' || s.since === null) continue;
+    const start = Date.parse(s.since);
+    const days = Number.isNaN(start) ? Number.POSITIVE_INFINITY : (nowMs - start) / DAY;
+    if (days > PAIN_CONFIG.persistenceDays.value) out.push({ joint, flag: s.flag, since: s.since, days: Number.isFinite(days) ? Math.floor(days) : PAIN_CONFIG.persistenceDays.value + 1 });
+  }
+  return out;
 }
 
 export interface SafetyStopEvent {
