@@ -11,6 +11,8 @@
 | `notice.shown` / `notice.acknowledged` | Point-of-risk notice displayed / confirmed (L3) and AI disclosure (L5) | notice id, version, locale, jurisdiction, SHA-256 of the text shown |
 | `safety.event` | An S1–S7 gate blocks, substitutes, caps or ends a session | invariant, reason code, action, engine version |
 | `prescription.issued` | The engine issues a prescription | prescription id, engine version, reason codes |
+| `program.generated` | A program (M08) is stored; written in the same transaction as the program record | program id, engine version, program rules version, template id, reason codes |
+| `program.reflowed` | The engine shifts, merges or skips a session the user could not do (M08); same transaction as the reflow record | program id, session id, outcome, engine version |
 | `content.approved` | Exercise, notice or copy approved by a council seat | content id, version, reviewer seat, sign-off record path |
 | `incident.recorded` | Each step of incident-procedure.md | incident id, category, step |
 | `legal_hold.placed` / `released` | Legal hold on a subject | hold id, reason code |

@@ -38,6 +38,10 @@ export const DefensibilityPayloads = {
     engineVersion,
   }),
   'prescription.issued': z.strictObject({ prescriptionId: z.uuid(), engineVersion, reasonCodes: z.array(code).max(50) }),
+  /** M08: a program was generated (engine and rules versions, template); written with the stored program. */
+  'program.generated': z.strictObject({ programId: z.uuid(), engineVersion, rulesVersion: engineVersion, templateId: code, reasonCodes: z.array(code).max(50) }),
+  /** M08: a session the user could not do was shifted, merged or skipped by the engine; written with the stored reflow. */
+  'program.reflowed': z.strictObject({ programId: z.uuid(), sessionId: code, outcome: z.enum(['shifted', 'merged', 'skipped']), engineVersion }),
   'content.approved': z.strictObject({ contentId: code, contentVersion: version, reviewerSeat: z.string().regex(/^[A-Z]\d{1,2}$/), signOffRecord: z.string().regex(/^[\w./-]{1,200}$/) }),
   'incident.recorded': z.strictObject({
     incidentId: z.uuid(),
@@ -148,6 +152,8 @@ export interface LegalHoldExport {
   readonly notices: readonly DefensibilityEvent[];
   readonly safetyEvents: readonly DefensibilityEvent[];
   readonly prescriptions: readonly DefensibilityEvent[];
+  /** M08: programs generated and reflows decided by the engine. */
+  readonly programs: readonly DefensibilityEvent[];
   readonly engineVersions: readonly { readonly engineVersion: string; readonly firstSeen: string; readonly lastSeen: string; readonly events: number }[];
   readonly legalHolds: readonly DefensibilityEvent[];
   readonly accessLog: readonly DefensibilityEvent[];
@@ -159,7 +165,7 @@ export interface LegalHoldExport {
 export function buildLegalHoldExport(subjectRef: string, chain: readonly DefensibilityEvent[], generatedAt: string): LegalHoldExport {
   const of = (...types: DefensibilityEventType[]) => chain.filter((e) => types.includes(e.type));
   const versions = new Map<string, { engineVersion: string; firstSeen: string; lastSeen: string; events: number }>();
-  for (const e of of('safety.event', 'prescription.issued')) {
+  for (const e of of('safety.event', 'prescription.issued', 'program.generated', 'program.reflowed')) {
     const v = (e.payload as { engineVersion: string }).engineVersion;
     const entry = versions.get(v) ?? { engineVersion: v, firstSeen: e.occurredAt, lastSeen: e.occurredAt, events: 0 };
     entry.events += 1;
@@ -179,6 +185,7 @@ export function buildLegalHoldExport(subjectRef: string, chain: readonly Defensi
     notices: of('notice.shown', 'notice.acknowledged'),
     safetyEvents: of('safety.event'),
     prescriptions: of('prescription.issued'),
+    programs: of('program.generated', 'program.reflowed'),
     engineVersions: [...versions.values()],
     legalHolds: of('legal_hold.placed', 'legal_hold.released'),
     accessLog: of('log.accessed'),

@@ -320,6 +320,9 @@ describe('M01 collections and server-side validation', () => {
     expect(SYNC_COLLECTIONS.screenings).toEqual({ appendOnly: true });
     // M07: assessments are append-only too.
     expect(SYNC_COLLECTIONS.assessments).toEqual({ appendOnly: true });
+    // M08: programs and reflows are append-only too.
+    expect(SYNC_COLLECTIONS.programs).toEqual({ appendOnly: true });
+    expect(SYNC_COLLECTIONS.program_reflows).toEqual({ appendOnly: true });
   });
 
   it('rejects a mutation the validator refuses, finally, and reports applied ones to the listener', async () => {

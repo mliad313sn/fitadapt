@@ -130,6 +130,21 @@ describe('defensibility log (L11): append-only, hash-chained, tamper-evident', (
       { engineVersion: '0.2.0', firstSeen: '2026-09-25T09:00:00.000Z', lastSeen: '2026-09-25T09:00:00.000Z', events: 1 },
     ]);
     expect(verifyChain(out.chain).ok).toBe(true);
+    expect(out.programs).toEqual([]);
+  });
+
+  it('M08: records generated programs and reflows with engine versions, and nothing personal', () => {
+    const log = sampleLog();
+    const programId = newId();
+    log.append({ type: 'program.generated', chain: SUBJECT, occurredAt: '2026-09-26T09:00:00.000Z', payload: { programId, engineVersion: '0.1.0', rulesVersion: '0.1.0', templateId: 'muscle_gain.3d', reasonCodes: ['program.split.full_body'] } });
+    log.append({ type: 'program.reflowed', chain: SUBJECT, occurredAt: '2026-10-02T18:00:00.000Z', payload: { programId, sessionId: 'w01.s3', outcome: 'shifted', engineVersion: '0.1.0' } });
+    const out = buildLegalHoldExport(SUBJECT, log.events(SUBJECT), '2026-10-03T00:00:00.000Z');
+    expect(out.integrity.ok).toBe(true);
+    expect(out.programs.map((e) => e.type)).toEqual(['program.generated', 'program.reflowed']);
+    expect(out.engineVersions.find((v) => v.engineVersion === '0.1.0')).toMatchObject({ events: 4, lastSeen: '2026-10-02T18:00:00.000Z' });
+    expect(() => parsePayload('program.reflowed', { programId, sessionId: 'w01.s3', outcome: 'shifted', engineVersion: '0.1.0', note: 'missed Friday again' })).toThrow();
+    expect(() => parsePayload('program.reflowed', { programId, sessionId: 'w01.s3', outcome: 'moved', engineVersion: '0.1.0' })).toThrow();
+    expect(() => parsePayload('program.generated', { programId: 'P3', engineVersion: '0.1.0', rulesVersion: '0.1.0', templateId: 'muscle_gain.3d', reasonCodes: [] })).toThrow();
   });
 });
 

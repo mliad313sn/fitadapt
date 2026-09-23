@@ -21,6 +21,10 @@ export const SYNC_COLLECTIONS: CollectionRegistry = Object.freeze({
   screenings: Object.freeze({ appendOnly: true }),
   /** M07 assessments (result + CapacityModel): append-only history; a re-assessment is a new record and the latest counts. */
   assessments: Object.freeze({ appendOnly: true }),
+  /** M08 programs (inputs + generated program): append-only; a new program is a new record and the latest counts. */
+  programs: Object.freeze({ appendOnly: true }),
+  /** M08 reflows (a session the user could not do and what the engine decided): append-only, replayed in order. */
+  program_reflows: Object.freeze({ appendOnly: true }),
 });
 
 export function policyFor(registry: CollectionRegistry, collection: string): CollectionPolicy | undefined {
