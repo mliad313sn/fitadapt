@@ -10,3 +10,8 @@ nodeLinker: hoisted
 # pnpm 10 blocks dependency lifecycle scripts by default; allow only the ones we need.
 onlyBuiltDependencies:
   - esbuild
+
+# Next.js pulls sharp (LGPL-licensed libvips binaries) as an optional dependency for
+# image optimisation. The coach portal stub uses no images; keep it out (L6, ADR-001).
+ignoredOptionalDependencies:
+  - sharp
