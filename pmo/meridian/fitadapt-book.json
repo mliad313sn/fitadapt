@@ -1,0 +1,2596 @@
+{
+  "db": {
+    "orgName": "FitAdapt (codename)",
+    "statusDate": "2026-09-23",
+    "sites": [
+      {
+        "id": "HQ",
+        "city": "Distributed team",
+        "region": "FitAdapt core",
+        "tz": 0,
+        "tzName": "UTC",
+        "headcount": 14,
+        "fte": 12,
+        "role": "Single delivery unit. Meridian models authority by site; FitAdapt has one team, so one site (see pmo/meridian/dogfood-log.md, DF-12)."
+      }
+    ],
+    "people": [
+      {
+        "id": "PE-01",
+        "name": "Founder (sponsor)",
+        "role": "Sponsor & company director",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-02",
+        "name": "Product Owner (to appoint)",
+        "role": "Product owner",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-03",
+        "name": "Tech lead (to appoint)",
+        "role": "Tech lead & architect",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-04",
+        "name": "Engine engineer (to appoint)",
+        "role": "Engine & safety engineer",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-05",
+        "name": "Mobile engineer (to appoint)",
+        "role": "Mobile engineer",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-06",
+        "name": "Backend engineer (to appoint)",
+        "role": "Backend & sync engineer",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-07",
+        "name": "AI engineer (to appoint)",
+        "role": "Data/ML & AI-safety engineer",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-08",
+        "name": "QA lead (to appoint)",
+        "role": "QA & test automation lead",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-09",
+        "name": "Designer (to appoint)",
+        "role": "Product designer & UX researcher",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-10",
+        "name": "Content lead (to appoint)",
+        "role": "Content, library & localisation lead",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-11",
+        "name": "Security engineer (to appoint)",
+        "role": "DevOps, security & privacy engineer",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-12",
+        "name": "Compliance coordinator (to appoint)",
+        "role": "Legal & compliance coordinator",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-13",
+        "name": "Growth lead (to appoint)",
+        "role": "Growth & go-to-market lead",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-14",
+        "name": "Delivery lead (to appoint)",
+        "role": "Delivery lead & Meridian champion",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-21",
+        "name": "Council seat A1 — physician (open)",
+        "role": "Council: sports & exercise medicine physician",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-22",
+        "name": "Council seat A2 — physiotherapist (open)",
+        "role": "Council: sports physiotherapist",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-23",
+        "name": "Council seat A3 — S&C coach (open)",
+        "role": "Council: strength & conditioning coach",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-24",
+        "name": "Council seat A4 — dietitian (open)",
+        "role": "Council: registered sports dietitian",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-25",
+        "name": "Council seat A5 — exercise physiologist (open)",
+        "role": "Council: exercise physiologist",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-26",
+        "name": "Council seat A6 — behavioural scientist (open)",
+        "role": "Council: behavioural scientist",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-27",
+        "name": "Council seat B1 — privacy counsel (open)",
+        "role": "Council: privacy & regulatory counsel",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-28",
+        "name": "Council seat B2 — product-liability counsel (open)",
+        "role": "Council: consumer & product-liability counsel",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-29",
+        "name": "Council seat B3 — IP counsel (open)",
+        "role": "Council: IP & trademark counsel",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-30",
+        "name": "Council seat B4 — device-regulatory specialist (open)",
+        "role": "Council: medical-device regulatory specialist",
+        "site": "HQ",
+        "rate": 0
+      },
+      {
+        "id": "PE-31",
+        "name": "Council seat C1 — insurance broker (open)",
+        "role": "Council: insurance adviser (non-voting)",
+        "site": "HQ",
+        "rate": 0
+      }
+    ],
+    "programmes": [
+      {
+        "id": "FAD",
+        "name": "FitAdapt (codename) — to market readiness",
+        "sponsor": "Founder",
+        "managerId": "PE-02"
+      }
+    ],
+    "columns": [
+      {
+        "id": "backlog",
+        "name": "Backlog",
+        "wip": 0
+      },
+      {
+        "id": "progress",
+        "name": "In progress",
+        "wip": 4
+      },
+      {
+        "id": "review",
+        "name": "In review",
+        "wip": 4
+      },
+      {
+        "id": "ready",
+        "name": "Ready to release",
+        "wip": 3
+      },
+      {
+        "id": "done",
+        "name": "Done",
+        "wip": 0
+      }
+    ],
+    "projects": [
+      {
+        "id": "PRJ-201",
+        "name": "Phase 0 — Foundation",
+        "programme": "FAD",
+        "site": "HQ",
+        "governanceLevel": "site",
+        "pm": "PE-02",
+        "method": "Agile",
+        "start": "2026-09-28",
+        "finish": "2026-10-16",
+        "baselineFinish": "2026-10-16",
+        "budget": 0,
+        "contingency": 0,
+        "contingencyUsed": 0,
+        "desc": "M00 platform, M17 privacy baseline, M20 legal framework. Exit: architecture review and Gate 0 (docs/governance/03, §6).",
+        "phase": "Initiation",
+        "gate": 0,
+        "closed": false
+      },
+      {
+        "id": "PRJ-202",
+        "name": "Phase 1 — Safe MVP",
+        "programme": "FAD",
+        "site": "HQ",
+        "governanceLevel": "site",
+        "pm": "PE-02",
+        "method": "Agile",
+        "start": "2026-10-19",
+        "finish": "2027-01-01",
+        "baselineFinish": "2027-01-01",
+        "budget": 0,
+        "contingency": 0,
+        "contingencyUsed": 0,
+        "desc": "A single user can onboard, get assessed, follow a periodized home/gym program offline and see progress. Exit: council sign-off on screening wording, engine coefficients and pain model; internal alpha with the six personas.",
+        "phase": "Initiation",
+        "gate": 0,
+        "closed": false
+      },
+      {
+        "id": "PRJ-203",
+        "name": "Phase 2 — Differentiation",
+        "programme": "FAD",
+        "site": "HQ",
+        "governanceLevel": "site",
+        "pm": "PE-02",
+        "method": "Agile",
+        "start": "2027-01-04",
+        "finish": "2027-02-26",
+        "baselineFinish": "2027-02-26",
+        "budget": 0,
+        "contingency": 0,
+        "contingencyUsed": 0,
+        "desc": "Fair Pair, nutrition with guardrails, AI coach, wearables. Exit: dietitian and physician review M10 guardrails and M11 eval results; closed beta of Fair Pair.",
+        "phase": "Initiation",
+        "gate": 0,
+        "closed": false
+      },
+      {
+        "id": "PRJ-204",
+        "name": "Phase 3 — Business & scale",
+        "programme": "FAD",
+        "site": "HQ",
+        "governanceLevel": "site",
+        "pm": "PE-02",
+        "method": "Agile",
+        "start": "2027-03-01",
+        "finish": "2027-04-16",
+        "baselineFinish": "2027-04-16",
+        "budget": 0,
+        "contingency": 0,
+        "contingencyUsed": 0,
+        "desc": "Engagement loops, subscriptions, analytics/CMS, coach portal. Exit: counsel reviews pricing, payment flows, claims and consent texts.",
+        "phase": "Initiation",
+        "gate": 0,
+        "closed": false
+      },
+      {
+        "id": "PRJ-205",
+        "name": "Phase 4 — Innovation & launch",
+        "programme": "FAD",
+        "site": "HQ",
+        "governanceLevel": "site",
+        "pm": "PE-02",
+        "method": "Agile",
+        "start": "2027-04-19",
+        "finish": "2027-06-04",
+        "baselineFinish": "2027-06-04",
+        "budget": 0,
+        "contingency": 0,
+        "contingencyUsed": 0,
+        "desc": "Voice and camera execution, full privacy/security programme with pen-test, store launch. Exit: launch:check green including legal gates, pen-test findings closed, council and counsel sign-off for every launch jurisdiction.",
+        "phase": "Initiation",
+        "gate": 0,
+        "closed": false
+      },
+      {
+        "id": "PRJ-206",
+        "name": "Governance — Gate 0, counsel & Expert Advisory Council",
+        "programme": "FAD",
+        "site": "HQ",
+        "governanceLevel": "group",
+        "pm": "PE-02",
+        "method": "Agile",
+        "start": "2026-09-28",
+        "finish": "2027-06-04",
+        "baselineFinish": "2027-06-04",
+        "budget": 0,
+        "contingency": 0,
+        "contingencyUsed": 0,
+        "desc": "Founder protections (Gate 0), counsel per launch market, and the real advisory board required by decision C10. Owns every sign-off of a validated:false item.",
+        "phase": "Initiation",
+        "gate": 0,
+        "closed": false
+      },
+      {
+        "id": "PRJ-207",
+        "name": "Meridian dogfooding & contribution",
+        "programme": "FAD",
+        "site": "HQ",
+        "governanceLevel": "site",
+        "pm": "PE-14",
+        "method": "Agile",
+        "start": "2026-09-28",
+        "finish": "2027-06-04",
+        "baselineFinish": "2027-06-04",
+        "budget": 0,
+        "contingency": 0,
+        "contingencyUsed": 0,
+        "desc": "FitAdapt is run on Meridian. Friction found in daily use is logged, triaged weekly and contributed back to github.com/mliad313sn/Meridian (docs/governance/05-dogfooding-loop.md).",
+        "phase": "Initiation",
+        "gate": 0,
+        "closed": false
+      }
+    ],
+    "activities": [
+      {
+        "id": "ACT-201-01",
+        "project": "PRJ-201",
+        "name": "M00 — Platform Foundation & Design System",
+        "stage": 0,
+        "start": "2026-09-28",
+        "end": "2026-10-09",
+        "weight": 0.333,
+        "pct": 0,
+        "owner": "PE-03",
+        "deps": []
+      },
+      {
+        "id": "ACT-201-02",
+        "project": "PRJ-201",
+        "name": "M17 — Privacy, Security & Compliance — baseline",
+        "stage": 1,
+        "start": "2026-10-05",
+        "end": "2026-10-16",
+        "weight": 0.333,
+        "pct": 0,
+        "owner": "PE-11",
+        "deps": [
+          "ACT-201-01"
+        ]
+      },
+      {
+        "id": "ACT-201-03",
+        "project": "PRJ-201",
+        "name": "M20 — Legal Framework, Claims Control & Defensibility",
+        "stage": 2,
+        "start": "2026-10-12",
+        "end": "2026-10-16",
+        "weight": 0.333,
+        "pct": 0,
+        "owner": "PE-12",
+        "deps": [
+          "ACT-201-01",
+          "ACT-201-02"
+        ]
+      },
+      {
+        "id": "ACT-202-01",
+        "project": "PRJ-202",
+        "name": "M06 — Exercise Library & Knowledge Graph",
+        "stage": 0,
+        "start": "2026-10-19",
+        "end": "2026-10-30",
+        "weight": 0.125,
+        "pct": 0,
+        "owner": "PE-10",
+        "deps": []
+      },
+      {
+        "id": "ACT-202-02",
+        "project": "PRJ-202",
+        "name": "M01 — Onboarding, Health Screening & Dynamic Profile",
+        "stage": 1,
+        "start": "2026-10-26",
+        "end": "2026-11-06",
+        "weight": 0.125,
+        "pct": 0,
+        "owner": "PE-05",
+        "deps": [
+          "ACT-202-01"
+        ]
+      },
+      {
+        "id": "ACT-202-03",
+        "project": "PRJ-202",
+        "name": "M07 — Assessment & Benchmark Testing",
+        "stage": 2,
+        "start": "2026-11-09",
+        "end": "2026-11-13",
+        "weight": 0.125,
+        "pct": 0,
+        "owner": "PE-04",
+        "deps": [
+          "ACT-202-02"
+        ]
+      },
+      {
+        "id": "ACT-202-04",
+        "project": "PRJ-202",
+        "name": "M08 — Program Architect — Periodization & Scheduling",
+        "stage": 3,
+        "start": "2026-11-16",
+        "end": "2026-11-27",
+        "weight": 0.125,
+        "pct": 0,
+        "owner": "PE-04",
+        "deps": [
+          "ACT-202-03"
+        ]
+      },
+      {
+        "id": "ACT-202-05",
+        "project": "PRJ-202",
+        "name": "M02 — Adaptive Training Engine & Session Execution",
+        "stage": 4,
+        "start": "2026-11-23",
+        "end": "2026-12-11",
+        "weight": 0.125,
+        "pct": 0,
+        "owner": "PE-04",
+        "deps": [
+          "ACT-202-04"
+        ]
+      },
+      {
+        "id": "ACT-202-06",
+        "project": "PRJ-202",
+        "name": "M05 — Recovery, Mobility & Pain-Monitored Safety",
+        "stage": 5,
+        "start": "2026-12-14",
+        "end": "2026-12-18",
+        "weight": 0.125,
+        "pct": 0,
+        "owner": "PE-04",
+        "deps": [
+          "ACT-202-05"
+        ]
+      },
+      {
+        "id": "ACT-202-07",
+        "project": "PRJ-202",
+        "name": "M03 — Cardio & Conditioning Suite",
+        "stage": 6,
+        "start": "2026-12-21",
+        "end": "2026-12-25",
+        "weight": 0.125,
+        "pct": 0,
+        "owner": "PE-05",
+        "deps": [
+          "ACT-202-05"
+        ]
+      },
+      {
+        "id": "ACT-202-08",
+        "project": "PRJ-202",
+        "name": "M04 — Tracking, Analytics & Progress Dashboard",
+        "stage": 7,
+        "start": "2026-12-21",
+        "end": "2027-01-01",
+        "weight": 0.125,
+        "pct": 0,
+        "owner": "PE-05",
+        "deps": [
+          "ACT-202-05"
+        ]
+      },
+      {
+        "id": "ACT-203-01",
+        "project": "PRJ-203",
+        "name": "M09 — Fair Pair — Partner & Group Training",
+        "stage": 0,
+        "start": "2027-01-04",
+        "end": "2027-01-22",
+        "weight": 0.25,
+        "pct": 0,
+        "owner": "PE-06",
+        "deps": []
+      },
+      {
+        "id": "ACT-203-02",
+        "project": "PRJ-203",
+        "name": "M10 — Nutrition & Energy Balance",
+        "stage": 1,
+        "start": "2027-01-11",
+        "end": "2027-01-29",
+        "weight": 0.25,
+        "pct": 0,
+        "owner": "PE-04",
+        "deps": []
+      },
+      {
+        "id": "ACT-203-03",
+        "project": "PRJ-203",
+        "name": "M11 — AI Coach (grounded, safety-bounded)",
+        "stage": 2,
+        "start": "2027-01-25",
+        "end": "2027-02-12",
+        "weight": 0.25,
+        "pct": 0,
+        "owner": "PE-07",
+        "deps": [
+          "ACT-203-02"
+        ]
+      },
+      {
+        "id": "ACT-203-04",
+        "project": "PRJ-203",
+        "name": "M12 — Wearables & Health Integrations",
+        "stage": 3,
+        "start": "2027-02-08",
+        "end": "2027-02-19",
+        "weight": 0.25,
+        "pct": 0,
+        "owner": "PE-06",
+        "deps": []
+      },
+      {
+        "id": "ACT-204-01",
+        "project": "PRJ-204",
+        "name": "M13 — Engagement, Habits & Community",
+        "stage": 0,
+        "start": "2027-03-01",
+        "end": "2027-03-12",
+        "weight": 0.25,
+        "pct": 0,
+        "owner": "PE-09",
+        "deps": []
+      },
+      {
+        "id": "ACT-204-02",
+        "project": "PRJ-204",
+        "name": "M16 — Monetization & Subscriptions",
+        "stage": 1,
+        "start": "2027-03-08",
+        "end": "2027-03-19",
+        "weight": 0.25,
+        "pct": 0,
+        "owner": "PE-06",
+        "deps": []
+      },
+      {
+        "id": "ACT-204-03",
+        "project": "PRJ-204",
+        "name": "M18 — Analytics, Experimentation & Admin CMS",
+        "stage": 2,
+        "start": "2027-03-22",
+        "end": "2027-04-02",
+        "weight": 0.25,
+        "pct": 0,
+        "owner": "PE-07",
+        "deps": []
+      },
+      {
+        "id": "ACT-204-04",
+        "project": "PRJ-204",
+        "name": "M15 — Coach Portal (B2B)",
+        "stage": 3,
+        "start": "2027-03-29",
+        "end": "2027-04-16",
+        "weight": 0.25,
+        "pct": 0,
+        "owner": "PE-06",
+        "deps": [
+          "ACT-204-02"
+        ]
+      },
+      {
+        "id": "ACT-205-01",
+        "project": "PRJ-205",
+        "name": "M14 — Smart Execution — Voice Coach & On-Device Motion Sensing",
+        "stage": 0,
+        "start": "2027-04-19",
+        "end": "2027-05-07",
+        "weight": 0.333,
+        "pct": 0,
+        "owner": "PE-07",
+        "deps": []
+      },
+      {
+        "id": "ACT-205-02",
+        "project": "PRJ-205",
+        "name": "M17 — Privacy, Security & Compliance — completion & pen-test",
+        "stage": 1,
+        "start": "2027-05-03",
+        "end": "2027-05-21",
+        "weight": 0.333,
+        "pct": 0,
+        "owner": "PE-11",
+        "deps": []
+      },
+      {
+        "id": "ACT-205-03",
+        "project": "PRJ-205",
+        "name": "M19 — Launch Readiness & Go-to-Market",
+        "stage": 2,
+        "start": "2027-05-17",
+        "end": "2027-06-04",
+        "weight": 0.333,
+        "pct": 0,
+        "owner": "PE-13",
+        "deps": [
+          "ACT-205-01",
+          "ACT-205-02"
+        ]
+      },
+      {
+        "id": "ACT-206-01",
+        "project": "PRJ-206",
+        "name": "Appoint the Product Owner and sign the appointment",
+        "stage": 0,
+        "start": "2026-09-28",
+        "end": "2026-10-02",
+        "weight": 0.071,
+        "pct": 0,
+        "owner": "PE-01",
+        "deps": []
+      },
+      {
+        "id": "ACT-206-02",
+        "project": "PRJ-206",
+        "name": "Founder employment-contract check (IP, outside activity)",
+        "stage": 1,
+        "start": "2026-09-28",
+        "end": "2026-10-02",
+        "weight": 0.071,
+        "pct": 0,
+        "owner": "PE-01",
+        "deps": []
+      },
+      {
+        "id": "ACT-206-03",
+        "project": "PRJ-206",
+        "name": "Incorporate the limited-liability company",
+        "stage": 2,
+        "start": "2026-09-28",
+        "end": "2026-10-16",
+        "weight": 0.071,
+        "pct": 0,
+        "owner": "PE-01",
+        "deps": [
+          "ACT-206-02"
+        ]
+      },
+      {
+        "id": "ACT-206-04",
+        "project": "PRJ-206",
+        "name": "IP assignment from every contributor; start the register",
+        "stage": 3,
+        "start": "2026-10-05",
+        "end": "2027-06-04",
+        "weight": 0.071,
+        "pct": 0,
+        "owner": "PE-12",
+        "deps": [
+          "ACT-206-03"
+        ]
+      },
+      {
+        "id": "ACT-206-05",
+        "project": "PRJ-206",
+        "name": "Engage counsel for the primary jurisdiction and launch markets",
+        "stage": 4,
+        "start": "2026-09-28",
+        "end": "2026-10-16",
+        "weight": 0.071,
+        "pct": 0,
+        "owner": "PE-12",
+        "deps": []
+      },
+      {
+        "id": "ACT-206-06",
+        "project": "PRJ-206",
+        "name": "Trademark clearance search (Nice 9, 41, 42, 44) and two fallback names",
+        "stage": 5,
+        "start": "2026-10-05",
+        "end": "2026-11-20",
+        "weight": 0.071,
+        "pct": 0,
+        "owner": "PE-12",
+        "deps": [
+          "ACT-206-05"
+        ]
+      },
+      {
+        "id": "ACT-206-07",
+        "project": "PRJ-206",
+        "name": "Insurance quotes: product/professional liability, cyber",
+        "stage": 6,
+        "start": "2026-10-05",
+        "end": "2026-11-06",
+        "weight": 0.071,
+        "pct": 0,
+        "owner": "PE-12",
+        "deps": [
+          "ACT-206-03"
+        ]
+      },
+      {
+        "id": "ACT-206-08",
+        "project": "PRJ-206",
+        "name": "Data-protection filings plan per jurisdiction",
+        "stage": 7,
+        "start": "2026-10-12",
+        "end": "2026-12-18",
+        "weight": 0.071,
+        "pct": 0,
+        "owner": "PE-12",
+        "deps": [
+          "ACT-206-05"
+        ]
+      },
+      {
+        "id": "ACT-206-09",
+        "project": "PRJ-206",
+        "name": "Recruit and seat the Expert Advisory Council (11 seats)",
+        "stage": 8,
+        "start": "2026-09-28",
+        "end": "2026-11-06",
+        "weight": 0.071,
+        "pct": 0,
+        "owner": "PE-02",
+        "deps": [
+          "ACT-206-01"
+        ]
+      },
+      {
+        "id": "ACT-206-10",
+        "project": "PRJ-206",
+        "name": "Advisory-board agreements drafted and reviewed by counsel",
+        "stage": 9,
+        "start": "2026-10-05",
+        "end": "2026-11-06",
+        "weight": 0.071,
+        "pct": 0,
+        "owner": "PE-12",
+        "deps": [
+          "ACT-206-05"
+        ]
+      },
+      {
+        "id": "ACT-206-11",
+        "project": "PRJ-206",
+        "name": "Council review — Gate 1 (screening, coefficients, pain model)",
+        "stage": 10,
+        "start": "2026-12-21",
+        "end": "2027-01-01",
+        "weight": 0.071,
+        "pct": 0,
+        "owner": "PE-21",
+        "deps": [
+          "ACT-206-09"
+        ]
+      },
+      {
+        "id": "ACT-206-12",
+        "project": "PRJ-206",
+        "name": "Council review — Gate 2 (M10 guardrails, M11 evals)",
+        "stage": 11,
+        "start": "2027-02-15",
+        "end": "2027-02-26",
+        "weight": 0.071,
+        "pct": 0,
+        "owner": "PE-24",
+        "deps": [
+          "ACT-206-11"
+        ]
+      },
+      {
+        "id": "ACT-206-13",
+        "project": "PRJ-206",
+        "name": "Counsel review — Gate 3 (pricing, payments, claims, consent)",
+        "stage": 12,
+        "start": "2027-04-05",
+        "end": "2027-04-16",
+        "weight": 0.071,
+        "pct": 0,
+        "owner": "PE-28",
+        "deps": [
+          "ACT-206-12"
+        ]
+      },
+      {
+        "id": "ACT-206-14",
+        "project": "PRJ-206",
+        "name": "Launch sign-off — Gate 4, every launch jurisdiction",
+        "stage": 13,
+        "start": "2027-05-24",
+        "end": "2027-06-04",
+        "weight": 0.071,
+        "pct": 0,
+        "owner": "PE-27",
+        "deps": [
+          "ACT-206-13"
+        ]
+      },
+      {
+        "id": "ACT-207-01",
+        "project": "PRJ-207",
+        "name": "Stand up the FitAdapt Meridian instance and import this book",
+        "stage": 0,
+        "start": "2026-09-28",
+        "end": "2026-10-02",
+        "weight": 0.2,
+        "pct": 0,
+        "owner": "PE-14",
+        "deps": []
+      },
+      {
+        "id": "ACT-207-02",
+        "project": "PRJ-207",
+        "name": "Backup, restore test and second instance (Meridian SECURITY.md blockers)",
+        "stage": 1,
+        "start": "2026-09-28",
+        "end": "2026-10-16",
+        "weight": 0.2,
+        "pct": 0,
+        "owner": "PE-11",
+        "deps": [
+          "ACT-207-01"
+        ]
+      },
+      {
+        "id": "ACT-207-03",
+        "project": "PRJ-207",
+        "name": "Weekly feedback triage (delivery review agenda item)",
+        "stage": 2,
+        "start": "2026-10-05",
+        "end": "2027-06-04",
+        "weight": 0.2,
+        "pct": 0,
+        "owner": "PE-14",
+        "deps": [
+          "ACT-207-01"
+        ]
+      },
+      {
+        "id": "ACT-207-04",
+        "project": "PRJ-207",
+        "name": "Monthly contribution cycle: PRs to Meridian, npm run verify green",
+        "stage": 3,
+        "start": "2026-10-19",
+        "end": "2027-06-04",
+        "weight": 0.2,
+        "pct": 0,
+        "owner": "PE-14",
+        "deps": [
+          "ACT-207-03"
+        ]
+      },
+      {
+        "id": "ACT-207-05",
+        "project": "PRJ-207",
+        "name": "Quarterly dogfooding retrospective to the council and sponsor",
+        "stage": 4,
+        "start": "2026-12-21",
+        "end": "2027-06-04",
+        "weight": 0.2,
+        "pct": 0,
+        "owner": "PE-02",
+        "deps": [
+          "ACT-207-03"
+        ]
+      }
+    ],
+    "crossDeps": [
+      {
+        "from": "PRJ-201",
+        "fromStage": 2,
+        "to": "PRJ-202",
+        "toStage": 0,
+        "label": "Phase 0 complete before Phase 1"
+      },
+      {
+        "from": "PRJ-206",
+        "fromStage": 9,
+        "to": "PRJ-202",
+        "toStage": 0,
+        "label": "Gate 0: advisory-board agreements drafted"
+      },
+      {
+        "from": "PRJ-201",
+        "fromStage": 1,
+        "to": "PRJ-203",
+        "toStage": 2,
+        "label": "M11 depends on the M17 baseline"
+      },
+      {
+        "from": "PRJ-202",
+        "fromStage": 7,
+        "to": "PRJ-203",
+        "toStage": 0,
+        "label": "M09 depends on M02 and M04"
+      },
+      {
+        "from": "PRJ-206",
+        "fromStage": 10,
+        "to": "PRJ-203",
+        "toStage": 0,
+        "label": "Gate 1 sign-off before Phase 2"
+      },
+      {
+        "from": "PRJ-206",
+        "fromStage": 11,
+        "to": "PRJ-204",
+        "toStage": 0,
+        "label": "Gate 2 sign-off before Phase 3"
+      },
+      {
+        "from": "PRJ-206",
+        "fromStage": 12,
+        "to": "PRJ-205",
+        "toStage": 0,
+        "label": "Gate 3 review before Phase 4"
+      }
+    ],
+    "milestones": [
+      {
+        "id": "MS-201-G1",
+        "project": "PRJ-201",
+        "name": "Gate 1 — Mandate: plan approved by the Product Owner",
+        "date": "2026-10-02",
+        "gate": 1,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-201-G2",
+        "project": "PRJ-201",
+        "name": "Gate 2 — Design authority: ADRs reviewed by the tech lead",
+        "date": "2026-10-09",
+        "gate": 2,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-201-G3",
+        "project": "PRJ-201",
+        "name": "Gate 3 — Readiness: Gate 0 — Legal foundation",
+        "date": "2026-10-16",
+        "gate": 3,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-201-G4",
+        "project": "PRJ-201",
+        "name": "Gate 4 — Benefits: KPI review and lessons",
+        "date": "2026-10-23",
+        "gate": 4,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-202-G1",
+        "project": "PRJ-202",
+        "name": "Gate 1 — Mandate: plan approved by the Product Owner",
+        "date": "2026-10-23",
+        "gate": 1,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-202-G2",
+        "project": "PRJ-202",
+        "name": "Gate 2 — Design authority: ADRs reviewed by the tech lead",
+        "date": "2026-11-13",
+        "gate": 2,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-202-G3",
+        "project": "PRJ-202",
+        "name": "Gate 3 — Readiness: Gate 1 — Safe MVP",
+        "date": "2027-01-01",
+        "gate": 3,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-202-G4",
+        "project": "PRJ-202",
+        "name": "Gate 4 — Benefits: KPI review and lessons",
+        "date": "2027-01-08",
+        "gate": 4,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-203-G1",
+        "project": "PRJ-203",
+        "name": "Gate 1 — Mandate: plan approved by the Product Owner",
+        "date": "2027-01-08",
+        "gate": 1,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-203-G2",
+        "project": "PRJ-203",
+        "name": "Gate 2 — Design authority: ADRs reviewed by the tech lead",
+        "date": "2027-01-22",
+        "gate": 2,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-203-G3",
+        "project": "PRJ-203",
+        "name": "Gate 3 — Readiness: Gate 2 — Differentiation",
+        "date": "2027-02-26",
+        "gate": 3,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-203-G4",
+        "project": "PRJ-203",
+        "name": "Gate 4 — Benefits: KPI review and lessons",
+        "date": "2027-03-05",
+        "gate": 4,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-204-G1",
+        "project": "PRJ-204",
+        "name": "Gate 1 — Mandate: plan approved by the Product Owner",
+        "date": "2027-03-05",
+        "gate": 1,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-204-G2",
+        "project": "PRJ-204",
+        "name": "Gate 2 — Design authority: ADRs reviewed by the tech lead",
+        "date": "2027-03-19",
+        "gate": 2,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-204-G3",
+        "project": "PRJ-204",
+        "name": "Gate 3 — Readiness: Gate 3 — Business",
+        "date": "2027-04-16",
+        "gate": 3,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-204-G4",
+        "project": "PRJ-204",
+        "name": "Gate 4 — Benefits: KPI review and lessons",
+        "date": "2027-04-23",
+        "gate": 4,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-205-G1",
+        "project": "PRJ-205",
+        "name": "Gate 1 — Mandate: plan approved by the Product Owner",
+        "date": "2027-04-23",
+        "gate": 1,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-205-G2",
+        "project": "PRJ-205",
+        "name": "Gate 2 — Design authority: ADRs reviewed by the tech lead",
+        "date": "2027-05-07",
+        "gate": 2,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-205-G3",
+        "project": "PRJ-205",
+        "name": "Gate 3 — Readiness: Gate 4 — Launch go/no-go",
+        "date": "2027-06-04",
+        "gate": 3,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-205-G4",
+        "project": "PRJ-205",
+        "name": "Gate 4 — Benefits: KPI review and lessons",
+        "date": "2027-06-04",
+        "gate": 4,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-206-G1",
+        "project": "PRJ-206",
+        "name": "Gate 1 — Mandate: plan approved by the Product Owner",
+        "date": "2026-10-02",
+        "gate": 1,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-206-G2",
+        "project": "PRJ-206",
+        "name": "Gate 2 — Design authority: ADRs reviewed by the tech lead",
+        "date": "2026-12-04",
+        "gate": 2,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-206-G3",
+        "project": "PRJ-206",
+        "name": "Gate 3 — Readiness",
+        "date": "2027-06-04",
+        "gate": 3,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-206-G4",
+        "project": "PRJ-206",
+        "name": "Gate 4 — Benefits: KPI review and lessons",
+        "date": "2027-06-04",
+        "gate": 4,
+        "kind": "gate",
+        "owner": "PE-02",
+        "done": false
+      },
+      {
+        "id": "MS-207-G1",
+        "project": "PRJ-207",
+        "name": "Gate 1 — Mandate: plan approved by the Product Owner",
+        "date": "2026-10-02",
+        "gate": 1,
+        "kind": "gate",
+        "owner": "PE-14",
+        "done": false
+      },
+      {
+        "id": "MS-207-G2",
+        "project": "PRJ-207",
+        "name": "Gate 2 — Design authority: ADRs reviewed by the tech lead",
+        "date": "2026-12-04",
+        "gate": 2,
+        "kind": "gate",
+        "owner": "PE-14",
+        "done": false
+      },
+      {
+        "id": "MS-207-G3",
+        "project": "PRJ-207",
+        "name": "Gate 3 — Readiness",
+        "date": "2027-06-04",
+        "gate": 3,
+        "kind": "gate",
+        "owner": "PE-14",
+        "done": false
+      },
+      {
+        "id": "MS-207-G4",
+        "project": "PRJ-207",
+        "name": "Gate 4 — Benefits: KPI review and lessons",
+        "date": "2027-06-04",
+        "gate": 4,
+        "kind": "gate",
+        "owner": "PE-14",
+        "done": false
+      }
+    ],
+    "ledger": [],
+    "raid": [
+      {
+        "id": "RSK-01",
+        "project": "PRJ-202",
+        "type": "Risk",
+        "title": "Personal injury following a prescription or partner challenge",
+        "detail": "Controls: S1–S7, L3, L4, conservative defaults, expert-validated content, L11 audit trail, insurance, terms with lawful limitation clauses. Modules M01–M05, M09, M20.",
+        "p": 3,
+        "i": 5,
+        "response": "Mitigate",
+        "owner": "PE-04",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-02",
+        "project": "PRJ-201",
+        "type": "Risk",
+        "title": "Features or copy imply a medical purpose (medical-device rules)",
+        "detail": "L1 claims linter, no diagnosis, no condition-specific programs, regulatory review of screening, pain and nutrition copy. Modules M05, M10, M11, M20.",
+        "p": 2,
+        "i": 5,
+        "response": "Avoid",
+        "owner": "PE-12",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-03",
+        "project": "PRJ-203",
+        "type": "Risk",
+        "title": "Nutrition or rehab guidance treated as unlicensed professional practice",
+        "detail": "General guidance only, no medical nutrition therapy or rehab plans, referral to professionals, coach credential checks. Modules M05, M10, M15.",
+        "p": 2,
+        "i": 4,
+        "response": "Avoid",
+        "owner": "PE-24",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-04",
+        "project": "PRJ-201",
+        "type": "Risk",
+        "title": "Unlawful health-data processing, breach, missing filings or transfers",
+        "detail": "M17 + L9, DPIA, consent records, encryption, authority filings, transfer mechanisms, breach runbook. Modules M17, M12, M04.",
+        "p": 3,
+        "i": 5,
+        "response": "Mitigate",
+        "owner": "PE-11",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-05",
+        "project": "PRJ-203",
+        "type": "Risk",
+        "title": "Missing AI disclosure or harmful AI advice",
+        "detail": "L5 disclosure, S6 tool-only changes, safety evals at 100%, grounded retrieval, human-reviewed red-team set. Modules M11, M14.",
+        "p": 3,
+        "i": 5,
+        "response": "Mitigate",
+        "owner": "PE-07",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-06",
+        "project": "PRJ-204",
+        "type": "Risk",
+        "title": "Hard-to-cancel subscriptions, unclear prices, withdrawal rights ignored",
+        "detail": "L8, store-managed billing, cancellation parity test, trial reminders, withdrawal-waiver capture. Module M16.",
+        "p": 2,
+        "i": 4,
+        "response": "Avoid",
+        "owner": "PE-06",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-07",
+        "project": "PRJ-205",
+        "type": "Risk",
+        "title": "Unsubstantiated claims, fake reviews or unconsented before/after photos",
+        "detail": "L1, L8, L12, substantiation file for every marketing claim, testimonial consent records. Modules M19, M20.",
+        "p": 2,
+        "i": 4,
+        "response": "Avoid",
+        "owner": "PE-13",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-08",
+        "project": "PRJ-202",
+        "type": "Risk",
+        "title": "Unlicensed media, questionnaire wording, fonts, datasets or code",
+        "detail": "L6 asset register, SBOM, OSS licence allowlist in CI, licence check before verbatim use (e.g. PAR-Q+). Modules M06, M10, M20.",
+        "p": 3,
+        "i": 3,
+        "response": "Mitigate",
+        "owner": "PE-10",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-09",
+        "project": "PRJ-206",
+        "type": "Risk",
+        "title": "Product or feature names infringe an existing mark",
+        "detail": "L7 clearance before public use; 'FitAdapt' stays a codename; two fallback names. Modules M19, M20.",
+        "p": 3,
+        "i": 4,
+        "response": "Avoid",
+        "owner": "PE-12",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-10",
+        "project": "PRJ-204",
+        "type": "Risk",
+        "title": "A coach on the platform gives harmful advice",
+        "detail": "L10 coach agreement with indemnity, credential verification, engine caps coaches cannot lift, reporting channel. Module M15.",
+        "p": 2,
+        "i": 4,
+        "response": "Transfer",
+        "owner": "PE-06",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-11",
+        "project": "PRJ-204",
+        "type": "Risk",
+        "title": "Harassment or unlawful user-generated content",
+        "detail": "Report/block, moderation queue, notice-and-action procedure, community guidelines. Module M13.",
+        "p": 2,
+        "i": 3,
+        "response": "Mitigate",
+        "owner": "PE-09",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-12",
+        "project": "PRJ-202",
+        "type": "Risk",
+        "title": "Under-age users, or minors exposed to calorie restriction",
+        "detail": "Age gate at 16 (higher where local law requires), no targeting of minors, deficit features off under 18. Modules M01, M10.",
+        "p": 2,
+        "i": 5,
+        "response": "Avoid",
+        "owner": "PE-05",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-13",
+        "project": "PRJ-201",
+        "type": "Risk",
+        "title": "Non-compliance with accessibility law (EAA)",
+        "detail": "WCAG 2.2 AA design system and audits. Modules M00, M19.",
+        "p": 2,
+        "i": 3,
+        "response": "Mitigate",
+        "owner": "PE-09",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-14",
+        "project": "PRJ-205",
+        "type": "Risk",
+        "title": "Store removal over health-data, payments or account-deletion rules",
+        "detail": "Store compliance checklists, in-app account deletion, accurate privacy labels. Modules M16, M17, M19.",
+        "p": 3,
+        "i": 4,
+        "response": "Mitigate",
+        "owner": "PE-13",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-15",
+        "project": "PRJ-206",
+        "type": "Risk",
+        "title": "Founder personal exposure or employer IP conflict",
+        "detail": "C12: company structure, IP assignments, employment-contract check, insurance. Gate 0.",
+        "p": 3,
+        "i": 5,
+        "response": "Avoid",
+        "owner": "PE-01",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-16",
+        "project": "PRJ-204",
+        "type": "Risk",
+        "title": "Cross-border VAT on digital services",
+        "detail": "Stores as merchant of record for in-app sales; merchant-of-record provider for web checkout. Module M16.",
+        "p": 2,
+        "i": 3,
+        "response": "Transfer",
+        "owner": "PE-06",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-17",
+        "project": "PRJ-202",
+        "type": "Risk",
+        "title": "Engine coefficients or thresholds inaccurate",
+        "detail": "Every value carries source + validated flag; remote-config versioning with rollback (M18); council sign-off before public launch (C10).",
+        "p": 3,
+        "i": 5,
+        "response": "Mitigate",
+        "owner": "PE-25",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-18",
+        "project": null,
+        "type": "Risk",
+        "title": "Scope creep across 21 modules",
+        "detail": "Phase gates; each /goal has a turn cap and a status file; later modules can slip without blocking the MVP. Change requests go through Meridian change control.",
+        "p": 3,
+        "i": 3,
+        "response": "Mitigate",
+        "owner": "PE-02",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-19",
+        "project": "PRJ-203",
+        "type": "Risk",
+        "title": "LLM running cost exceeds plan",
+        "detail": "Tier-based rate limits, routing to smaller models, caching, offline deterministic fallback.",
+        "p": 3,
+        "i": 3,
+        "response": "Mitigate",
+        "owner": "PE-07",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "RSK-20",
+        "project": "PRJ-202",
+        "type": "Risk",
+        "title": "Poor experience on low connectivity and low-end devices",
+        "detail": "Offline-first architecture, performance budgets, downloadable media packs.",
+        "p": 3,
+        "i": 3,
+        "response": "Mitigate",
+        "owner": "PE-03",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "ISS-01",
+        "project": "PRJ-206",
+        "type": "Issue",
+        "title": "Product Owner not yet named",
+        "detail": "The appointment instrument is drafted (docs/governance/01). Until it is signed the founder acts as interim Product Owner.",
+        "p": 5,
+        "i": 4,
+        "response": "Fix",
+        "owner": "PE-01",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "ISS-02",
+        "project": "PRJ-206",
+        "type": "Issue",
+        "title": "All eleven council seats are open",
+        "detail": "No validated:false item can be signed off until the seats are filled. Recruitment brief: docs/governance/03, §4.",
+        "p": 5,
+        "i": 5,
+        "response": "Fix",
+        "owner": "PE-02",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "ASM-01",
+        "project": null,
+        "type": "Assumption",
+        "title": "The v2.1 committee was a simulated panel",
+        "detail": "Its findings are hypotheses. Every item marked validated:false needs a real, qualified council member's signature before public launch (C10).",
+        "p": 5,
+        "i": 5,
+        "response": "Monitor",
+        "owner": "PE-02",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "ASM-02",
+        "project": null,
+        "type": "Assumption",
+        "title": "Timings are indicative and assume a small team driving Claude Code /goal runs",
+        "detail": "Re-plan and re-baseline after Phase 0, using the turn counts and status files of M00, M17 and M20.",
+        "p": 3,
+        "i": 3,
+        "response": "Monitor",
+        "owner": "PE-14",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "ASM-03",
+        "project": null,
+        "type": "Assumption",
+        "title": "Budget is not yet baselined",
+        "detail": "Budgets in this book are zero on purpose. The sponsor sets them at Gate 0; until then earned value is not meaningful.",
+        "p": 5,
+        "i": 3,
+        "response": "Monitor",
+        "owner": "PE-01",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "DEP-01",
+        "project": "PRJ-202",
+        "type": "Dependency",
+        "title": "Gate 0 must clear before Phase 1 starts (GOALS.md)",
+        "detail": "Company, IP, employment check, counsel, name clearance started, insurance quotes, advisory-board agreements drafted.",
+        "p": 3,
+        "i": 4,
+        "response": "Monitor",
+        "owner": "PE-01",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "DEP-02",
+        "project": "PRJ-202",
+        "type": "Dependency",
+        "title": "Council seated before the Gate 1 review",
+        "detail": "Seats A1–A5 at minimum must be filled and under agreement by week 12 to review screening wording, coefficients and pain model.",
+        "p": 3,
+        "i": 5,
+        "response": "Mitigate",
+        "owner": "PE-02",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      },
+      {
+        "id": "DEP-03",
+        "project": "PRJ-207",
+        "type": "Dependency",
+        "title": "Meridian's three operational blockers are ours to close",
+        "detail": "A tested backup, a second instance and a written security policy (Meridian SECURITY.md). Closed by activity D02.",
+        "p": 3,
+        "i": 3,
+        "response": "Mitigate",
+        "owner": "PE-11",
+        "opened": "2026-09-23",
+        "review": "2026-10-16",
+        "status": "Open"
+      }
+    ],
+    "crs": [],
+    "allocations": [
+      {
+        "person": "PE-03",
+        "project": "PRJ-201",
+        "from": "2026-09-28",
+        "to": "2026-10-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-04",
+        "project": "PRJ-201",
+        "from": "2026-09-28",
+        "to": "2026-10-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-05",
+        "project": "PRJ-201",
+        "from": "2026-09-28",
+        "to": "2026-10-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-06",
+        "project": "PRJ-201",
+        "from": "2026-09-28",
+        "to": "2026-10-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-07",
+        "project": "PRJ-201",
+        "from": "2026-09-28",
+        "to": "2026-10-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-08",
+        "project": "PRJ-201",
+        "from": "2026-09-28",
+        "to": "2026-10-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-09",
+        "project": "PRJ-201",
+        "from": "2026-09-28",
+        "to": "2026-10-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-10",
+        "project": "PRJ-201",
+        "from": "2026-09-28",
+        "to": "2026-10-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-11",
+        "project": "PRJ-201",
+        "from": "2026-09-28",
+        "to": "2026-10-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-02",
+        "project": "PRJ-201",
+        "from": "2026-09-28",
+        "to": "2026-10-16",
+        "pct": 60
+      },
+      {
+        "person": "PE-03",
+        "project": "PRJ-202",
+        "from": "2026-10-19",
+        "to": "2027-01-01",
+        "pct": 90
+      },
+      {
+        "person": "PE-04",
+        "project": "PRJ-202",
+        "from": "2026-10-19",
+        "to": "2027-01-01",
+        "pct": 90
+      },
+      {
+        "person": "PE-05",
+        "project": "PRJ-202",
+        "from": "2026-10-19",
+        "to": "2027-01-01",
+        "pct": 90
+      },
+      {
+        "person": "PE-06",
+        "project": "PRJ-202",
+        "from": "2026-10-19",
+        "to": "2027-01-01",
+        "pct": 90
+      },
+      {
+        "person": "PE-07",
+        "project": "PRJ-202",
+        "from": "2026-10-19",
+        "to": "2027-01-01",
+        "pct": 90
+      },
+      {
+        "person": "PE-08",
+        "project": "PRJ-202",
+        "from": "2026-10-19",
+        "to": "2027-01-01",
+        "pct": 90
+      },
+      {
+        "person": "PE-09",
+        "project": "PRJ-202",
+        "from": "2026-10-19",
+        "to": "2027-01-01",
+        "pct": 90
+      },
+      {
+        "person": "PE-10",
+        "project": "PRJ-202",
+        "from": "2026-10-19",
+        "to": "2027-01-01",
+        "pct": 90
+      },
+      {
+        "person": "PE-11",
+        "project": "PRJ-202",
+        "from": "2026-10-19",
+        "to": "2027-01-01",
+        "pct": 90
+      },
+      {
+        "person": "PE-02",
+        "project": "PRJ-202",
+        "from": "2026-10-19",
+        "to": "2027-01-01",
+        "pct": 60
+      },
+      {
+        "person": "PE-03",
+        "project": "PRJ-203",
+        "from": "2027-01-04",
+        "to": "2027-02-26",
+        "pct": 90
+      },
+      {
+        "person": "PE-04",
+        "project": "PRJ-203",
+        "from": "2027-01-04",
+        "to": "2027-02-26",
+        "pct": 90
+      },
+      {
+        "person": "PE-05",
+        "project": "PRJ-203",
+        "from": "2027-01-04",
+        "to": "2027-02-26",
+        "pct": 90
+      },
+      {
+        "person": "PE-06",
+        "project": "PRJ-203",
+        "from": "2027-01-04",
+        "to": "2027-02-26",
+        "pct": 90
+      },
+      {
+        "person": "PE-07",
+        "project": "PRJ-203",
+        "from": "2027-01-04",
+        "to": "2027-02-26",
+        "pct": 90
+      },
+      {
+        "person": "PE-08",
+        "project": "PRJ-203",
+        "from": "2027-01-04",
+        "to": "2027-02-26",
+        "pct": 90
+      },
+      {
+        "person": "PE-09",
+        "project": "PRJ-203",
+        "from": "2027-01-04",
+        "to": "2027-02-26",
+        "pct": 90
+      },
+      {
+        "person": "PE-10",
+        "project": "PRJ-203",
+        "from": "2027-01-04",
+        "to": "2027-02-26",
+        "pct": 90
+      },
+      {
+        "person": "PE-11",
+        "project": "PRJ-203",
+        "from": "2027-01-04",
+        "to": "2027-02-26",
+        "pct": 90
+      },
+      {
+        "person": "PE-02",
+        "project": "PRJ-203",
+        "from": "2027-01-04",
+        "to": "2027-02-26",
+        "pct": 60
+      },
+      {
+        "person": "PE-03",
+        "project": "PRJ-204",
+        "from": "2027-03-01",
+        "to": "2027-04-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-04",
+        "project": "PRJ-204",
+        "from": "2027-03-01",
+        "to": "2027-04-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-05",
+        "project": "PRJ-204",
+        "from": "2027-03-01",
+        "to": "2027-04-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-06",
+        "project": "PRJ-204",
+        "from": "2027-03-01",
+        "to": "2027-04-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-07",
+        "project": "PRJ-204",
+        "from": "2027-03-01",
+        "to": "2027-04-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-08",
+        "project": "PRJ-204",
+        "from": "2027-03-01",
+        "to": "2027-04-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-09",
+        "project": "PRJ-204",
+        "from": "2027-03-01",
+        "to": "2027-04-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-10",
+        "project": "PRJ-204",
+        "from": "2027-03-01",
+        "to": "2027-04-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-11",
+        "project": "PRJ-204",
+        "from": "2027-03-01",
+        "to": "2027-04-16",
+        "pct": 90
+      },
+      {
+        "person": "PE-02",
+        "project": "PRJ-204",
+        "from": "2027-03-01",
+        "to": "2027-04-16",
+        "pct": 60
+      },
+      {
+        "person": "PE-03",
+        "project": "PRJ-205",
+        "from": "2027-04-19",
+        "to": "2027-06-04",
+        "pct": 90
+      },
+      {
+        "person": "PE-04",
+        "project": "PRJ-205",
+        "from": "2027-04-19",
+        "to": "2027-06-04",
+        "pct": 90
+      },
+      {
+        "person": "PE-05",
+        "project": "PRJ-205",
+        "from": "2027-04-19",
+        "to": "2027-06-04",
+        "pct": 90
+      },
+      {
+        "person": "PE-06",
+        "project": "PRJ-205",
+        "from": "2027-04-19",
+        "to": "2027-06-04",
+        "pct": 90
+      },
+      {
+        "person": "PE-07",
+        "project": "PRJ-205",
+        "from": "2027-04-19",
+        "to": "2027-06-04",
+        "pct": 90
+      },
+      {
+        "person": "PE-08",
+        "project": "PRJ-205",
+        "from": "2027-04-19",
+        "to": "2027-06-04",
+        "pct": 90
+      },
+      {
+        "person": "PE-09",
+        "project": "PRJ-205",
+        "from": "2027-04-19",
+        "to": "2027-06-04",
+        "pct": 90
+      },
+      {
+        "person": "PE-10",
+        "project": "PRJ-205",
+        "from": "2027-04-19",
+        "to": "2027-06-04",
+        "pct": 90
+      },
+      {
+        "person": "PE-11",
+        "project": "PRJ-205",
+        "from": "2027-04-19",
+        "to": "2027-06-04",
+        "pct": 90
+      },
+      {
+        "person": "PE-02",
+        "project": "PRJ-205",
+        "from": "2027-04-19",
+        "to": "2027-06-04",
+        "pct": 60
+      },
+      {
+        "person": "PE-01",
+        "project": "PRJ-206",
+        "from": "2026-09-28",
+        "to": "2027-06-04",
+        "pct": 20
+      },
+      {
+        "person": "PE-02",
+        "project": "PRJ-206",
+        "from": "2026-09-28",
+        "to": "2027-06-04",
+        "pct": 30
+      },
+      {
+        "person": "PE-12",
+        "project": "PRJ-206",
+        "from": "2026-09-28",
+        "to": "2027-06-04",
+        "pct": 80
+      },
+      {
+        "person": "PE-14",
+        "project": "PRJ-207",
+        "from": "2026-09-28",
+        "to": "2027-06-04",
+        "pct": 30
+      },
+      {
+        "person": "PE-03",
+        "project": "PRJ-207",
+        "from": "2026-09-28",
+        "to": "2027-06-04",
+        "pct": 5
+      },
+      {
+        "person": "PE-04",
+        "project": "PRJ-207",
+        "from": "2026-09-28",
+        "to": "2027-06-04",
+        "pct": 5
+      },
+      {
+        "person": "PE-05",
+        "project": "PRJ-207",
+        "from": "2026-09-28",
+        "to": "2027-06-04",
+        "pct": 5
+      },
+      {
+        "person": "PE-06",
+        "project": "PRJ-207",
+        "from": "2026-09-28",
+        "to": "2027-06-04",
+        "pct": 5
+      },
+      {
+        "person": "PE-07",
+        "project": "PRJ-207",
+        "from": "2026-09-28",
+        "to": "2027-06-04",
+        "pct": 5
+      },
+      {
+        "person": "PE-08",
+        "project": "PRJ-207",
+        "from": "2026-09-28",
+        "to": "2027-06-04",
+        "pct": 5
+      },
+      {
+        "person": "PE-09",
+        "project": "PRJ-207",
+        "from": "2026-09-28",
+        "to": "2027-06-04",
+        "pct": 5
+      },
+      {
+        "person": "PE-10",
+        "project": "PRJ-207",
+        "from": "2026-09-28",
+        "to": "2027-06-04",
+        "pct": 5
+      },
+      {
+        "person": "PE-11",
+        "project": "PRJ-207",
+        "from": "2026-09-28",
+        "to": "2027-06-04",
+        "pct": 5
+      }
+    ],
+    "docs": [
+      {
+        "id": "DOC-01",
+        "project": "PRJ-206",
+        "name": "Product Owner charter & appointment",
+        "type": "Charter",
+        "gate": 1,
+        "owner": "PE-01",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-02",
+        "project": "PRJ-206",
+        "name": "Execution team charter & RACI",
+        "type": "Charter",
+        "gate": 1,
+        "owner": "PE-02",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-03",
+        "project": "PRJ-206",
+        "name": "Expert Advisory Council charter",
+        "type": "Charter",
+        "gate": 1,
+        "owner": "PE-02",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-04",
+        "project": "PRJ-206",
+        "name": "Meridian operating model",
+        "type": "Operations",
+        "gate": 1,
+        "owner": "PE-14",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-05",
+        "project": "PRJ-206",
+        "name": "Dogfooding & contribution loop",
+        "type": "Operations",
+        "gate": 1,
+        "owner": "PE-14",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-06",
+        "project": "PRJ-206",
+        "name": "Terms of Use (requires counsel review)",
+        "type": "Compliance",
+        "gate": 2,
+        "owner": "PE-28",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-07",
+        "project": "PRJ-206",
+        "name": "Privacy Policy + health-data consent (requires counsel review)",
+        "type": "Compliance",
+        "gate": 2,
+        "owner": "PE-27",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-08",
+        "project": "PRJ-206",
+        "name": "Exercise-risk acknowledgment (requires counsel review)",
+        "type": "Compliance",
+        "gate": 2,
+        "owner": "PE-28",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-09",
+        "project": "PRJ-206",
+        "name": "Point-of-risk notices (requires counsel review)",
+        "type": "Compliance",
+        "gate": 2,
+        "owner": "PE-28",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-10",
+        "project": "PRJ-206",
+        "name": "AI coach notice (requires counsel review)",
+        "type": "Compliance",
+        "gate": 2,
+        "owner": "PE-30",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-11",
+        "project": "PRJ-206",
+        "name": "Subscription & refund terms (requires counsel review)",
+        "type": "Compliance",
+        "gate": 2,
+        "owner": "PE-28",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-12",
+        "project": "PRJ-206",
+        "name": "Coach Agreement + data-processing terms (requires counsel review)",
+        "type": "Compliance",
+        "gate": 2,
+        "owner": "PE-28",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-13",
+        "project": "PRJ-206",
+        "name": "Community guidelines (requires counsel review)",
+        "type": "Compliance",
+        "gate": 2,
+        "owner": "PE-28",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-14",
+        "project": "PRJ-206",
+        "name": "Advisory-board agreement (requires counsel review)",
+        "type": "Compliance",
+        "gate": 2,
+        "owner": "PE-28",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-15",
+        "project": "PRJ-206",
+        "name": "Substantiation file (requires counsel review)",
+        "type": "Compliance",
+        "gate": 2,
+        "owner": "PE-30",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-16",
+        "project": "PRJ-201",
+        "name": "Phase 0 — Foundation: plan and /goal files",
+        "type": "Charter",
+        "gate": 1,
+        "owner": "PE-02",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-17",
+        "project": "PRJ-201",
+        "name": "Phase 0 — Foundation: ADRs and module status files",
+        "type": "Design",
+        "gate": 2,
+        "owner": "PE-03",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-18",
+        "project": "PRJ-201",
+        "name": "Gate 0 — Legal foundation: exit evidence and sign-off records",
+        "type": "Assurance",
+        "gate": 3,
+        "owner": "PE-02",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-19",
+        "project": "PRJ-201",
+        "name": "Phase 0 — Foundation: KPI review and lessons learned",
+        "type": "Closure",
+        "gate": 4,
+        "owner": "PE-14",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-20",
+        "project": "PRJ-202",
+        "name": "Phase 1 — Safe MVP: plan and /goal files",
+        "type": "Charter",
+        "gate": 1,
+        "owner": "PE-02",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-21",
+        "project": "PRJ-202",
+        "name": "Phase 1 — Safe MVP: ADRs and module status files",
+        "type": "Design",
+        "gate": 2,
+        "owner": "PE-03",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-22",
+        "project": "PRJ-202",
+        "name": "Gate 1 — Safe MVP: exit evidence and sign-off records",
+        "type": "Assurance",
+        "gate": 3,
+        "owner": "PE-02",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-23",
+        "project": "PRJ-202",
+        "name": "Phase 1 — Safe MVP: KPI review and lessons learned",
+        "type": "Closure",
+        "gate": 4,
+        "owner": "PE-14",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-24",
+        "project": "PRJ-203",
+        "name": "Phase 2 — Differentiation: plan and /goal files",
+        "type": "Charter",
+        "gate": 1,
+        "owner": "PE-02",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-25",
+        "project": "PRJ-203",
+        "name": "Phase 2 — Differentiation: ADRs and module status files",
+        "type": "Design",
+        "gate": 2,
+        "owner": "PE-03",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-26",
+        "project": "PRJ-203",
+        "name": "Gate 2 — Differentiation: exit evidence and sign-off records",
+        "type": "Assurance",
+        "gate": 3,
+        "owner": "PE-02",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-27",
+        "project": "PRJ-203",
+        "name": "Phase 2 — Differentiation: KPI review and lessons learned",
+        "type": "Closure",
+        "gate": 4,
+        "owner": "PE-14",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-28",
+        "project": "PRJ-204",
+        "name": "Phase 3 — Business & scale: plan and /goal files",
+        "type": "Charter",
+        "gate": 1,
+        "owner": "PE-02",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-29",
+        "project": "PRJ-204",
+        "name": "Phase 3 — Business & scale: ADRs and module status files",
+        "type": "Design",
+        "gate": 2,
+        "owner": "PE-03",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-30",
+        "project": "PRJ-204",
+        "name": "Gate 3 — Business: exit evidence and sign-off records",
+        "type": "Assurance",
+        "gate": 3,
+        "owner": "PE-02",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-31",
+        "project": "PRJ-204",
+        "name": "Phase 3 — Business & scale: KPI review and lessons learned",
+        "type": "Closure",
+        "gate": 4,
+        "owner": "PE-14",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-32",
+        "project": "PRJ-205",
+        "name": "Phase 4 — Innovation & launch: plan and /goal files",
+        "type": "Charter",
+        "gate": 1,
+        "owner": "PE-02",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-33",
+        "project": "PRJ-205",
+        "name": "Phase 4 — Innovation & launch: ADRs and module status files",
+        "type": "Design",
+        "gate": 2,
+        "owner": "PE-03",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-34",
+        "project": "PRJ-205",
+        "name": "Gate 4 — Launch go/no-go: exit evidence and sign-off records",
+        "type": "Assurance",
+        "gate": 3,
+        "owner": "PE-02",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      },
+      {
+        "id": "DOC-35",
+        "project": "PRJ-205",
+        "name": "Phase 4 — Innovation & launch: KPI review and lessons learned",
+        "type": "Closure",
+        "gate": 4,
+        "owner": "PE-14",
+        "rev": "0.1",
+        "status": "Draft",
+        "updated": "2026-09-23"
+      }
+    ],
+    "items": [
+      {
+        "id": "WI-01",
+        "project": "PRJ-207",
+        "column": "review",
+        "title": "DF-01 Import answered 400 for every book ('\\D' in a template literal) — PR #14",
+        "assignee": "PE-14",
+        "points": 3,
+        "priority": "P1",
+        "created": "2026-09-23"
+      },
+      {
+        "id": "WI-02",
+        "project": "PRJ-207",
+        "column": "review",
+        "title": "DF-02 Import dropped document uri, so imported evidence stopped counting — PR #14",
+        "assignee": "PE-14",
+        "points": 2,
+        "priority": "P1",
+        "created": "2026-09-23"
+      },
+      {
+        "id": "WI-03",
+        "project": "PRJ-207",
+        "column": "review",
+        "title": "DF-03 Quick start seeded an in-memory database; nobody could sign in — PR #14",
+        "assignee": "PE-14",
+        "points": 2,
+        "priority": "P1",
+        "created": "2026-09-23"
+      },
+      {
+        "id": "WI-04",
+        "project": "PRJ-207",
+        "column": "review",
+        "title": "DF-04 Import refused the bare book GET /export returns — PR #14",
+        "assignee": "PE-14",
+        "points": 1,
+        "priority": "P2",
+        "created": "2026-09-23"
+      },
+      {
+        "id": "WI-05",
+        "project": "PRJ-207",
+        "column": "review",
+        "title": "DF-05 restart.sh worked on Windows only — PR #14",
+        "assignee": "PE-14",
+        "points": 2,
+        "priority": "P2",
+        "created": "2026-09-23"
+      },
+      {
+        "id": "WI-06",
+        "project": "PRJ-207",
+        "column": "review",
+        "title": "DF-06 Unbudgeted project reported green and SPI/CPI 1.00 (MER-04 ported) — PR #14",
+        "assignee": "PE-14",
+        "points": 2,
+        "priority": "P1",
+        "created": "2026-09-23"
+      },
+      {
+        "id": "WI-07",
+        "project": "PRJ-207",
+        "column": "review",
+        "title": "DF-07 A refused import did not say which row — PR #14",
+        "assignee": "PE-14",
+        "points": 1,
+        "priority": "P2",
+        "created": "2026-09-23"
+      },
+      {
+        "id": "WI-08",
+        "project": "PRJ-207",
+        "column": "review",
+        "title": "DF-08 qs 6.15.3 moderate advisories on the request parsers — PR #14",
+        "assignee": "PE-14",
+        "points": 1,
+        "priority": "P2",
+        "created": "2026-09-23"
+      },
+      {
+        "id": "WI-09",
+        "project": "PRJ-207",
+        "column": "backlog",
+        "title": "DF-09 main is behind three unmerged lines (gate ladder, MER-13) — issue #15",
+        "assignee": "PE-14",
+        "points": 5,
+        "priority": "P1",
+        "created": "2026-09-23"
+      },
+      {
+        "id": "WI-10",
+        "project": "PRJ-207",
+        "column": "backlog",
+        "title": "DF-10 Council members cannot approve evidence without write authority — issue #16",
+        "assignee": "PE-14",
+        "points": 5,
+        "priority": "P1",
+        "created": "2026-09-23"
+      },
+      {
+        "id": "WI-11",
+        "project": "PRJ-207",
+        "column": "backlog",
+        "title": "DF-11 No way to link a GitHub issue or PR to an activity or RAID row — issue #17",
+        "assignee": "PE-14",
+        "points": 5,
+        "priority": "P2",
+        "created": "2026-09-23"
+      },
+      {
+        "id": "WI-12",
+        "project": "PRJ-207",
+        "column": "backlog",
+        "title": "DF-12 'Site' is the only unit of authority; teams must pretend to be places — issue #18",
+        "assignee": "PE-14",
+        "points": 3,
+        "priority": "P3",
+        "created": "2026-09-23"
+      }
+    ]
+  }
+}
