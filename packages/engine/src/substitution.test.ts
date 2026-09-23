@@ -113,6 +113,14 @@ describe('substitution over a graph', () => {
     expect(substitute(graph, 'expert_move', [], {}, open)).toBeNull();
   });
 
+  it('ties break deterministically on id, whatever the edge order', () => {
+    const tied = [sub('push', 'knee_push', 0.5), sub('push', 'band_press', 0.5), sub('push', 'db_press', 0.5)];
+    for (const order of [tied, [...tied].reverse()]) {
+      const g = createExerciseGraph(exercises, order);
+      expect(rankSubstitutes(g, 'push', ['resistance_band', 'dumbbell', 'flat_bench'], {}, open).map((r) => r.exerciseId)).toEqual(['band_press', 'db_press', 'knee_push']);
+    }
+  });
+
   it('ties break deterministically on id', () => {
     const g = createExerciseGraph(exercises, [sub('push', 'knee_push', 0.5), sub('push', 'band_press', 0.5)]);
     expect(rankSubstitutes(g, 'push', ['resistance_band'], {}, open).map((r) => r.exerciseId)).toEqual(['band_press', 'knee_push']);

@@ -83,7 +83,7 @@ export function createExerciseGraph(exercises: readonly GraphExercise[], edges: 
     list.push({ to: edge.to, similarity: edge.similarity });
     substitutes.set(edge.from, list);
   }
-  for (const list of substitutes.values()) list.sort((a, b) => b.similarity - a.similarity || (a.to < b.to ? -1 : a.to > b.to ? 1 : 0));
+  for (const list of substitutes.values()) list.sort((a, b) => b.similarity - a.similarity || (a.to < b.to ? -1 : 1));
   return { exercises: byId, substitutes };
 }
 
