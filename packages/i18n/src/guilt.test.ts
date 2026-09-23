@@ -29,3 +29,14 @@ describe('no-guilt copy after a missed session (M08)', () => {
     expect(guiltPhrases('No problem. Friday is now on Saturday.', 'en')).toEqual([]);
   });
 });
+
+describe('M02 workout copy: no pressure, no guilt (L4, CLAUDE.md rule 8)', () => {
+  it('every workout screen message and every session reason passes the denylist, in English and in French', () => {
+    const keys = Object.keys(en).filter((k) => k.startsWith('workout.') || k.startsWith('engine.reason.session.') || k.startsWith('home.workout.')) as (keyof typeof en)[];
+    expect(keys.length).toBeGreaterThan(150);
+    for (const key of keys) {
+      expect({ key, hits: guiltPhrases(en[key], 'en') }).toEqual({ key, hits: [] });
+      expect({ key, hits: guiltPhrases(fr[key], 'fr') }).toEqual({ key, hits: [] });
+    }
+  });
+});

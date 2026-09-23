@@ -1,5 +1,6 @@
 import { assessmentEn } from './assessment.en.js';
 import { programEn } from './program.en.js';
+import { sessionEn } from './session.en.js';
 import { legalEn } from './legal.en.js';
 import { libraryEn } from './library.en.js';
 import { onboardingEn } from './onboarding.en.js';
@@ -128,6 +129,9 @@ export const en = {
 
   // M08 program, calendar and reflow (engine reason codes included; no-guilt copy after a missed session).
   ...programEn,
+
+  // M02 session engine reason codes and the workout screens (no pressure, no guilt).
+  ...sessionEn,
 } as const;
 
 export type MessageKey = keyof typeof en;

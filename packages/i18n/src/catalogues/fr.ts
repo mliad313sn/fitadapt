@@ -1,6 +1,7 @@
 import type { MessageKey } from './en.js';
 import { assessmentFr } from './assessment.fr.js';
 import { programFr } from './program.fr.js';
+import { sessionFr } from './session.fr.js';
 import { legalFr } from './legal.fr.js';
 import { libraryFr } from './library.fr.js';
 import { onboardingFr } from './onboarding.fr.js';
@@ -115,4 +116,7 @@ export const fr: Record<MessageKey, string> = {
   ...screeningFr,
   ...assessmentFr,
   ...programFr,
+
+  // M02 : codes de raison des séances et écrans de séance (sans pression ni culpabilisation).
+  ...sessionFr,
 };
