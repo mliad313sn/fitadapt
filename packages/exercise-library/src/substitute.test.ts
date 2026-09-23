@@ -83,9 +83,10 @@ describe('substitute', () => {
     expect(substitutionSafetyEvent(result)).toEqual({ invariant: 'S2', reasonCode: 'substitution.joint_red', action: 'substituted' });
   });
 
-  it('a red knee leaves no squat-pattern substitute for a jump squat: the slot is dropped (null), never a knee-loading option', () => {
+  it('a red knee never yields a knee-loading substitute for a jump squat: with the seed there is none, so the slot is dropped', () => {
     const result = substitute('squat_jump', EQUIPMENT_PRESETS.full_gym, { knee: 'red' }, UNRESTRICTED_SAFETY_PROFILE);
-    if (result) expect(lib.byId.get(result.exerciseId)!.jointLoad.knee).toBe('low');
+    // Every squat-pattern option loads the knee at medium or high; the S2 filter leaves nothing rather than a knee-loading option.
+    expect(result).toBeNull();
   });
 
   it('P1 at home with an amber knee history: a goblet squat alternative loads the knee less when possible', () => {
