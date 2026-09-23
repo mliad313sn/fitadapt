@@ -64,7 +64,7 @@ export function summarise(path: string, r: LegalHoldExport): string {
     `Legal-hold export written to ${path}`,
     `  subject: ${r.subjectRef} (pseudonymous)`,
     `  integrity: ${integrity}`,
-    `  acceptances: ${r.acceptances.length}, consents: ${r.consents.length}, notices: ${r.notices.length}, safety events: ${r.safetyEvents.length}, prescriptions: ${r.prescriptions.length}`,
+    `  acceptances: ${r.acceptances.length}, consents: ${r.consents.length}, notices: ${r.notices.length}, safety events: ${r.safetyEvents.length}, prescriptions: ${r.prescriptions.length}, program events: ${r.programs.length}`,
     `  engine versions: ${r.engineVersions.map((v) => `${v.engineVersion} (${v.events})`).join(', ') || 'none'}`,
     `  legal holds: ${r.legalHolds.length}, access log entries: ${r.accessLog.length}`,
   ].join('\n');

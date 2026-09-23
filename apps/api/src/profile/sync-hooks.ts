@@ -7,6 +7,7 @@ import {
   AssessmentRecordSchema,
   EquipmentProfileSchema,
   PROFILE_COLLECTIONS,
+  PROGRAM_COLLECTIONS,
   ProfileSchema,
   ScreeningRecordSchema,
   type SafetyProfile,
@@ -19,13 +20,15 @@ import { syncChanges } from '../db/schema.js';
 import type { LegalService } from '../legal/service.js';
 import type { ConsentWithdrawalHandler, PrivacyService } from '../privacy/service.js';
 import type { PgServerTx } from '../sync/pg-store.js';
+import { onProgramApplied, validateProgram, validateReflow } from './program-hooks.js';
 
 /**
  * Collections holding health data (screening answers, biometrics, M07
- * assessment results): need the health consent (L9, ADR-004) and are erased
- * when it is withdrawn.
+ * assessment results, M08 programs, which embed the SafetyProfile, and their
+ * reflows): need the health consent (L9, ADR-004) and are erased when it is
+ * withdrawn.
  */
-export const HEALTH_COLLECTIONS: readonly string[] = [PROFILE_COLLECTIONS.profile, PROFILE_COLLECTIONS.screenings, ASSESSMENT_COLLECTION];
+export const HEALTH_COLLECTIONS: readonly string[] = [PROFILE_COLLECTIONS.profile, PROFILE_COLLECTIONS.screenings, ASSESSMENT_COLLECTION, PROGRAM_COLLECTIONS.programs, PROGRAM_COLLECTIONS.reflows];
 
 /**
  * The latest calendar date anywhere on Earth right now (UTC+14). A user who is
@@ -120,6 +123,10 @@ export function profileSyncValidator(deps: ProfileSyncDeps): MutationValidator {
       }
       case ASSESSMENT_COLLECTION:
         return (await consentRequired(userId, m)) ?? validateAssessment(deps, userId, m.data);
+      case PROGRAM_COLLECTIONS.programs:
+        return (await consentRequired(userId, m)) ?? validateProgram(deps.db, userId, m.data, await latestSafetyProfile(deps.db, userId));
+      case PROGRAM_COLLECTIONS.reflows:
+        return (await consentRequired(userId, m)) ?? validateReflow(deps.db, userId, m.data);
       default:
         return null;
     }
@@ -136,7 +143,7 @@ export function safetyEventsFor(profile: SafetyProfile) {
 }
 
 /**
- * When a screening (or an S1-capped M07 assessment) is stored: write the
+ * When a screening (or an S1-capped M07 assessment, or an M08 program or reflow) is stored: write the
  * safety gates it switched on to the defensibility log IN THE SYNC
  * TRANSACTION (L11). A failed log write rolls the record back and fails the
  * push, so the device retries; a record is never stored without its safety
@@ -155,6 +162,9 @@ export function profileSyncListener(deps: ProfileSyncDeps): MutationListener<PgS
       if (record.cappedByS1) {
         await deps.legal.recordSafetyEvent(userId, { invariant: 'S1', reasonCode: 'safety.s1.rpe_above_cap', action: 'capped', engineVersion: record.capacity.engineVersion }, tx.db);
       }
+    } else if (m.collection === PROGRAM_COLLECTIONS.programs || m.collection === PROGRAM_COLLECTIONS.reflows) {
+      // M08: "program generated" (engine and rules versions) and its S1 caps, or the reflow, in the same transaction as the record.
+      await onProgramApplied(deps.legal, userId, m.collection, m.data, tx);
     }
   };
 }

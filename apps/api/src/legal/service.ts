@@ -210,6 +210,20 @@ export class LegalService {
   }
 
   /**
+   * M08: a stored program (engine and rules versions, template) or a reflow the
+   * engine decided. Always written with the transaction of the record it
+   * describes (ADR-009: the change and its event commit together), so there is
+   * no variant without one.
+   */
+  async recordProgramGenerated(userId: string, payload: DefensibilityPayload<'program.generated'>, tx: Tx): Promise<void> {
+    await this.log.append(tx, { type: 'program.generated', chain: this.subjectRef(userId), occurredAt: this.deps.now().toISOString(), payload });
+  }
+
+  async recordProgramReflowed(userId: string, payload: DefensibilityPayload<'program.reflowed'>, tx: Tx): Promise<void> {
+    await this.log.append(tx, { type: 'program.reflowed', chain: this.subjectRef(userId), occurredAt: this.deps.now().toISOString(), payload });
+  }
+
+  /**
    * Legal-hold export (L11): logs the access first, places a hold unless one
    * is already active, then returns the subject's whole chain with its
    * verification. Works after account deletion (the log is pseudonymous).
