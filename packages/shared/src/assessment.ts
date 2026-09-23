@@ -32,7 +32,10 @@ export const AssessmentSkipReasonSchema = z.enum(ASSESSMENT_SKIP_REASONS);
 export type AssessmentSkipReason = z.infer<typeof AssessmentSkipReasonSchema>;
 
 /** A dotted reason code (rendered through packages/i18n `engine.reason.<code>`). */
-export const ReasonCodeSchema = z.string().regex(/^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/, 'dotted reason code');
+export const ReasonCodeSchema = z
+  .string()
+  .regex(/^[a-z][a-z0-9_.]{2,119}$/, 'dotted reason code')
+  .refine((code) => code.includes('.') && !code.includes('..') && !code.endsWith('.'), 'dotted reason code');
 export type ReasonCode = z.infer<typeof ReasonCodeSchema>;
 
 /** Upper bounds reject typing errors; they are not performance norms. */

@@ -14,7 +14,11 @@ import { useCapacity, useLegal, useProfile, useReassessment, useSafetyProfile } 
 
 type Phase = 'choose' | 'notice' | 'test' | 'result';
 const WHOLE = /^\d{1,3}$/;
-const LOAD = /^\d{1,3}([.,]\d{1,2})?$/;
+/** A load such as 20, 22.5 or 22,5 (at most 3 digits and 2 decimals). */
+const isLoad = (text: string) => {
+  const [whole = '', fraction, extra] = text.replace(',', '.').split('.');
+  return extra === undefined && /^\d{1,3}$/.test(whole) && (fraction === undefined || /^\d{1,2}$/.test(fraction));
+};
 
 function ageOn(birth: { year: number; month: number; day: number } | null, now: Date): number {
   if (!birth) return 0;
@@ -176,7 +180,7 @@ function TestStep({ instruction, step, total, cappedByS1, onResult }: { instruct
   const save = () => {
     const value = measure.trim();
     const kg = load.trim().replace(',', '.');
-    if (!variant || !WHOLE.test(value) || (kind === 'load_reps' && !LOAD.test(kg))) return setInvalid(true);
+    if (!variant || !WHOLE.test(value) || (kind === 'load_reps' && !isLoad(kg))) return setInvalid(true);
     const loadKg = kind === 'load_reps' ? Math.round((unitSystem === 'metric' ? Number(kg) : lbToKg(Number(kg))) * 100) / 100 : null;
     onResult({ status: 'done', testId, exerciseId: variant, reps: kind === 'hold' ? null : Number(value), seconds: kind === 'hold' ? Number(value) : null, loadKg, rir: kind === 'load_reps' ? Number(rir) : null });
   };
