@@ -1,4 +1,5 @@
 import { legalEn } from './legal.en.js';
+import { libraryEn } from './library.en.js';
 
 /**
  * English catalogue (ICU MessageFormat). Every key must also exist in fr.ts;
@@ -108,6 +109,9 @@ export const en = {
 
   // M20 legal texts: DRAFTS that require counsel review (see legal.en.ts).
   ...legalEn,
+
+  // M06 exercise library: labels, engine substitution reasons and exercise wording (seed content, not expert-validated).
+  ...libraryEn,
 } as const;
 
 export type MessageKey = keyof typeof en;
