@@ -1,0 +1,596 @@
+{
+  "templateId": "fat_loss.3d",
+  "split": "full_body",
+  "goal": "fat_loss",
+  "trainingAge": "beginner",
+  "trainingDays": [
+    "mon",
+    "wed",
+    "fri"
+  ],
+  "minutesPerSession": 40,
+  "startDate": "2026-09-28",
+  "endDate": "2027-01-31",
+  "reasonCodes": [
+    "program.goal.fat_loss",
+    "program.training_age.beginner",
+    "program.split.full_body",
+    "program.schedule.days_spread"
+  ],
+  "mesocycles": [
+    "1 general 2026-09-28..2026-11-08 (6 weeks, deload week 6)",
+    "2 hypertrophy 2026-11-09..2026-12-20 (6 weeks, deload week 12)",
+    "3 general 2026-12-21..2027-01-31 (6 weeks, deload week 18)"
+  ],
+  "weeks": [
+    {
+      "week": "1 accumulation (block 1, week 1) ×1",
+      "sessions": [
+        "mon full_body @home RPE 7 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + steady finisher 10 min",
+        "wed full_body @home RPE 7 39 min: hinge×2 vertical_pull×1 vertical_push×2 lunge×1 core×2 + steady finisher 10 min",
+        "fri full_body @home RPE 7 39 min: lunge×2 horizontal_push×3 vertical_pull×2 core×1 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "5 planned (5 direct) / target 8, range 8–12",
+        "back": "5 planned (5 direct) / target 8, range 8–12",
+        "shoulders": "4.5 planned (2 direct) / target 8, range 8–12",
+        "arms": "6 planned (0 direct) / target 8, range 8–12",
+        "quads": "5 planned (5 direct) / target 8, range 8–12",
+        "glutes_hamstrings": "5.5 planned (3 direct) / target 8, range 8–12",
+        "core": "4 planned (4 direct) / target 8, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "2 accumulation (block 1, week 2) ×1",
+      "sessions": [
+        "mon full_body @home RPE 7.5 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + steady finisher 10 min",
+        "wed full_body @home RPE 7.5 39 min: hinge×2 vertical_pull×1 vertical_push×2 lunge×1 core×2 + steady finisher 10 min",
+        "fri full_body @home RPE 7.5 39 min: lunge×2 horizontal_push×3 vertical_pull×2 core×1 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "5 planned (5 direct) / target 9, range 8–12",
+        "back": "5 planned (5 direct) / target 9, range 8–12",
+        "shoulders": "4.5 planned (2 direct) / target 9, range 8–12",
+        "arms": "6 planned (0 direct) / target 9, range 8–12",
+        "quads": "5 planned (5 direct) / target 9, range 8–12",
+        "glutes_hamstrings": "5.5 planned (3 direct) / target 9, range 8–12",
+        "core": "4 planned (4 direct) / target 9, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "3 accumulation (block 1, week 3) ×1",
+      "sessions": [
+        "mon full_body @home RPE 7.5 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + intervals finisher 10 min",
+        "wed full_body @home RPE 7.5 39 min: hinge×2 vertical_pull×2 vertical_push×2 lunge×1 core×1 + steady finisher 10 min",
+        "fri full_body @home RPE 7.5 39 min: lunge×2 horizontal_push×3 vertical_pull×1 core×2 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "5 planned (5 direct) / target 10, range 8–12",
+        "back": "5 planned (5 direct) / target 10, range 8–12",
+        "shoulders": "4.5 planned (2 direct) / target 10, range 8–12",
+        "arms": "6 planned (0 direct) / target 10, range 8–12",
+        "quads": "5 planned (5 direct) / target 10, range 8–12",
+        "glutes_hamstrings": "5.5 planned (3 direct) / target 10, range 8–12",
+        "core": "4 planned (4 direct) / target 10, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "4 accumulation (block 1, week 4) ×1",
+      "sessions": [
+        "mon full_body @home RPE 8 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + intervals finisher 10 min",
+        "wed full_body @home RPE 8 39 min: hinge×2 vertical_pull×2 vertical_push×2 lunge×1 core×1 + steady finisher 10 min",
+        "fri full_body @home RPE 8 39 min: lunge×2 horizontal_push×3 vertical_pull×1 core×2 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "5 planned (5 direct) / target 11, range 8–12",
+        "back": "5 planned (5 direct) / target 11, range 8–12",
+        "shoulders": "4.5 planned (2 direct) / target 11, range 8–12",
+        "arms": "6 planned (0 direct) / target 11, range 8–12",
+        "quads": "5 planned (5 direct) / target 11, range 8–12",
+        "glutes_hamstrings": "5.5 planned (3 direct) / target 11, range 8–12",
+        "core": "4 planned (4 direct) / target 11, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "5 accumulation (block 1, week 5) ×1",
+      "sessions": [
+        "mon full_body @home RPE 8 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + intervals finisher 10 min",
+        "wed full_body @home RPE 8 39 min: hinge×2 vertical_pull×2 vertical_push×2 lunge×1 core×1 + steady finisher 10 min",
+        "fri full_body @home RPE 8 39 min: lunge×2 horizontal_push×3 vertical_pull×1 core×2 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "5 planned (5 direct) / target 12, range 8–12",
+        "back": "5 planned (5 direct) / target 12, range 8–12",
+        "shoulders": "4.5 planned (2 direct) / target 12, range 8–12",
+        "arms": "6 planned (0 direct) / target 12, range 8–12",
+        "quads": "5 planned (5 direct) / target 12, range 8–12",
+        "glutes_hamstrings": "5.5 planned (3 direct) / target 12, range 8–12",
+        "core": "4 planned (4 direct) / target 12, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "6 deload (block 1, week 6) ×0.5",
+      "sessions": [
+        "mon full_body @home RPE 6 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + steady finisher 10 min",
+        "wed full_body @home RPE 6 36 min: hinge×1 vertical_pull×1 vertical_push×2 lunge×1 core×2 + steady finisher 10 min",
+        "fri full_body @home RPE 6 30 min: lunge×1 horizontal_push×2 vertical_pull×1 core×1 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "4 planned (4 direct) / target 4, range 8–12",
+        "back": "4 planned (4 direct) / target 4, range 8–12",
+        "shoulders": "4 planned (2 direct) / target 4, range 8–12",
+        "arms": "5 planned (0 direct) / target 4, range 8–12",
+        "quads": "4 planned (4 direct) / target 4, range 8–12",
+        "glutes_hamstrings": "4 planned (2 direct) / target 4, range 8–12",
+        "core": "4 planned (4 direct) / target 4, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.deload"
+      ]
+    },
+    {
+      "week": "7 accumulation (block 2, week 1) ×1",
+      "sessions": [
+        "mon full_body @home RPE 7 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + intervals finisher 10 min",
+        "wed full_body @home RPE 7 39 min: hinge×2 vertical_pull×1 vertical_push×2 lunge×1 core×2 + steady finisher 10 min",
+        "fri full_body @home RPE 7 39 min: lunge×2 horizontal_push×3 vertical_pull×2 core×1 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "5 planned (5 direct) / target 8, range 8–12",
+        "back": "5 planned (5 direct) / target 8, range 8–12",
+        "shoulders": "4.5 planned (2 direct) / target 8, range 8–12",
+        "arms": "6 planned (0 direct) / target 8, range 8–12",
+        "quads": "5 planned (5 direct) / target 8, range 8–12",
+        "glutes_hamstrings": "5.5 planned (3 direct) / target 8, range 8–12",
+        "core": "4 planned (4 direct) / target 8, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "8 accumulation (block 2, week 2) ×1",
+      "sessions": [
+        "mon full_body @home RPE 7.5 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + intervals finisher 10 min",
+        "wed full_body @home RPE 7.5 39 min: hinge×2 vertical_pull×1 vertical_push×2 lunge×1 core×2 + steady finisher 10 min",
+        "fri full_body @home RPE 7.5 39 min: lunge×2 horizontal_push×3 vertical_pull×2 core×1 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "5 planned (5 direct) / target 9, range 8–12",
+        "back": "5 planned (5 direct) / target 9, range 8–12",
+        "shoulders": "4.5 planned (2 direct) / target 9, range 8–12",
+        "arms": "6 planned (0 direct) / target 9, range 8–12",
+        "quads": "5 planned (5 direct) / target 9, range 8–12",
+        "glutes_hamstrings": "5.5 planned (3 direct) / target 9, range 8–12",
+        "core": "4 planned (4 direct) / target 9, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "9 accumulation (block 2, week 3) ×1",
+      "sessions": [
+        "mon full_body @home RPE 7.5 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + intervals finisher 10 min",
+        "wed full_body @home RPE 7.5 39 min: hinge×2 vertical_pull×2 vertical_push×2 lunge×1 core×1 + steady finisher 10 min",
+        "fri full_body @home RPE 7.5 39 min: lunge×2 horizontal_push×3 vertical_pull×1 core×2 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "5 planned (5 direct) / target 10, range 8–12",
+        "back": "5 planned (5 direct) / target 10, range 8–12",
+        "shoulders": "4.5 planned (2 direct) / target 10, range 8–12",
+        "arms": "6 planned (0 direct) / target 10, range 8–12",
+        "quads": "5 planned (5 direct) / target 10, range 8–12",
+        "glutes_hamstrings": "5.5 planned (3 direct) / target 10, range 8–12",
+        "core": "4 planned (4 direct) / target 10, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "10 accumulation (block 2, week 4) ×1",
+      "sessions": [
+        "mon full_body @home RPE 8 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + intervals finisher 10 min",
+        "wed full_body @home RPE 8 39 min: hinge×2 vertical_pull×2 vertical_push×2 lunge×1 core×1 + steady finisher 10 min",
+        "fri full_body @home RPE 8 39 min: lunge×2 horizontal_push×3 vertical_pull×1 core×2 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "5 planned (5 direct) / target 11, range 8–12",
+        "back": "5 planned (5 direct) / target 11, range 8–12",
+        "shoulders": "4.5 planned (2 direct) / target 11, range 8–12",
+        "arms": "6 planned (0 direct) / target 11, range 8–12",
+        "quads": "5 planned (5 direct) / target 11, range 8–12",
+        "glutes_hamstrings": "5.5 planned (3 direct) / target 11, range 8–12",
+        "core": "4 planned (4 direct) / target 11, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "11 accumulation (block 2, week 5) ×1",
+      "sessions": [
+        "mon full_body @home RPE 8 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + intervals finisher 10 min",
+        "wed full_body @home RPE 8 39 min: hinge×2 vertical_pull×2 vertical_push×2 lunge×1 core×1 + steady finisher 10 min",
+        "fri full_body @home RPE 8 39 min: lunge×2 horizontal_push×3 vertical_pull×1 core×2 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "5 planned (5 direct) / target 12, range 8–12",
+        "back": "5 planned (5 direct) / target 12, range 8–12",
+        "shoulders": "4.5 planned (2 direct) / target 12, range 8–12",
+        "arms": "6 planned (0 direct) / target 12, range 8–12",
+        "quads": "5 planned (5 direct) / target 12, range 8–12",
+        "glutes_hamstrings": "5.5 planned (3 direct) / target 12, range 8–12",
+        "core": "4 planned (4 direct) / target 12, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "12 deload (block 2, week 6) ×0.5",
+      "sessions": [
+        "mon full_body @home RPE 6 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + steady finisher 10 min",
+        "wed full_body @home RPE 6 36 min: hinge×1 vertical_pull×1 vertical_push×2 lunge×1 core×2 + steady finisher 10 min",
+        "fri full_body @home RPE 6 30 min: lunge×1 horizontal_push×2 vertical_pull×1 core×1 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "4 planned (4 direct) / target 4, range 8–12",
+        "back": "4 planned (4 direct) / target 4, range 8–12",
+        "shoulders": "4 planned (2 direct) / target 4, range 8–12",
+        "arms": "5 planned (0 direct) / target 4, range 8–12",
+        "quads": "4 planned (4 direct) / target 4, range 8–12",
+        "glutes_hamstrings": "4 planned (2 direct) / target 4, range 8–12",
+        "core": "4 planned (4 direct) / target 4, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.deload"
+      ]
+    },
+    {
+      "week": "13 accumulation (block 3, week 1) ×1",
+      "sessions": [
+        "mon full_body @home RPE 7 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + intervals finisher 10 min",
+        "wed full_body @home RPE 7 39 min: hinge×2 vertical_pull×1 vertical_push×2 lunge×1 core×2 + steady finisher 10 min",
+        "fri full_body @home RPE 7 39 min: lunge×2 horizontal_push×3 vertical_pull×2 core×1 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "5 planned (5 direct) / target 8, range 8–12",
+        "back": "5 planned (5 direct) / target 8, range 8–12",
+        "shoulders": "4.5 planned (2 direct) / target 8, range 8–12",
+        "arms": "6 planned (0 direct) / target 8, range 8–12",
+        "quads": "5 planned (5 direct) / target 8, range 8–12",
+        "glutes_hamstrings": "5.5 planned (3 direct) / target 8, range 8–12",
+        "core": "4 planned (4 direct) / target 8, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "14 accumulation (block 3, week 2) ×1",
+      "sessions": [
+        "mon full_body @home RPE 7.5 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + intervals finisher 10 min",
+        "wed full_body @home RPE 7.5 39 min: hinge×2 vertical_pull×1 vertical_push×2 lunge×1 core×2 + steady finisher 10 min",
+        "fri full_body @home RPE 7.5 39 min: lunge×2 horizontal_push×3 vertical_pull×2 core×1 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "5 planned (5 direct) / target 9, range 8–12",
+        "back": "5 planned (5 direct) / target 9, range 8–12",
+        "shoulders": "4.5 planned (2 direct) / target 9, range 8–12",
+        "arms": "6 planned (0 direct) / target 9, range 8–12",
+        "quads": "5 planned (5 direct) / target 9, range 8–12",
+        "glutes_hamstrings": "5.5 planned (3 direct) / target 9, range 8–12",
+        "core": "4 planned (4 direct) / target 9, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "15 accumulation (block 3, week 3) ×1",
+      "sessions": [
+        "mon full_body @home RPE 7.5 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + intervals finisher 10 min",
+        "wed full_body @home RPE 7.5 39 min: hinge×2 vertical_pull×2 vertical_push×2 lunge×1 core×1 + steady finisher 10 min",
+        "fri full_body @home RPE 7.5 39 min: lunge×2 horizontal_push×3 vertical_pull×1 core×2 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "5 planned (5 direct) / target 10, range 8–12",
+        "back": "5 planned (5 direct) / target 10, range 8–12",
+        "shoulders": "4.5 planned (2 direct) / target 10, range 8–12",
+        "arms": "6 planned (0 direct) / target 10, range 8–12",
+        "quads": "5 planned (5 direct) / target 10, range 8–12",
+        "glutes_hamstrings": "5.5 planned (3 direct) / target 10, range 8–12",
+        "core": "4 planned (4 direct) / target 10, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "16 accumulation (block 3, week 4) ×1",
+      "sessions": [
+        "mon full_body @home RPE 8 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + intervals finisher 10 min",
+        "wed full_body @home RPE 8 39 min: hinge×2 vertical_pull×2 vertical_push×2 lunge×1 core×1 + steady finisher 10 min",
+        "fri full_body @home RPE 8 39 min: lunge×2 horizontal_push×3 vertical_pull×1 core×2 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "5 planned (5 direct) / target 11, range 8–12",
+        "back": "5 planned (5 direct) / target 11, range 8–12",
+        "shoulders": "4.5 planned (2 direct) / target 11, range 8–12",
+        "arms": "6 planned (0 direct) / target 11, range 8–12",
+        "quads": "5 planned (5 direct) / target 11, range 8–12",
+        "glutes_hamstrings": "5.5 planned (3 direct) / target 11, range 8–12",
+        "core": "4 planned (4 direct) / target 11, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "17 accumulation (block 3, week 5) ×1",
+      "sessions": [
+        "mon full_body @home RPE 8 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + intervals finisher 10 min",
+        "wed full_body @home RPE 8 39 min: hinge×2 vertical_pull×2 vertical_push×2 lunge×1 core×1 + steady finisher 10 min",
+        "fri full_body @home RPE 8 39 min: lunge×2 horizontal_push×3 vertical_pull×1 core×2 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "5 planned (5 direct) / target 12, range 8–12",
+        "back": "5 planned (5 direct) / target 12, range 8–12",
+        "shoulders": "4.5 planned (2 direct) / target 12, range 8–12",
+        "arms": "6 planned (0 direct) / target 12, range 8–12",
+        "quads": "5 planned (5 direct) / target 12, range 8–12",
+        "glutes_hamstrings": "5.5 planned (3 direct) / target 12, range 8–12",
+        "core": "4 planned (4 direct) / target 12, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "18 deload (block 3, week 6) ×0.5",
+      "sessions": [
+        "mon full_body @home RPE 6 39 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 core×1 + steady finisher 10 min",
+        "wed full_body @home RPE 6 36 min: hinge×1 vertical_pull×1 vertical_push×2 lunge×1 core×2 + steady finisher 10 min",
+        "fri full_body @home RPE 6 30 min: lunge×1 horizontal_push×2 vertical_pull×1 core×1 + steady finisher 10 min"
+      ],
+      "volume": {
+        "chest": "4 planned (4 direct) / target 4, range 8–12",
+        "back": "4 planned (4 direct) / target 4, range 8–12",
+        "shoulders": "4 planned (2 direct) / target 4, range 8–12",
+        "arms": "5 planned (0 direct) / target 4, range 8–12",
+        "quads": "4 planned (4 direct) / target 4, range 8–12",
+        "glutes_hamstrings": "4 planned (2 direct) / target 4, range 8–12",
+        "core": "4 planned (4 direct) / target 4, range 8–12"
+      },
+      "aerobicMinutes": 30,
+      "reasonCodes": [
+        "program.week.deload"
+      ]
+    }
+  ],
+  "firstWeek": [
+    {
+      "id": "w01.s1",
+      "date": "2026-09-28",
+      "weekday": "mon",
+      "focus": "full_body",
+      "equipmentProfileId": "11111111-1111-4111-8111-111111111111",
+      "location": "home",
+      "slots": [
+        {
+          "pattern": "squat",
+          "role": "primary",
+          "intent": "general",
+          "hardSets": 2
+        },
+        {
+          "pattern": "horizontal_push",
+          "role": "primary",
+          "intent": "general",
+          "hardSets": 2
+        },
+        {
+          "pattern": "horizontal_pull",
+          "role": "primary",
+          "intent": "general",
+          "hardSets": 2
+        },
+        {
+          "pattern": "hinge",
+          "role": "secondary",
+          "intent": "general",
+          "hardSets": 1
+        },
+        {
+          "pattern": "core",
+          "role": "accessory",
+          "intent": "general",
+          "hardSets": 1
+        }
+      ],
+      "conditioning": {
+        "kind": "steady",
+        "placement": "finisher",
+        "minutes": 10
+      },
+      "targetRpe": 7,
+      "hardPatterns": [
+        "squat",
+        "horizontal_push",
+        "horizontal_pull",
+        "hinge"
+      ],
+      "heavyLower": true,
+      "priority": 2,
+      "estimatedMinutes": 39,
+      "reasonCodes": [
+        "program.session.full_body",
+        "program.conditioning.finisher",
+        "program.rpe.accumulation"
+      ]
+    },
+    {
+      "id": "w01.s2",
+      "date": "2026-09-30",
+      "weekday": "wed",
+      "focus": "full_body",
+      "equipmentProfileId": "11111111-1111-4111-8111-111111111111",
+      "location": "home",
+      "slots": [
+        {
+          "pattern": "hinge",
+          "role": "primary",
+          "intent": "general",
+          "hardSets": 2
+        },
+        {
+          "pattern": "vertical_pull",
+          "role": "primary",
+          "intent": "general",
+          "hardSets": 1
+        },
+        {
+          "pattern": "vertical_push",
+          "role": "primary",
+          "intent": "general",
+          "hardSets": 2
+        },
+        {
+          "pattern": "lunge",
+          "role": "secondary",
+          "intent": "general",
+          "hardSets": 1
+        },
+        {
+          "pattern": "core",
+          "role": "accessory",
+          "intent": "general",
+          "hardSets": 2
+        }
+      ],
+      "conditioning": {
+        "kind": "steady",
+        "placement": "finisher",
+        "minutes": 10
+      },
+      "targetRpe": 7,
+      "hardPatterns": [
+        "hinge",
+        "vertical_pull",
+        "vertical_push",
+        "lunge"
+      ],
+      "heavyLower": true,
+      "priority": 2,
+      "estimatedMinutes": 39,
+      "reasonCodes": [
+        "program.session.full_body",
+        "program.conditioning.finisher",
+        "program.rpe.accumulation"
+      ]
+    },
+    {
+      "id": "w01.s3",
+      "date": "2026-10-02",
+      "weekday": "fri",
+      "focus": "full_body",
+      "equipmentProfileId": "11111111-1111-4111-8111-111111111111",
+      "location": "home",
+      "slots": [
+        {
+          "pattern": "lunge",
+          "role": "primary",
+          "intent": "general",
+          "hardSets": 2
+        },
+        {
+          "pattern": "horizontal_push",
+          "role": "primary",
+          "intent": "general",
+          "hardSets": 3
+        },
+        {
+          "pattern": "vertical_pull",
+          "role": "primary",
+          "intent": "general",
+          "hardSets": 2
+        },
+        {
+          "pattern": "core",
+          "role": "accessory",
+          "intent": "general",
+          "hardSets": 1
+        }
+      ],
+      "conditioning": {
+        "kind": "steady",
+        "placement": "finisher",
+        "minutes": 10
+      },
+      "targetRpe": 7,
+      "hardPatterns": [
+        "lunge",
+        "horizontal_push",
+        "vertical_pull"
+      ],
+      "heavyLower": true,
+      "priority": 2,
+      "estimatedMinutes": 39,
+      "reasonCodes": [
+        "program.session.full_body",
+        "program.conditioning.finisher",
+        "program.rpe.accumulation"
+      ]
+    }
+  ],
+  "safetyEvents": []
+}

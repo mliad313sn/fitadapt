@@ -1,0 +1,558 @@
+{
+  "templateId": "calisthenics_skills.5d",
+  "split": "calisthenics_skill",
+  "goal": "calisthenics_skills",
+  "trainingAge": "advanced",
+  "trainingDays": [
+    "mon",
+    "tue",
+    "wed",
+    "fri",
+    "sat"
+  ],
+  "minutesPerSession": 60,
+  "startDate": "2026-09-28",
+  "endDate": "2026-12-20",
+  "reasonCodes": [
+    "program.goal.calisthenics_skills",
+    "program.training_age.advanced",
+    "program.split.calisthenics_skill",
+    "program.schedule.days_spread"
+  ],
+  "mesocycles": [
+    "1 skill 2026-09-28..2026-10-25 (4 weeks, deload week 4)",
+    "2 skill 2026-10-26..2026-11-22 (4 weeks, deload week 8)",
+    "3 strength 2026-11-23..2026-12-20 (4 weeks, deload week 12)"
+  ],
+  "weeks": [
+    {
+      "week": "1 accumulation (block 1, week 1) ×1",
+      "sessions": [
+        "mon skill @park RPE 7 53 min: vertical_pull×4 vertical_push×3 horizontal_push×5 core×4",
+        "tue lower @park RPE 7 47 min: squat×4 hinge×4 lunge×3 core×3",
+        "wed upper @park RPE 7 53 min: horizontal_push×5 horizontal_pull×4 vertical_push×2 vertical_pull×3 core×2",
+        "fri lower @park RPE 7 41 min: squat×4 hinge×3 lunge×3 core×2",
+        "sat skill @park RPE 7 44 min: vertical_pull×3 vertical_push×3 horizontal_push×4 core×3"
+      ],
+      "volume": {
+        "chest": "14 planned (14 direct) / target 14, range 12–20",
+        "back": "14 planned (14 direct) / target 14, range 12–20",
+        "shoulders": "15 planned (8 direct) / target 14, range 12–20",
+        "arms": "18 planned (0 direct) / target 14, range 12–20",
+        "quads": "14 planned (14 direct) / target 14, range 12–20",
+        "glutes_hamstrings": "14 planned (7 direct) / target 14, range 12–20",
+        "core": "14 planned (14 direct) / target 14, range 12–20"
+      },
+      "aerobicMinutes": 0,
+      "reasonCodes": [
+        "program.week.accumulation"
+      ]
+    },
+    {
+      "week": "2 accumulation (block 1, week 2) ×1",
+      "sessions": [
+        "mon skill @park RPE 7.5 56 min: vertical_pull×4 vertical_push×4 horizontal_push×5 core×4",
+        "tue lower @park RPE 7.5 50 min: squat×5 hinge×4 lunge×3 core×3",
+        "wed upper @park RPE 7.5 56 min: horizontal_push×5 horizontal_pull×4 vertical_push×2 vertical_pull×3 core×3",
+        "fri lower @park RPE 7.5 44 min: squat×4 hinge×4 lunge×3 core×2",
+        "sat skill @park RPE 7.5 50 min: vertical_pull×4 vertical_push×3 horizontal_push×5 core×3"
+      ],
+      "volume": {
+        "chest": "15 planned (15 direct) / target 15, range 12–20",
+        "back": "15 planned (15 direct) / target 15, range 12–20",
+        "shoulders": "16.5 planned (9 direct) / target 15, range 12–20",
+        "arms": "19.5 planned (0 direct) / target 15, range 12–20",
+        "quads": "15 planned (15 direct) / target 15, range 12–20",
+        "glutes_hamstrings": "15.5 planned (8 direct) / target 15, range 12–20",
+        "core": "15 planned (15 direct) / target 15, range 12–20"
+      },
+      "aerobicMinutes": 0,
+      "reasonCodes": [
+        "program.week.accumulation"
+      ]
+    },
+    {
+      "week": "3 accumulation (block 1, week 3) ×1",
+      "sessions": [
+        "mon skill @park RPE 8 59 min: vertical_pull×5 vertical_push×4 horizontal_push×5 core×4",
+        "tue lower @park RPE 8 53 min: squat×5 hinge×4 lunge×4 core×3",
+        "wed upper @park RPE 8 56 min: horizontal_push×5 horizontal_pull×4 vertical_push×2 vertical_pull×3 core×3",
+        "fri lower @park RPE 8 47 min: squat×4 hinge×4 lunge×3 core×3",
+        "sat skill @park RPE 8 50 min: vertical_pull×4 vertical_push×3 horizontal_push×5 core×3"
+      ],
+      "volume": {
+        "chest": "15 planned (15 direct) / target 16, range 12–20",
+        "back": "16 planned (16 direct) / target 16, range 12–20",
+        "shoulders": "16.5 planned (9 direct) / target 16, range 12–20",
+        "arms": "20 planned (0 direct) / target 16, range 12–20",
+        "quads": "16 planned (16 direct) / target 16, range 12–20",
+        "glutes_hamstrings": "16 planned (8 direct) / target 16, range 12–20",
+        "core": "16 planned (16 direct) / target 16, range 12–20"
+      },
+      "aerobicMinutes": 0,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "4 deload (block 1, week 4) ×0.5",
+      "sessions": [
+        "mon skill @park RPE 6 29 min: vertical_pull×2 vertical_push×2 horizontal_push×2 core×2",
+        "tue lower @park RPE 6 26 min: squat×3 hinge×2 lunge×1 core×1",
+        "wed upper @park RPE 6 29 min: horizontal_push×3 horizontal_pull×2 vertical_push×1 vertical_pull×1 core×1",
+        "fri lower @park RPE 6 23 min: squat×2 hinge×2 lunge×1 core×1",
+        "sat skill @park RPE 6 26 min: vertical_pull×2 vertical_push×1 horizontal_push×2 core×2"
+      ],
+      "volume": {
+        "chest": "7 planned (7 direct) / target 7, range 12–20",
+        "back": "7 planned (7 direct) / target 7, range 12–20",
+        "shoulders": "7.5 planned (4 direct) / target 7, range 12–20",
+        "arms": "9 planned (0 direct) / target 7, range 12–20",
+        "quads": "7 planned (7 direct) / target 7, range 12–20",
+        "glutes_hamstrings": "7.5 planned (4 direct) / target 7, range 12–20",
+        "core": "7 planned (7 direct) / target 7, range 12–20"
+      },
+      "aerobicMinutes": 0,
+      "reasonCodes": [
+        "program.week.deload"
+      ]
+    },
+    {
+      "week": "5 accumulation (block 2, week 1) ×1",
+      "sessions": [
+        "mon skill @park RPE 7 53 min: vertical_pull×4 vertical_push×3 horizontal_push×5 core×4",
+        "tue lower @park RPE 7 47 min: squat×4 hinge×4 lunge×3 core×3",
+        "wed upper @park RPE 7 53 min: horizontal_push×5 horizontal_pull×4 vertical_push×2 vertical_pull×3 core×2",
+        "fri lower @park RPE 7 41 min: squat×4 hinge×3 lunge×3 core×2",
+        "sat skill @park RPE 7 44 min: vertical_pull×3 vertical_push×3 horizontal_push×4 core×3"
+      ],
+      "volume": {
+        "chest": "14 planned (14 direct) / target 14, range 12–20",
+        "back": "14 planned (14 direct) / target 14, range 12–20",
+        "shoulders": "15 planned (8 direct) / target 14, range 12–20",
+        "arms": "18 planned (0 direct) / target 14, range 12–20",
+        "quads": "14 planned (14 direct) / target 14, range 12–20",
+        "glutes_hamstrings": "14 planned (7 direct) / target 14, range 12–20",
+        "core": "14 planned (14 direct) / target 14, range 12–20"
+      },
+      "aerobicMinutes": 0,
+      "reasonCodes": [
+        "program.week.accumulation"
+      ]
+    },
+    {
+      "week": "6 accumulation (block 2, week 2) ×1",
+      "sessions": [
+        "mon skill @park RPE 7.5 56 min: vertical_pull×4 vertical_push×4 horizontal_push×5 core×4",
+        "tue lower @park RPE 7.5 50 min: squat×5 hinge×4 lunge×3 core×3",
+        "wed upper @park RPE 7.5 56 min: horizontal_push×5 horizontal_pull×4 vertical_push×2 vertical_pull×3 core×3",
+        "fri lower @park RPE 7.5 44 min: squat×4 hinge×4 lunge×3 core×2",
+        "sat skill @park RPE 7.5 50 min: vertical_pull×4 vertical_push×3 horizontal_push×5 core×3"
+      ],
+      "volume": {
+        "chest": "15 planned (15 direct) / target 15, range 12–20",
+        "back": "15 planned (15 direct) / target 15, range 12–20",
+        "shoulders": "16.5 planned (9 direct) / target 15, range 12–20",
+        "arms": "19.5 planned (0 direct) / target 15, range 12–20",
+        "quads": "15 planned (15 direct) / target 15, range 12–20",
+        "glutes_hamstrings": "15.5 planned (8 direct) / target 15, range 12–20",
+        "core": "15 planned (15 direct) / target 15, range 12–20"
+      },
+      "aerobicMinutes": 0,
+      "reasonCodes": [
+        "program.week.accumulation"
+      ]
+    },
+    {
+      "week": "7 accumulation (block 2, week 3) ×1",
+      "sessions": [
+        "mon skill @park RPE 8 59 min: vertical_pull×5 vertical_push×4 horizontal_push×5 core×4",
+        "tue lower @park RPE 8 53 min: squat×5 hinge×4 lunge×4 core×3",
+        "wed upper @park RPE 8 56 min: horizontal_push×5 horizontal_pull×4 vertical_push×2 vertical_pull×3 core×3",
+        "fri lower @park RPE 8 47 min: squat×4 hinge×4 lunge×3 core×3",
+        "sat skill @park RPE 8 50 min: vertical_pull×4 vertical_push×3 horizontal_push×5 core×3"
+      ],
+      "volume": {
+        "chest": "15 planned (15 direct) / target 16, range 12–20",
+        "back": "16 planned (16 direct) / target 16, range 12–20",
+        "shoulders": "16.5 planned (9 direct) / target 16, range 12–20",
+        "arms": "20 planned (0 direct) / target 16, range 12–20",
+        "quads": "16 planned (16 direct) / target 16, range 12–20",
+        "glutes_hamstrings": "16 planned (8 direct) / target 16, range 12–20",
+        "core": "16 planned (16 direct) / target 16, range 12–20"
+      },
+      "aerobicMinutes": 0,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "8 deload (block 2, week 4) ×0.5",
+      "sessions": [
+        "mon skill @park RPE 6 29 min: vertical_pull×2 vertical_push×2 horizontal_push×2 core×2",
+        "tue lower @park RPE 6 26 min: squat×3 hinge×2 lunge×1 core×1",
+        "wed upper @park RPE 6 29 min: horizontal_push×3 horizontal_pull×2 vertical_push×1 vertical_pull×1 core×1",
+        "fri lower @park RPE 6 23 min: squat×2 hinge×2 lunge×1 core×1",
+        "sat skill @park RPE 6 26 min: vertical_pull×2 vertical_push×1 horizontal_push×2 core×2"
+      ],
+      "volume": {
+        "chest": "7 planned (7 direct) / target 7, range 12–20",
+        "back": "7 planned (7 direct) / target 7, range 12–20",
+        "shoulders": "7.5 planned (4 direct) / target 7, range 12–20",
+        "arms": "9 planned (0 direct) / target 7, range 12–20",
+        "quads": "7 planned (7 direct) / target 7, range 12–20",
+        "glutes_hamstrings": "7.5 planned (4 direct) / target 7, range 12–20",
+        "core": "7 planned (7 direct) / target 7, range 12–20"
+      },
+      "aerobicMinutes": 0,
+      "reasonCodes": [
+        "program.week.deload"
+      ]
+    },
+    {
+      "week": "9 accumulation (block 3, week 1) ×1",
+      "sessions": [
+        "mon skill @park RPE 7 53 min: vertical_pull×4 vertical_push×3 horizontal_push×5 core×4",
+        "tue lower @park RPE 7 47 min: squat×4 hinge×4 lunge×3 core×3",
+        "wed upper @park RPE 7 53 min: horizontal_push×5 horizontal_pull×4 vertical_push×2 vertical_pull×3 core×2",
+        "fri lower @park RPE 7 41 min: squat×4 hinge×3 lunge×3 core×2",
+        "sat skill @park RPE 7 44 min: vertical_pull×3 vertical_push×3 horizontal_push×4 core×3"
+      ],
+      "volume": {
+        "chest": "14 planned (14 direct) / target 14, range 12–20",
+        "back": "14 planned (14 direct) / target 14, range 12–20",
+        "shoulders": "15 planned (8 direct) / target 14, range 12–20",
+        "arms": "18 planned (0 direct) / target 14, range 12–20",
+        "quads": "14 planned (14 direct) / target 14, range 12–20",
+        "glutes_hamstrings": "14 planned (7 direct) / target 14, range 12–20",
+        "core": "14 planned (14 direct) / target 14, range 12–20"
+      },
+      "aerobicMinutes": 0,
+      "reasonCodes": [
+        "program.week.accumulation"
+      ]
+    },
+    {
+      "week": "10 accumulation (block 3, week 2) ×1",
+      "sessions": [
+        "mon skill @park RPE 7.5 56 min: vertical_pull×4 vertical_push×4 horizontal_push×5 core×4",
+        "tue lower @park RPE 7.5 50 min: squat×5 hinge×4 lunge×3 core×3",
+        "wed upper @park RPE 7.5 56 min: horizontal_push×5 horizontal_pull×4 vertical_push×2 vertical_pull×3 core×3",
+        "fri lower @park RPE 7.5 44 min: squat×4 hinge×4 lunge×3 core×2",
+        "sat skill @park RPE 7.5 50 min: vertical_pull×4 vertical_push×3 horizontal_push×5 core×3"
+      ],
+      "volume": {
+        "chest": "15 planned (15 direct) / target 15, range 12–20",
+        "back": "15 planned (15 direct) / target 15, range 12–20",
+        "shoulders": "16.5 planned (9 direct) / target 15, range 12–20",
+        "arms": "19.5 planned (0 direct) / target 15, range 12–20",
+        "quads": "15 planned (15 direct) / target 15, range 12–20",
+        "glutes_hamstrings": "15.5 planned (8 direct) / target 15, range 12–20",
+        "core": "15 planned (15 direct) / target 15, range 12–20"
+      },
+      "aerobicMinutes": 0,
+      "reasonCodes": [
+        "program.week.accumulation"
+      ]
+    },
+    {
+      "week": "11 accumulation (block 3, week 3) ×1",
+      "sessions": [
+        "mon skill @park RPE 8 59 min: vertical_pull×5 vertical_push×4 horizontal_push×5 core×4",
+        "tue lower @park RPE 8 53 min: squat×5 hinge×4 lunge×4 core×3",
+        "wed upper @park RPE 8 56 min: horizontal_push×5 horizontal_pull×4 vertical_push×2 vertical_pull×3 core×3",
+        "fri lower @park RPE 8 47 min: squat×4 hinge×4 lunge×3 core×3",
+        "sat skill @park RPE 8 50 min: vertical_pull×4 vertical_push×3 horizontal_push×5 core×3"
+      ],
+      "volume": {
+        "chest": "15 planned (15 direct) / target 16, range 12–20",
+        "back": "16 planned (16 direct) / target 16, range 12–20",
+        "shoulders": "16.5 planned (9 direct) / target 16, range 12–20",
+        "arms": "20 planned (0 direct) / target 16, range 12–20",
+        "quads": "16 planned (16 direct) / target 16, range 12–20",
+        "glutes_hamstrings": "16 planned (8 direct) / target 16, range 12–20",
+        "core": "16 planned (16 direct) / target 16, range 12–20"
+      },
+      "aerobicMinutes": 0,
+      "reasonCodes": [
+        "program.week.accumulation",
+        "program.volume.time_limited"
+      ]
+    },
+    {
+      "week": "12 deload (block 3, week 4) ×0.5",
+      "sessions": [
+        "mon skill @park RPE 6 29 min: vertical_pull×2 vertical_push×2 horizontal_push×2 core×2",
+        "tue lower @park RPE 6 26 min: squat×3 hinge×2 lunge×1 core×1",
+        "wed upper @park RPE 6 29 min: horizontal_push×3 horizontal_pull×2 vertical_push×1 vertical_pull×1 core×1",
+        "fri lower @park RPE 6 23 min: squat×2 hinge×2 lunge×1 core×1",
+        "sat skill @park RPE 6 26 min: vertical_pull×2 vertical_push×1 horizontal_push×2 core×2"
+      ],
+      "volume": {
+        "chest": "7 planned (7 direct) / target 7, range 12–20",
+        "back": "7 planned (7 direct) / target 7, range 12–20",
+        "shoulders": "7.5 planned (4 direct) / target 7, range 12–20",
+        "arms": "9 planned (0 direct) / target 7, range 12–20",
+        "quads": "7 planned (7 direct) / target 7, range 12–20",
+        "glutes_hamstrings": "7.5 planned (4 direct) / target 7, range 12–20",
+        "core": "7 planned (7 direct) / target 7, range 12–20"
+      },
+      "aerobicMinutes": 0,
+      "reasonCodes": [
+        "program.week.deload"
+      ]
+    }
+  ],
+  "firstWeek": [
+    {
+      "id": "w01.s1",
+      "date": "2026-09-28",
+      "weekday": "mon",
+      "focus": "skill",
+      "equipmentProfileId": "33333333-3333-4333-8333-333333333333",
+      "location": "park",
+      "slots": [
+        {
+          "pattern": "vertical_pull",
+          "role": "primary",
+          "intent": "skill",
+          "hardSets": 4
+        },
+        {
+          "pattern": "vertical_push",
+          "role": "primary",
+          "intent": "skill",
+          "hardSets": 3
+        },
+        {
+          "pattern": "horizontal_push",
+          "role": "secondary",
+          "intent": "skill",
+          "hardSets": 5
+        },
+        {
+          "pattern": "core",
+          "role": "secondary",
+          "intent": "skill",
+          "hardSets": 4
+        }
+      ],
+      "conditioning": null,
+      "targetRpe": 7,
+      "hardPatterns": [
+        "vertical_pull",
+        "vertical_push",
+        "horizontal_push"
+      ],
+      "heavyLower": false,
+      "priority": 2,
+      "estimatedMinutes": 53,
+      "reasonCodes": [
+        "program.session.skill",
+        "program.rpe.accumulation"
+      ]
+    },
+    {
+      "id": "w01.s2",
+      "date": "2026-09-29",
+      "weekday": "tue",
+      "focus": "lower",
+      "equipmentProfileId": "33333333-3333-4333-8333-333333333333",
+      "location": "park",
+      "slots": [
+        {
+          "pattern": "squat",
+          "role": "primary",
+          "intent": "general",
+          "hardSets": 4
+        },
+        {
+          "pattern": "hinge",
+          "role": "primary",
+          "intent": "general",
+          "hardSets": 4
+        },
+        {
+          "pattern": "lunge",
+          "role": "secondary",
+          "intent": "general",
+          "hardSets": 3
+        },
+        {
+          "pattern": "core",
+          "role": "accessory",
+          "intent": "general",
+          "hardSets": 3
+        }
+      ],
+      "conditioning": null,
+      "targetRpe": 7,
+      "hardPatterns": [
+        "squat",
+        "hinge",
+        "lunge"
+      ],
+      "heavyLower": true,
+      "priority": 2,
+      "estimatedMinutes": 47,
+      "reasonCodes": [
+        "program.session.lower",
+        "program.rpe.accumulation"
+      ]
+    },
+    {
+      "id": "w01.s3",
+      "date": "2026-09-30",
+      "weekday": "wed",
+      "focus": "upper",
+      "equipmentProfileId": "33333333-3333-4333-8333-333333333333",
+      "location": "park",
+      "slots": [
+        {
+          "pattern": "horizontal_push",
+          "role": "primary",
+          "intent": "general",
+          "hardSets": 5
+        },
+        {
+          "pattern": "horizontal_pull",
+          "role": "primary",
+          "intent": "general",
+          "hardSets": 4
+        },
+        {
+          "pattern": "vertical_push",
+          "role": "secondary",
+          "intent": "general",
+          "hardSets": 2
+        },
+        {
+          "pattern": "vertical_pull",
+          "role": "secondary",
+          "intent": "general",
+          "hardSets": 3
+        },
+        {
+          "pattern": "core",
+          "role": "accessory",
+          "intent": "general",
+          "hardSets": 2
+        }
+      ],
+      "conditioning": null,
+      "targetRpe": 7,
+      "hardPatterns": [
+        "horizontal_push",
+        "horizontal_pull",
+        "vertical_push",
+        "vertical_pull"
+      ],
+      "heavyLower": false,
+      "priority": 2,
+      "estimatedMinutes": 53,
+      "reasonCodes": [
+        "program.session.upper",
+        "program.rpe.accumulation"
+      ]
+    },
+    {
+      "id": "w01.s4",
+      "date": "2026-10-02",
+      "weekday": "fri",
+      "focus": "lower",
+      "equipmentProfileId": "33333333-3333-4333-8333-333333333333",
+      "location": "park",
+      "slots": [
+        {
+          "pattern": "squat",
+          "role": "primary",
+          "intent": "general",
+          "hardSets": 4
+        },
+        {
+          "pattern": "hinge",
+          "role": "primary",
+          "intent": "general",
+          "hardSets": 3
+        },
+        {
+          "pattern": "lunge",
+          "role": "secondary",
+          "intent": "general",
+          "hardSets": 3
+        },
+        {
+          "pattern": "core",
+          "role": "accessory",
+          "intent": "general",
+          "hardSets": 2
+        }
+      ],
+      "conditioning": null,
+      "targetRpe": 7,
+      "hardPatterns": [
+        "squat",
+        "hinge",
+        "lunge"
+      ],
+      "heavyLower": true,
+      "priority": 2,
+      "estimatedMinutes": 41,
+      "reasonCodes": [
+        "program.session.lower",
+        "program.rpe.accumulation"
+      ]
+    },
+    {
+      "id": "w01.s5",
+      "date": "2026-10-03",
+      "weekday": "sat",
+      "focus": "skill",
+      "equipmentProfileId": "33333333-3333-4333-8333-333333333333",
+      "location": "park",
+      "slots": [
+        {
+          "pattern": "vertical_pull",
+          "role": "primary",
+          "intent": "skill",
+          "hardSets": 3
+        },
+        {
+          "pattern": "vertical_push",
+          "role": "primary",
+          "intent": "skill",
+          "hardSets": 3
+        },
+        {
+          "pattern": "horizontal_push",
+          "role": "secondary",
+          "intent": "skill",
+          "hardSets": 4
+        },
+        {
+          "pattern": "core",
+          "role": "secondary",
+          "intent": "skill",
+          "hardSets": 3
+        }
+      ],
+      "conditioning": null,
+      "targetRpe": 7,
+      "hardPatterns": [
+        "vertical_pull",
+        "vertical_push",
+        "horizontal_push"
+      ],
+      "heavyLower": false,
+      "priority": 2,
+      "estimatedMinutes": 44,
+      "reasonCodes": [
+        "program.session.skill",
+        "program.rpe.accumulation"
+      ]
+    }
+  ],
+  "safetyEvents": []
+}
