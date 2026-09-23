@@ -1,0 +1,129 @@
+/**
+ * M20 legal texts, English. EVERY TEXT HERE IS A DRAFT THAT REQUIRES COUNSEL
+ * REVIEW (L5). Written by a non-lawyer drafting assistant; not legal advice;
+ * nothing here is counsel-approved. Structure and versions live in
+ * packages/legal (documents.ts, notices.ts); approval status in
+ * docs/legal/counsel-signoff-tracker.md. Bracketed items are for counsel or
+ * the founder to complete. Keys and placeholders must match legal.fr.ts.
+ */
+export const legalEn = {
+  'legal.draft.banner': 'DRAFT — requires counsel review. This text is not final and is not legal advice.',
+  'legal.action.accept': 'I accept',
+  'legal.action.acceptHint': 'Records that you accepted this version of the text',
+  'legal.action.acknowledge': 'I understand',
+  'legal.action.acknowledgeHint': 'Records that you read this notice',
+  'legal.action.readFull': 'Read the full text',
+  'legal.action.stop': 'Stop',
+  'legal.status.needsAcceptance': 'Please read and accept this text to continue.',
+  'legal.status.needsReacceptance': 'This text has changed in an important way. Please read it and accept it again to continue.',
+  'legal.status.changedMinor': 'This text was updated. The changes do not affect your rights; you can read the new version at any time.',
+  'legal.status.upcoming': 'A new version of this text applies soon. You can read and accept it now.',
+  'legal.emergency.withNumber': 'If this is an emergency, call {number} now.',
+  'legal.emergency.generic': 'If this is an emergency, call your local emergency number now.',
+  'legal.age.belowJurisdictionMinimum': 'This app is not available at your age where you live.',
+  'legal.age.guardianForPurchase': 'Ask a parent or guardian before buying a subscription.',
+
+  // Terms of Use, version 1
+  'legal.terms.v1.title': 'Terms of Use',
+  'legal.terms.v1.about': 'This app is a general wellness and fitness companion provided by [company name, to be incorporated] (“we”). It gives general exercise guidance. It is not a medical service: it does not diagnose, treat, cure or prevent any disease, and it does not replace advice from a doctor or another health professional.',
+  'legal.terms.v1.eligibility': 'You must be at least {minimumAge} years old to use the app. If you are pregnant or have recently given birth, the app does not create automatic programmes for you and points you to professional guidance instead.',
+  'legal.terms.v1.risk': 'Physical exercise carries risks, including muscle soreness, injury and, rarely, serious cardiac events. You choose whether to exercise, at what effort and for how long. Answer the health questions honestly, follow the safety notices and stop if something feels wrong.',
+  'legal.terms.v1.control': 'You stay in control: you can skip, change or stop any exercise or session at any time. The app never asks you to continue through pain.',
+  'legal.terms.v1.aiCoach': 'The AI coach is an automated assistant, not a person and not a licensed professional. It can only change your plan within the safety limits of the app.',
+  'legal.terms.v1.subscriptions': 'Paid features are governed by the Subscription Terms, which describe prices, renewal, cancellation and your withdrawal rights.',
+  'legal.terms.v1.conduct': 'When you use community or partner features, follow the Community Guidelines. Do not share content that is unlawful, harmful or that you do not have the right to share.',
+  'legal.terms.v1.liability': 'Nothing in these terms limits or excludes our liability for death or personal injury caused by our negligence, for fraud, or for any liability that cannot be limited under the law that applies to you. [Other limitation wording to be drafted by counsel for each jurisdiction.] We do not guarantee any particular result from training.',
+  'legal.terms.v1.changes': 'We tell you about important changes to these terms in advance and ask you to accept them again before they apply to you. Minor changes are shown in the app.',
+  'legal.terms.v1.law.EU_FR': 'These terms are governed by French law. If you are a consumer, you keep the protection of the mandatory rules of the country where you live, and you may use the consumer mediation service [to be named] or the courts where you live.',
+  'legal.terms.v1.law.GB': 'These terms are governed by the law of England and Wales. If you live in Scotland or Northern Ireland, you may also bring claims in your local courts. [To be confirmed by UK counsel.]',
+  'legal.terms.v1.law.US': 'These terms are governed by the law of [state to be chosen by counsel]. Nothing here takes away rights you have under the consumer protection law of your state. [Dispute resolution wording to be drafted by US counsel.]',
+  'legal.terms.v1.law.SN': 'These terms are governed by Senegalese law, including the rules on electronic transactions. [To be confirmed by Senegalese counsel.]',
+  'legal.terms.v1.law.CI': 'These terms are governed by the law of Côte d’Ivoire. [To be confirmed by Ivorian counsel.]',
+  'legal.terms.v1.law.DEFAULT': 'These terms are governed by [law to be chosen by counsel]. Mandatory consumer protection rules of the country where you live continue to apply.',
+  'legal.terms.v1.contact': 'Contact: [company name, registered address and contact email, to be completed].',
+
+  // Privacy Policy, version 1
+  'legal.privacy.v1.title': 'Privacy Policy',
+  'legal.privacy.v1.controller': 'The controller of your personal data is [company name and address, to be completed]. [Data protection officer or contact, to be named.]',
+  'legal.privacy.v1.data': 'We process: your account data (email, language, units); your training logs; health data such as screening answers and pain check-ins, only with your explicit consent; data from wearables and health apps, only with your consent; your AI coach conversations, only with your consent; and usage statistics without your name or email, only with your consent. Progress photos stay encrypted on your device unless you turn on backup.',
+  'legal.privacy.v1.purposes': 'We use your data to provide the app, keep your training safe and explain each recommendation, keep your devices in sync, and, if you agree, improve the app. [Lawful basis per purpose to be confirmed by counsel; see the records of processing.]',
+  'legal.privacy.v1.health': 'Health data is used only for your training and safety features. It is never used for advertising and never sold. Data from Apple Health or Health Connect is never used for advertising.',
+  'legal.privacy.v1.retention': 'We keep each type of data only as long as needed, following our retention schedule. Records that show which texts you accepted and which safety notices you saw are kept, without your name or email, for the period set in our retention schedule. [Periods to be confirmed by counsel.]',
+  'legal.privacy.v1.transfers': 'Your data is hosted in [region to be chosen]. If it is transferred to another country, we use a lawful transfer mechanism. [Mechanisms to be confirmed by counsel.]',
+  'legal.privacy.v1.rights': 'You can see, download, correct and delete your data in the app, and withdraw any consent at any time. Withdrawing consent switches off the features that need it; it does not affect processing done before.',
+  'legal.privacy.v1.authority.EU_FR': 'You can complain to the French data protection authority, the CNIL (cnil.fr).',
+  'legal.privacy.v1.authority.GB': 'You can complain to the Information Commissioner’s Office (ico.org.uk).',
+  'legal.privacy.v1.authority.US': 'You may have rights under the consumer health data or privacy laws of your state. [State-specific notices to be drafted by US counsel.]',
+  'legal.privacy.v1.authority.SN': 'You can complain to the Commission de Protection des Données Personnelles (CDP) of Senegal.',
+  'legal.privacy.v1.authority.CI': 'You can complain to the Autorité de Régulation des Télécommunications/TIC de Côte d’Ivoire (ARTCI).',
+  'legal.privacy.v1.authority.DEFAULT': 'You can complain to the data protection authority of the country where you live.',
+  'legal.privacy.v1.changes': 'We tell you about important changes to this policy in advance and, where the law requires, ask for your agreement again.',
+
+  // Consent texts (versions referenced by packages/privacy CONSENT_POLICIES)
+  'legal.consent.health.v1.title': 'Health data consent',
+  'legal.consent.health.v1.body': 'I agree that the app processes my health data (screening answers, pain check-ins and related safety information) to adapt my training and keep it safe. This data is never used for advertising or sold.',
+  'legal.consent.health.v1.withdraw': 'You can withdraw this consent at any time in Privacy settings. Without it, the app considers your screening not completed and only offers the most cautious training.',
+  'legal.consent.photos.v1.title': 'Progress photos consent',
+  'legal.consent.photos.v1.body': 'I agree that the app stores my progress photos, encrypted on my device, and, only if I turn it on, in an encrypted backup.',
+  'legal.consent.photos.v1.withdraw': 'You can withdraw this consent at any time. Your photos and their backup are then deleted.',
+  'legal.consent.wearables.v1.title': 'Wearables and health apps consent',
+  'legal.consent.wearables.v1.body': 'I agree that the app imports data from the devices and health apps I connect, to adapt my training. This data is never used for advertising or sold.',
+  'legal.consent.wearables.v1.withdraw': 'You can withdraw this consent at any time. Imports stop at once.',
+  'legal.consent.ai_coach.v1.title': 'AI coach consent',
+  'legal.consent.ai_coach.v1.body': 'I agree that my messages to the AI coach, and the training information it needs to answer, are processed by an automated AI system and our AI provider [to be named].',
+  'legal.consent.ai_coach.v1.withdraw': 'You can withdraw this consent at any time. The AI coach is then switched off.',
+  'legal.consent.analytics.v1.title': 'Usage statistics consent',
+  'legal.consent.analytics.v1.body': 'I agree that the app sends statistics about how it is used, without my name, email or health data, to help improve it.',
+  'legal.consent.analytics.v1.withdraw': 'You can withdraw this consent at any time. Statistics stop at once.',
+
+  // Exercise-risk acknowledgment, version 1 (one screen, before the first workout)
+  'legal.exerciseRisk.v1.title': 'Before your first workout',
+  'legal.exerciseRisk.v1.risk': 'Exercise is good for most people, but it carries risks, including soreness, injury and, rarely, serious heart problems.',
+  'legal.exerciseRisk.v1.stop': 'Stop at once and seek medical help if you feel chest pain or pressure, faintness, unusual breathlessness, a racing or irregular heartbeat, or sudden numbness or weakness.',
+  'legal.exerciseRisk.v1.clearance': 'If you have a health condition, are pregnant, or are unsure whether exercise is right for you, talk to a health professional first.',
+  'legal.exerciseRisk.v1.control': 'You decide: you can skip, change or stop any exercise at any time.',
+
+  // AI coach notice, version 1 (full text; the short notice is legal.notice.aiCoach.*)
+  'legal.aiNotice.v1.title': 'About the AI coach',
+  'legal.aiNotice.v1.disclosure': 'The AI coach is an artificial intelligence system. It is not a person, a doctor, a physiotherapist or a dietitian.',
+  'legal.aiNotice.v1.limits': 'It gives general fitness information. It does not diagnose, treat, cure or prevent any disease, and it does not give medical or nutrition therapy advice. It can make mistakes.',
+  'legal.aiNotice.v1.boundary': 'It can only change your plan through the app’s training engine, which keeps every safety limit in place.',
+  'legal.aiNotice.v1.human': 'For medical questions, talk to a health professional. To reach our team, use [support contact, to be completed].',
+
+  // Subscription and refund terms, version 1
+  'legal.subscription.v1.title': 'Subscription Terms',
+  'legal.subscription.v1.prices': 'Prices are shown before you buy, including applicable taxes.',
+  'legal.subscription.v1.renewal': 'A subscription renews automatically at the end of each period until you cancel. We remind you before a free trial ends.',
+  'legal.subscription.v1.cancel': 'You can cancel as easily as you subscribed, in the app or in your app store account. Cancellation takes effect at the end of the current period.',
+  'legal.subscription.v1.withdrawal.EU_FR': 'You have a right to withdraw within 14 days of buying. If you ask to start using paid features at once, you are asked to confirm that you lose this right once the service has been fully provided. [Wording to be confirmed by counsel.]',
+  'legal.subscription.v1.withdrawal.GB': 'You have a right to cancel within 14 days of buying. If you ask to start using paid features at once, you may be charged for what you used. [Wording to be confirmed by UK counsel.]',
+  'legal.subscription.v1.withdrawal.US': 'Renewal and cancellation follow the automatic renewal laws of your state. [Wording to be drafted by US counsel.]',
+  'legal.subscription.v1.withdrawal.SN': '[Withdrawal rights under Senegalese consumer law to be confirmed by counsel.]',
+  'legal.subscription.v1.withdrawal.CI': '[Withdrawal rights under Ivorian consumer law to be confirmed by counsel.]',
+  'legal.subscription.v1.withdrawal.DEFAULT': 'You can withdraw within 14 days of buying. [Wording to be confirmed by counsel.]',
+  'legal.subscription.v1.refunds': 'Purchases made through an app store are refunded under that store’s process. [Web checkout refunds to be described.]',
+
+  // Community guidelines, version 1
+  'legal.community.v1.title': 'Community Guidelines',
+  'legal.community.v1.respect': 'Be respectful. No harassment, hate, threats or body-shaming.',
+  'legal.community.v1.health': 'Do not give medical advice or promise results to others. Share your experience, not prescriptions.',
+  'legal.community.v1.content': 'Only share content you have the right to share. Never post photos or videos of other people without their permission.',
+  'legal.community.v1.report': 'You can report or block anyone. We review reports, may remove content or suspend accounts, and tell you what we decided and how to contest it.',
+
+  // Point-of-risk notices (L3), version 1
+  'legal.notice.firstWorkout.v1.title': 'Your first workout',
+  'legal.notice.firstWorkout.v1.body': 'Start easy. Stop if you feel pain, dizziness or chest discomfort. The stop button is always on screen.',
+  'legal.notice.firstHiit.v1.title': 'High-intensity intervals',
+  'legal.notice.firstHiit.v1.body': 'This session is hard on your heart and lungs. Warm up, keep a pace you can control, and stop at once if you feel chest pain, faintness or unusual breathlessness.',
+  'legal.notice.assessment.v1.title': 'Before this test',
+  'legal.notice.assessment.v1.body': 'This test asks for a sustained effort, never a maximal one. Stop whenever you want; a stopped test is not a failure.',
+  'legal.notice.nutritionDeficit.v1.title': 'Eating less to lose weight',
+  'legal.notice.nutritionDeficit.v1.body': 'The app keeps targets above safe floors and a slow rate of loss. This is general guidance, not a diet prescription. If you have or had an eating disorder, or a health condition, talk to a professional first.',
+  'legal.notice.aiCoach.v1.title': 'You are talking to an AI',
+  'legal.notice.aiCoach.v1.body': 'This coach is an AI system, not a person or a health professional. It gives general fitness information and can make mistakes.',
+  'legal.notice.aiCoach.label': 'AI assistant',
+  'legal.notice.camera.v1.title': 'Camera mode',
+  'legal.notice.camera.v1.body': 'The camera counts your repetitions on this phone. No video leaves your device. Place the phone where it cannot fall, and keep space around you.',
+  'legal.notice.seekCare.v1.title': 'Stop now',
+  'legal.notice.seekCare.v1.body': 'You reported a symptom that needs medical attention. The session has ended. Please contact a doctor before exercising again.',
+} as const;

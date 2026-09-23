@@ -1,3 +1,5 @@
+import { legalEn } from './legal.en.js';
+
 /**
  * English catalogue (ICU MessageFormat). Every key must also exist in fr.ts;
  * the parity test enforces identical keys and placeholders.
@@ -95,6 +97,17 @@ export const en = {
 
   'coachWeb.title': 'Coach portal',
   'coachWeb.placeholder': 'The coach portal is being built. Nothing to do here yet.',
+
+  // Store listing copy (M20: linted by `pnpm legal:claims`; store/metadata is generated from these keys).
+  // The public name is a placeholder until trademark clearance (L7); the codename never appears here.
+  'store.listing.name': 'Companion (working title)',
+  'store.listing.subtitle': 'Strength training that adapts to you',
+  'store.listing.description': 'A bilingual training companion that builds each session from your goals, your equipment and how you feel today. Every recommendation explains itself. Sessions work offline. Train alone or with a partner of a different level on the same phone. General fitness guidance only, not medical advice.',
+  'store.listing.keywords': 'workout,training,strength,fitness,offline,partner,bodyweight',
+  'store.listing.promotionalText': 'Explainable training plans that work offline, in English and French.',
+
+  // M20 legal texts: DRAFTS that require counsel review (see legal.en.ts).
+  ...legalEn,
 } as const;
 
 export type MessageKey = keyof typeof en;

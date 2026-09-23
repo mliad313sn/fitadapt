@@ -1,4 +1,5 @@
 import type { MessageKey } from './en.js';
+import { legalFr } from './legal.fr.js';
 
 /** Catalogue français (ICU MessageFormat). Mêmes clés et mêmes variables que en.ts. */
 export const fr: Record<MessageKey, string> = {
@@ -94,4 +95,14 @@ export const fr: Record<MessageKey, string> = {
 
   'coachWeb.title': 'Portail coach',
   'coachWeb.placeholder': 'Le portail coach est en construction. Rien à faire ici pour l’instant.',
+
+  // Fiche magasin (M20 : vérifiée par `pnpm legal:claims` ; store/metadata est généré depuis ces clés).
+  'store.listing.name': 'Companion (titre provisoire)',
+  'store.listing.subtitle': 'Un entraînement de force qui s’adapte à vous',
+  'store.listing.description': 'Un compagnon d’entraînement bilingue qui construit chaque séance à partir de vos objectifs, de votre matériel et de votre forme du jour. Chaque recommandation s’explique. Les séances fonctionnent hors ligne. Entraînez-vous seul ou avec un partenaire d’un autre niveau sur le même téléphone. Conseils généraux de forme physique uniquement, pas un avis médical.',
+  'store.listing.keywords': 'entraînement,musculation,force,forme,hors ligne,partenaire,poids du corps',
+  'store.listing.promotionalText': 'Des plans d’entraînement expliqués, hors ligne, en français et en anglais.',
+
+  // Textes juridiques M20 : PROJETS à faire revoir par un avocat (voir legal.fr.ts).
+  ...legalFr,
 };
