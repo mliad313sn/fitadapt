@@ -35,6 +35,31 @@ jobs:
       - run: pnpm -w build
       - run: pnpm licences:check
 
+  legal:
+    # M20: claims control (L1/L7), licence compliance with SBOM (L6), legal documents (L5).
+    name: Legal gates (claims, licences, SBOM, docs)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Claims linter (FR/EN denylists, substantiation file, codename)
+        run: pnpm legal:claims
+      - name: Licences, SBOM and asset/dataset register
+        run: pnpm legal:licences
+      - name: Legal documents (drafts marked for counsel review, trackers in sync)
+        run: pnpm legal:docs
+      - name: Keep the SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: reports/legal/sbom.cdx.json
+
   security:
     # M17 (ADR-007): each step fails the pipeline on a high or critical finding.
     name: Security scans and compliance documents
