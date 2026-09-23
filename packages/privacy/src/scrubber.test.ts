@@ -1,0 +1,221 @@
+import { describe, expect, it } from 'vitest';
+import {
+  ANALYTICS_EVENTS,
+  countBucket,
+  findPersonalData,
+  findPersonalDataInLogLines,
+  REDACTED,
+  RETENTION_UNVALIDATED,
+  backupRotationMeetsDeletionDeadline,
+  retentionConfig,
+  retentionDays,
+  scrubLogRecord,
+  scrubText,
+  validateAnalyticsEvent,
+  valueCategories,
+} from './index.js';
+
+/**
+ * Canary fixtures, one per category the M17 goal names (emails, names,
+ * weights, pain reports, free text). All fictional (L12).
+ */
+export const CANARIES = {
+  email: 'jeanne.testeur@example.test',
+  name: 'Jeanne Testeur',
+  weight: '82.5 kg',
+  pain: 'left knee pain 7/10',
+  freeText: 'I felt dizzy after the long run yesterday',
+} as const;
+
+const categoriesOf = (value: unknown) => [...new Set(findPersonalData(value).map((f) => f.category))].sort();
+
+describe('personal-data detector', () => {
+  it('flags each canary by value', () => {
+    expect(valueCategories(CANARIES.email)).toContain('email');
+    expect(valueCategories(CANARIES.name)).toEqual(['name']);
+    expect(valueCategories(CANARIES.weight)).toEqual(['weight']);
+    expect(valueCategories('176 lbs')).toEqual(['weight']);
+    expect(valueCategories('81,4 kilos')).toEqual(['weight']);
+    expect(valueCategories(CANARIES.pain)).toContain('pain');
+    expect(valueCategories('douleur au genou')).toContain('pain');
+    expect(valueCategories('6 / 10')).toEqual(['pain']);
+    expect(valueCategories(CANARIES.freeText)).toEqual(['free_text']);
+    expect(valueCategories('Bearer abcdefghijklmnop')).toContain('secret');
+    expect(valueCategories('eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NSJ9.c2lnbmF0dXJlLXZhbHVl')).toContain('secret');
+    expect(valueCategories('+221 77 123 45 67')).toEqual(['phone']);
+    expect(valueCategories('10.0.0.12')).toEqual(['ip']);
+  });
+
+  it('flags personal data by key, whatever the value', () => {
+    expect(categoriesOf({ email: 'x' })).toEqual(['email']);
+    expect(categoriesOf({ firstName: 'x', surname: 'y', displayName: 'z' })).toEqual(['name']);
+    expect(categoriesOf({ weightKg: 82.5 })).toEqual(['weight']);
+    expect(categoriesOf({ bodyMass: 70, poids: 70 })).toEqual(['weight']);
+    expect(categoriesOf({ painScore: 7 })).toEqual(['pain']);
+    expect(categoriesOf({ note: 'ok' })).toEqual(['free_text']);
+    expect(categoriesOf({ refreshToken: 'r', code: '123456' })).toEqual(['secret']);
+    expect(categoriesOf({ phone: '0' })).toEqual(['phone']);
+    expect(categoriesOf({ ip: '::1' })).toEqual(['ip']);
+  });
+
+  it('finds data deep inside objects and arrays, with a path', () => {
+    const findings = findPersonalData({ events: [{ props: { comment: 'hello' } }], nested: { a: { b: CANARIES.email } } });
+    expect(findings).toEqual([
+      { category: 'free_text', path: 'events[0].props.comment', by: 'key' },
+      { category: 'email', path: 'nested.a.b', by: 'value' },
+    ]);
+  });
+
+  it('leaves operational values alone', () => {
+    const clean = {
+      level: 30,
+      time: 1_790_000_000_000,
+      pid: 42,
+      hostname: 'api-1',
+      reqId: 'req-1',
+      req: { method: 'POST', route: '/v1/privacy/consents' },
+      res: { statusCode: 201 },
+      responseTime: 3.2,
+      at: '2026-09-23T10:00:00.000Z',
+      userRef: '0b9c4c1e-3f7e-4f59-9a43-2d1c3a1e8f10',
+      err: { type: 'TypeError', errorCode: '23505' },
+      enabled: true,
+      nothing: null,
+      redacted: REDACTED,
+      email: REDACTED,
+    };
+    expect(findPersonalData(clean)).toEqual([]);
+  });
+
+  it('treats the pino msg as a developer message but still checks it for data', () => {
+    expect(findPersonalDataInLogLines('{"level":30,"msg":"request completed"}')).toEqual([]);
+    expect(findPersonalDataInLogLines(`{"msg":"sent to ${CANARIES.email}"}`)).toEqual([{ category: 'email', path: 'line 1: msg', by: 'value' }]);
+    expect(findPersonalDataInLogLines(['not json at all', `{"data":{"msg":"${CANARIES.freeText}"}}`]).map((f) => f.category)).toEqual(['free_text']);
+  });
+
+  it('ignores circular references', () => {
+    const a: Record<string, unknown> = { ok: 1 };
+    a.self = a;
+    expect(findPersonalData(a)).toEqual([]);
+  });
+});
+
+describe('log scrubber', () => {
+  it('removes every canary category from a log record', () => {
+    const record = {
+      user: { email: CANARIES.email, firstName: 'Jeanne', displayName: CANARIES.name },
+      who: CANARIES.name,
+      measurement: { weightKg: 82.5, text: CANARIES.weight },
+      checkin: { joint: 'knee', painScore: 7 },
+      reason: CANARIES.pain,
+      said: CANARIES.freeText,
+      list: [CANARIES.email, 'ok'],
+      err: Object.assign(new Error(`duplicate key ${CANARIES.email}`), { code: '23505' }),
+      plain: new Error('x'),
+      badCode: Object.assign(new Error('x'), { code: CANARIES.email }),
+      when: new Date('2026-09-23T10:00:00.000Z'),
+      buffer: new Map([['a', 1]]),
+      route: '/v1/sync/push',
+    };
+    const scrubbed = scrubLogRecord(record);
+    expect(findPersonalData(scrubbed)).toEqual([]);
+    const out = JSON.stringify(scrubbed);
+    for (const canary of [...Object.values(CANARIES), 'Jeanne', '82.5', 'painScore":7']) expect(out).not.toContain(canary);
+    expect(scrubbed).toMatchObject({
+      err: { type: 'Error', errorCode: '23505' },
+      plain: { type: 'Error' },
+      badCode: { type: 'Error' },
+      when: '2026-09-23T10:00:00.000Z',
+      buffer: '[Map]',
+      route: '/v1/sync/push',
+      list: [REDACTED, 'ok'],
+    });
+  });
+
+  it('passes serializer-owned keys through and survives cycles and depth', () => {
+    const req = { method: 'GET' };
+    const cyclic: Record<string, unknown> = {};
+    cyclic.self = cyclic;
+    let deep: Record<string, unknown> = { leaf: 1 };
+    for (let i = 0; i < 12; i++) deep = { deep };
+    const out = scrubLogRecord({ req, cyclic, deep, email: CANARIES.email }, { passThroughKeys: ['req'] });
+    expect(out.req).toBe(req);
+    expect(out.cyclic).toEqual({ self: '[circular]' });
+    expect(out.email).toBe(REDACTED);
+    expect(JSON.stringify(out.deep)).toContain(REDACTED);
+  });
+
+  it('redacts interpolated data in developer messages', () => {
+    expect(scrubText(`code sent to ${CANARIES.email}`)).toBe(`code sent to ${REDACTED}`);
+    expect(scrubText('weighed 82.5 kg today')).toBe(`weighed ${REDACTED} today`);
+    expect(scrubText('Server listening at http://127.0.0.1:3000')).toBe(`Server listening at http://${REDACTED}:3000`);
+    expect(scrubText('Authorization: Bearer abcdefghijklmnop')).toBe(`Authorization: ${REDACTED}`);
+    expect(scrubText('call +221 77 123 45 67')).toBe(`call ${REDACTED}`);
+    expect(scrubText(`user reported ${CANARIES.pain}`)).toBe(REDACTED);
+    expect(scrubText('request completed')).toBe('request completed');
+  });
+});
+
+describe('analytics allowlist', () => {
+  it('accepts allowlisted events with enum properties', () => {
+    expect(validateAnalyticsEvent({ event: 'app_opened' })).toEqual({ ok: true, event: { event: 'app_opened', props: {} } });
+    expect(validateAnalyticsEvent({ event: 'consent_changed', props: { dataType: 'analytics', decision: 'granted' } }).ok).toBe(true);
+    expect(validateAnalyticsEvent({ event: 'sync_completed', props: { pushed: countBucket(3), pulled: countBucket(0) } }).ok).toBe(true);
+  });
+
+  it('rejects unknown events and properties', () => {
+    expect(validateAnalyticsEvent({ event: 'weight_logged', props: {} })).toEqual({ ok: false, reason: 'unknown_event' });
+    expect(validateAnalyticsEvent({ event: 'app_opened', props: { extra: 1 } })).toEqual({ ok: false, reason: 'invalid_props' });
+    expect(validateAnalyticsEvent({ event: 'screen_viewed', props: { screen: 'settings/profile' } })).toEqual({ ok: false, reason: 'invalid_props' });
+  });
+
+  it('rejects every canary category in event properties', () => {
+    const attempts: Record<string, unknown>[] = [
+      { screen: CANARIES.email },
+      { email: 'x' },
+      { name: CANARIES.name },
+      { screen: CANARIES.name },
+      { weightKg: 82.5 },
+      { screen: CANARIES.weight },
+      { painScore: 7 },
+      { screen: CANARIES.pain },
+      { note: CANARIES.freeText },
+      { screen: CANARIES.freeText },
+    ];
+    for (const props of attempts) {
+      const result = validateAnalyticsEvent({ event: 'screen_viewed', props });
+      expect({ props, ok: result.ok, reason: result.ok ? null : result.reason }).toEqual({ props, ok: false, reason: 'personal_data' });
+    }
+  });
+
+  it('no allowlisted event schema accepts a free string', () => {
+    for (const [name, schema] of Object.entries(ANALYTICS_EVENTS)) {
+      const shape = schema.shape as Record<string, { safeParse(v: unknown): { success: boolean } }>;
+      for (const [prop, propSchema] of Object.entries(shape)) {
+        expect({ name, prop, accepts: propSchema.safeParse('any free text here').success }).toEqual({ name, prop, accepts: false });
+      }
+    }
+  });
+
+  it('buckets counts', () => {
+    expect([0, 1, 2, 5, 6, 20, 21, 500].map(countBucket)).toEqual(['0', '1', '2-5', '2-5', '6-20', '6-20', '21+', '21+']);
+  });
+});
+
+describe('retention schedule config', () => {
+  it('every period carries a source and awaits validation', () => {
+    for (const value of Object.values(retentionConfig)) {
+      expect(value.source.length).toBeGreaterThan(0);
+      expect(value.validated).toBe(false);
+    }
+    expect(RETENTION_UNVALIDATED).toHaveLength(Object.keys(retentionConfig).length);
+  });
+
+  it('deletion completes within 30 days, backups included', () => {
+    expect(retentionDays('deletionCompletionMaxDays')).toBeLessThanOrEqual(30);
+    expect(backupRotationMeetsDeletionDeadline()).toBe(true);
+    expect(
+      backupRotationMeetsDeletionDeadline({ ...retentionConfig, backupRetentionDays: { ...retentionConfig.backupRetentionDays, value: 35 } }),
+    ).toBe(false);
+  });
+});
