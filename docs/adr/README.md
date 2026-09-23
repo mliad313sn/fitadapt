@@ -15,3 +15,5 @@ One ADR per significant decision (template: context, decision, alternatives, con
 | [ADR-009](ADR-009-defensibility-log.md) | Defensibility log: append-only, hash-chained, pseudonymous | M20 |
 | [ADR-010](ADR-010-claims-and-licence-controls.md) | Claims linter, substantiation file and licence controls | M20 |
 | [ADR-011](ADR-011-exercise-knowledge-graph.md) | Exercise knowledge graph, substitution and offline library | M06 |
+| [ADR-012](ADR-012-onboarding-screening-and-safety-profile.md) | Onboarding, health screening and the SafetyProfile | M01 |
+| [ADR-013](ADR-013-mobile-sign-in-and-account-sync.md) | Sign-in in the app and account sync of the device ledgers | M01 |
