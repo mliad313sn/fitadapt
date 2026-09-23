@@ -1,4 +1,5 @@
 import { assessmentEn } from './assessment.en.js';
+import { programEn } from './program.en.js';
 import { legalEn } from './legal.en.js';
 import { libraryEn } from './library.en.js';
 import { onboardingEn } from './onboarding.en.js';
@@ -124,6 +125,9 @@ export const en = {
 
   // M07 assessment, capacity model and first session (engine reason codes included).
   ...assessmentEn,
+
+  // M08 program, calendar and reflow (engine reason codes included; no-guilt copy after a missed session).
+  ...programEn,
 } as const;
 
 export type MessageKey = keyof typeof en;

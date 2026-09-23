@@ -1,5 +1,6 @@
 import type { MessageKey } from './en.js';
 import { assessmentFr } from './assessment.fr.js';
+import { programFr } from './program.fr.js';
 import { legalFr } from './legal.fr.js';
 import { libraryFr } from './library.fr.js';
 import { onboardingFr } from './onboarding.fr.js';
@@ -113,4 +114,5 @@ export const fr: Record<MessageKey, string> = {
   ...onboardingFr,
   ...screeningFr,
   ...assessmentFr,
+  ...programFr,
 };
