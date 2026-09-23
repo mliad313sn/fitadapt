@@ -1,0 +1,31 @@
+# M01 goal condition 7 (L2) on a device: the first workout is not offered
+# until Terms, Privacy, health-data consent and exercise risk are accepted.
+# Declining health-data consent keeps it locked. Not run here (no device);
+# see __tests__/onboarding.e2e.test.tsx ("L2: first workout gated…"), which
+# also covers re-acceptance after a new material version.
+appId: dev.companion.app
+---
+- clearState
+- launchApp
+- tapOn: { id: "age-gate-day" }
+- inputText: "14"
+- tapOn: { id: "age-gate-month" }
+- inputText: "3"
+- tapOn: { id: "age-gate-year" }
+- inputText: "1988"
+- tapOn: { id: "age-gate-continue" }
+- assertNotVisible: { id: "open-first-workout" }
+- tapOn: { id: "start-onboarding" }
+- tapOn: { id: "goal-primary-strength" }
+- tapOn: { id: "experience-beginner" }
+- tapOn: { id: "onboarding-next" }
+- tapOn: { id: "onboarding-next" }
+- tapOn: { id: "equipment-add-travel" }
+- scrollUntilVisible: { element: { id: "onboarding-next" } }
+- tapOn: { id: "onboarding-next" }
+- scrollUntilVisible: { element: { id: "health-consent-decline" } }
+- tapOn: { id: "health-consent-decline" }
+- tapOn: { id: "health-consent-home" }
+- assertVisible: { id: "home-screen" }
+- assertNotVisible: { id: "open-first-workout" }
+- assertNotVisible: { id: "first-workout" }

@@ -1,0 +1,20 @@
+# M01 goal condition 5 on a device: weight and body fat are skipped and the
+# first workout is still reached. Not run here (no device); see
+# __tests__/onboarding.e2e.test.tsx ("skipping measurements").
+appId: dev.companion.app
+---
+- clearState
+- launchApp
+- tapOn: { id: "age-gate-day" }
+- inputText: "14"
+- tapOn: { id: "age-gate-month" }
+- inputText: "3"
+- tapOn: { id: "age-gate-year" }
+- inputText: "1988"
+- tapOn: { id: "age-gate-continue" }
+- assertVisible:
+    id: "home-screen"
+- runFlow:
+    file: onboarding-steps.yaml
+    env:
+      SKIP_MEASUREMENTS: "true"

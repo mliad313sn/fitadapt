@@ -1,0 +1,135 @@
+# M01 onboarding steps, shared by onboarding-en.yaml, onboarding-fr.yaml and
+# onboarding-skip-measurements.yaml (Maestro subflow; selectors are testIDs,
+# so the same steps run in both languages). Not run in this environment (no
+# device); the same journey runs in jest-expo in __tests__/onboarding.e2e.test.tsx.
+# Env: SKIP_MEASUREMENTS=true|false
+appId: dev.companion.app
+---
+- tapOn:
+    id: "start-onboarding"
+# 3 — goals and experience
+- assertVisible:
+    id: "onboarding-goals"
+- tapOn:
+    id: "goal-primary-fat_loss"
+- tapOn:
+    id: "experience-none"
+- tapOn:
+    id: "onboarding-next"
+# 4 — schedule
+- assertVisible:
+    id: "onboarding-schedule"
+- tapOn:
+    id: "schedule-days-3"
+- tapOn:
+    id: "onboarding-next"
+# 5 — places and equipment (three profiles)
+- assertVisible:
+    id: "onboarding-equipment"
+- tapOn:
+    id: "equipment-add-home"
+- tapOn:
+    id: "equipment-home-pull_up_bar"
+- tapOn:
+    id: "equipment-add-gym"
+- tapOn:
+    id: "equipment-add-park"
+- scrollUntilVisible:
+    element:
+      id: "onboarding-next"
+- tapOn:
+    id: "onboarding-next"
+# 6 — health-data consent
+- assertVisible:
+    id: "onboarding-health-consent"
+- scrollUntilVisible:
+    element:
+      id: "health-consent-agree"
+- tapOn:
+    id: "health-consent-agree"
+# 7 — about you
+- assertVisible:
+    id: "onboarding-about"
+- tapOn:
+    id: "about-birth-day"
+- inputText: "14"
+- tapOn:
+    id: "about-birth-month"
+- inputText: "3"
+- tapOn:
+    id: "about-birth-year"
+- inputText: "1988"
+- runFlow:
+    when:
+      true: ${SKIP_MEASUREMENTS == 'true'}
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: "about-skip-measurements"
+      - tapOn:
+          id: "about-skip-measurements"
+- runFlow:
+    when:
+      true: ${SKIP_MEASUREMENTS != 'true'}
+    commands:
+      - tapOn:
+          id: "about-height"
+      - inputText: "178"
+      - tapOn:
+          id: "about-weight"
+      - inputText: "120"
+      - scrollUntilVisible:
+          element:
+            id: "onboarding-next"
+      - tapOn:
+          id: "onboarding-next"
+# 8 — screening (all "no")
+- assertVisible:
+    id: "onboarding-screening"
+- tapOn: { id: "screening-heart_or_blood_pressure-no" }
+- tapOn: { id: "screening-chest_discomfort-no" }
+- tapOn: { id: "screening-fainting_or_dizziness-no" }
+- scrollUntilVisible: { element: { id: "screening-unusual_breathlessness-no" } }
+- tapOn: { id: "screening-unusual_breathlessness-no" }
+- scrollUntilVisible: { element: { id: "screening-ongoing_condition-no" } }
+- tapOn: { id: "screening-ongoing_condition-no" }
+- scrollUntilVisible: { element: { id: "screening-medication_affecting_effort-no" } }
+- tapOn: { id: "screening-medication_affecting_effort-no" }
+- scrollUntilVisible: { element: { id: "screening-advised_to_limit_activity-no" } }
+- tapOn: { id: "screening-advised_to_limit_activity-no" }
+- scrollUntilVisible: { element: { id: "screening-bone_joint_back-no" } }
+- tapOn: { id: "screening-bone_joint_back-no" }
+- scrollUntilVisible: { element: { id: "screening-pregnancy_or_recent_birth-no" } }
+- tapOn: { id: "screening-pregnancy_or_recent_birth-no" }
+- scrollUntilVisible: { element: { id: "screening-advised_against_calorie_restriction-no" } }
+- tapOn: { id: "screening-advised_against_calorie_restriction-no" }
+- scrollUntilVisible:
+    element:
+      id: "onboarding-next"
+- tapOn:
+    id: "onboarding-next"
+# 9 — result
+- assertVisible:
+    id: "onboarding-result-cleared"
+- tapOn:
+    id: "onboarding-next"
+# 10 — Terms and Privacy (open the text, then accept)
+- assertVisible:
+    id: "onboarding-terms"
+- tapOn: { id: "legal-terms-read" }
+- scrollUntilVisible: { element: { id: "legal-terms-accept" } }
+- tapOn: { id: "legal-terms-accept" }
+- scrollUntilVisible: { element: { id: "legal-privacy-read" } }
+- tapOn: { id: "legal-privacy-read" }
+- scrollUntilVisible: { element: { id: "legal-privacy-accept" } }
+- tapOn: { id: "legal-privacy-accept" }
+- scrollUntilVisible: { element: { id: "onboarding-next" } }
+- tapOn: { id: "onboarding-next" }
+# 11 — exercise-risk acknowledgment
+- assertVisible:
+    id: "onboarding-exercise-risk"
+- scrollUntilVisible: { element: { id: "onboarding-next" } }
+- tapOn: { id: "onboarding-next" }
+# 12 — first workout
+- assertVisible:
+    id: "first-workout"

@@ -1,0 +1,27 @@
+# M01 goal condition 1 on a device (EN): a fresh install completes
+# onboarding and lands on the first-workout screen in 12 screens (age gate,
+# welcome, 9 steps, first workout). Not run here (no device); the same journey
+# runs in jest-expo (__tests__/onboarding.e2e.test.tsx) in FR and EN.
+# Run with: maestro test apps/mobile/e2e/onboarding-en.yaml
+appId: dev.companion.app
+---
+- clearState
+- launchApp
+# 1 — age gate (M17)
+- assertVisible:
+    id: "age-gate"
+- tapOn: { id: "age-gate-day" }
+- inputText: "14"
+- tapOn: { id: "age-gate-month" }
+- inputText: "3"
+- tapOn: { id: "age-gate-year" }
+- inputText: "1988"
+- tapOn: { id: "age-gate-continue" }
+# 2 — welcome
+- assertVisible:
+    id: "home-screen"
+- runFlow:
+    file: onboarding-steps.yaml
+    env:
+      SKIP_MEASUREMENTS: "false"
+- assertVisible: "Your session"
