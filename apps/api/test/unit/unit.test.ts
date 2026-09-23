@@ -96,6 +96,18 @@ describe('configuration', () => {
       expect(String(e)).not.toContain('short-secret-value');
     }
   });
+  it('refuses the public .env.example secrets in production, and allows them in development', () => {
+    const example = {
+      ...valid,
+      AUTH_JWT_SECRET: 'dev-only-change-me-dev-only-change-me-0000',
+      AUTH_TOKEN_PEPPER: 'dev-only-pepper-change-me-0000000000000',
+    };
+    expect(() => loadEnv({ ...example, NODE_ENV: 'production' })).toThrow(
+      'Invalid environment: AUTH_JWT_SECRET, AUTH_TOKEN_PEPPER',
+    );
+    expect(loadEnv(example).NODE_ENV).toBe('development');
+    expect(loadEnv({ ...valid, NODE_ENV: 'production' }).NODE_ENV).toBe('production');
+  });
   it('auth thresholds carry a source and are listed as unvalidated', () => {
     expect(authValue('accessTokenTtlSeconds')).toBe(900);
     expect(Object.values(authConfig).every((v) => v.source.includes('ADR-003'))).toBe(true);
