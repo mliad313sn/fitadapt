@@ -1,0 +1,48 @@
+# Record of processing activities
+
+> **Status: DRAFT — requires counsel review** (seat B1, plus local counsel for every row of the jurisdiction matrix). Prepared by engineering from what the code does today (M00 + M17 baseline). Legal qualifications (lawful basis, transfer mechanism, filings) are proposals for counsel, not conclusions. Nothing here has been reviewed by counsel.
+
+Structure follows GDPR Art. 30(1). It is kept in the repository so that it changes in the same pull request as the processing it describes.
+
+## 1. Controller
+
+| Item | Value |
+|---|---|
+| Controller | The operating company (not yet incorporated: Gate 0, decision C12). Until then there are no users and no production processing. |
+| Representative in the EU (GDPR Art. 27) | Needed if the company is established outside the EU and offers the app to people in the EU. Depends on incorporation. Not appointed. |
+| Data protection contact | To be named (PE-11 acts as engineering contact). |
+| Processors | None contracted yet. Planned: hosting (PostgreSQL, Redis, backups), transactional email (sign-in codes), crash reporting (none chosen, ADR-001). Each needs a data-processing agreement before launch. |
+
+## 2. Processing activities
+
+| # | Activity | Purpose | Data subjects | Personal data | Special category? | Recipients | Retention | Where in code |
+|---|---|---|---|---|---|---|---|---|
+| P1 | Account and sign-in | Create the account, sign in with a one-time code, keep sessions per device | Users (16+) | Email, locale, unit system, device id and platform, session and token metadata, keyed hashes of codes and tokens | No | Email provider (codes) | Account lifetime; codes, sessions: see retention schedule | `apps/api/src/auth` |
+| P2 | Training data sync | Keep workouts and settings in sync across the user's devices, offline first | Users | Set logs (exercise, reps, load), preferences; may include body weight and notes | Possibly (see DPIA §3: training data can reveal health) | Hosting provider | Account lifetime | `packages/sync`, `apps/api/src/sync` |
+| P3 | Health data (M01, M05, M12) | Screening, pain check-ins, wearable import | Users | Health screening answers, pain reports, heart rate and similar | **Yes (GDPR Art. 9)** | Hosting provider | Account lifetime, or until consent is withdrawn | Consent gate ready (`health.*`, `wearables.import`); features not built |
+| P4 | Progress photos (M04) | Show visual progress; optional backup | Users | Photos | Possibly (can reveal health or ethnic origin) | None (on device); hosting only if backup is on, end-to-end encrypted | Until the user deletes them | Consent gate ready (`photos.*`); feature not built (ADR-006) |
+| P5 | AI coach (M11) | Conversational coaching bounded by the engine (S6) | Users | Messages, training context | Possibly | AI model provider (to be chosen) | To be decided in M11 | Consent gate ready (`ai_coach.chat`); feature not built |
+| P6 | Product analytics (M18) | Understand how the app is used | Users who consent | Allowlisted events only: enums and bucketed counts, no user id, no free text | No | Analytics store (M18) | To be decided in M18 | `packages/privacy/src/analytics.ts`, `POST /v1/analytics/events` |
+| P7 | Consent and data-request records | Prove what the user agreed to and which rights requests were handled (L2, L11) | Users, former users | Consent decisions (data type, text version, locale, jurisdiction, time); pseudonymous audit entries and request records | No | None | Consent records: account lifetime; pseudonymous audit entries and requests: see retention schedule | `apps/api/src/privacy` |
+| P8 | Security and operations logs | Run and secure the service | Users | None by design: route, status, timing, error type (scrubbed, see ADR-007) | No | Log store (M19) | See retention schedule | `apps/api/src/observability` |
+
+Technical and organisational measures for all activities: see [dpia.md](dpia.md) §5 and [masvs-asvs-checklist.md](masvs-asvs-checklist.md).
+
+## 3. Jurisdiction matrix
+
+One row per market of the matrix in `docs/specs/00-legal-framework.md`. The legal framework notes that it is "a starting checklist for counsel, not a statement of the law"; this table inherits that status. **Every cell is a proposal to be confirmed by counsel.**
+
+| Jurisdiction | Lawful basis | Transfer mechanism | Authority filing status |
+|---|---|---|---|
+| EU (France) | Proposal: P1, P2 contract (GDPR Art. 6(1)(b)); P3 and any health data in P2/P4/P5 explicit consent (Art. 9(2)(a)) with Art. 6(1)(a); P6 consent (Art. 6(1)(a); device access also needs consent under the ePrivacy rules as implemented in France); P7, P8 legitimate interests (Art. 6(1)(f)) and legal obligations where they apply. To confirm (B1). | Proposal: host in the EU so that EU users' data stays in the EU. Any processor outside the EU/EEA: an adequacy decision where one exists (e.g. the EU-US Data Privacy Framework for certified US recipients) or standard contractual clauses (Commission Implementing Decision (EU) 2021/914) with a transfer impact assessment. To confirm (B1). | Not filed. GDPR has no general registration; DPIA drafted ([dpia.md](dpia.md)), not reviewed. Art. 27 representative: not appointed (depends on incorporation). Whether any CNIL formality applies to wellness apps processing health data: open question for counsel. |
+| United Kingdom | Proposal: same as the EU under UK GDPR and the Data Protection Act 2018 (Art. 6 and Art. 9 conditions as above; explicit consent for health data). To confirm (UK counsel). | Proposal: EU hosting relies on the UK's adequacy regulations for the EEA; transfers to other countries use the UK International Data Transfer Agreement or the UK Addendum to the EU clauses. To confirm (UK counsel). | Not filed. The ICO data protection fee (registration) is expected to apply to the controller before processing UK users' data; not paid. To confirm (UK counsel). |
+| United States (only if launched) | Proposal: notice and consent. Consumer-health-data laws (e.g. Washington My Health My Data Act) require consent for collecting and for sharing consumer health data, and a consumer-health-data privacy policy. Not a launch market yet. To confirm (US counsel). | Proposal: data of US users hosted in the EU; no transfer rule under US federal law for this data; state laws may restrict sharing and sale (HealthKit/Health Connect data is never sold or used for advertising, L9). To confirm (US counsel). | Not applicable until launch: no federal registration identified. Breach duties (FTC Health Breach Notification Rule) are in the breach runbook. To confirm (US counsel). |
+| Senegal | Proposal: consent of the data subject, explicit for health data, under Law No. 2008-12 (the legal framework notes that a reform has long been discussed: confirm the text in force). To confirm (Senegalese counsel). | Proposal: hosting outside Senegal is a transfer abroad; the legal framework flags prior formalities with the CDP "especially for health data and transfers abroad". Mechanism (authorisation by the CDP, or another basis) to confirm (Senegalese counsel). | Not filed. Prior formalities with the Commission de Protection des Données Personnelles (CDP) are planned before beta (Gate 0, "Data-protection filings"). Which formality (declaration or authorisation) applies: to confirm. |
+| Other WAEMU/ECOWAS (e.g. Côte d'Ivoire) | Proposal: consent, explicit for health data, under the national law (e.g. Côte d'Ivoire Law No. 2013-450, supervised by ARTCI). Not a launch market yet. To confirm (local counsel). | Proposal: transfer abroad subject to the national law's conditions and any authority authorisation. To confirm (local counsel). | Not filed; only if launched. Prior formalities with ARTCI (Côte d'Ivoire) or the national authority: to confirm (local counsel). |
+| App stores (all markets) | Not a jurisdiction: Apple and Google policies apply on top of the law. Health-platform data (HealthKit, Health Connect) is used only for the user's own features, never for advertising, never sold (L9). | Not applicable (no transfer to the stores beyond what their SDKs do; no store SDK is integrated yet). | No authority filing. Store disclosures to complete before submission (M19): Apple privacy "nutrition" labels and Google Play Data safety form; in-app account deletion is built (M17: `POST /v1/privacy/deletion` and the privacy screen) and becomes usable in the app once sign-in exists (M01). |
+
+## 4. Changes
+
+| Date | Change | By |
+|---|---|---|
+| 2026-09-23 | First draft for the M17 baseline | M17 engineer (PE-11 role) |

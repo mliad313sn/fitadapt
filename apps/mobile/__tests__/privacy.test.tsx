@@ -292,9 +292,11 @@ describe('transport security (MASVS-NETWORK)', () => {
     expect(createDeviceSyncClient({ openDatabase, randomUUID, apiUrl: 'https://api.example.test', isDevelopment: false }).deviceId).toBeTruthy();
   });
 
-  it('the app config does not allow cleartext traffic', () => {
+  it('the app config does not allow cleartext traffic or OS backups of app data', () => {
     const config = jest.requireActual('../app.json') as { expo: Record<string, Record<string, unknown> | undefined> };
     expect(config.expo.android?.usesCleartextTraffic).not.toBe(true);
+    // The local database never goes into Android device or cloud backups.
+    expect(config.expo.android?.allowBackup).toBe(false);
     const ats = (config.expo.ios?.infoPlist as Record<string, { NSAllowsArbitraryLoads?: boolean }> | undefined)?.NSAppTransportSecurity;
     expect(ats?.NSAllowsArbitraryLoads).not.toBe(true);
   });
