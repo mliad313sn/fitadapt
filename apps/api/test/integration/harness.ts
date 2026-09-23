@@ -39,6 +39,7 @@ export interface HarnessOptions {
   analyticsSink?: MemoryAnalyticsSink;
   consentPolicies?: AppDeps['consentPolicies'];
   withdrawalHandlers?: AppDeps['withdrawalHandlers'];
+  legalRegistry?: AppDeps['legalRegistry'];
 }
 
 export async function createHarness(options: HarnessOptions = {}): Promise<Harness> {
@@ -98,7 +99,7 @@ async function clearRedis(redis: Redis, prefix: string) {
 export async function truncateAll(h: Harness) {
   await clearRedis(h.redis, h.redisPrefix);
   await h.database.db.execute(
-    sql`TRUNCATE users, devices, otp_codes, auth_sessions, refresh_tokens, sync_heads, sync_changes, sync_mutations, consent_records, data_requests, audit_entries CASCADE`,
+    sql`TRUNCATE users, devices, otp_codes, auth_sessions, refresh_tokens, sync_heads, sync_changes, sync_mutations, consent_records, data_requests, audit_entries, legal_acceptances, notice_impressions, defensibility_events CASCADE`,
   );
 }
 

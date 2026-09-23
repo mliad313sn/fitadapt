@@ -34,6 +34,8 @@ import {
   consentRecords,
   dataRequests,
   devices,
+  legalAcceptances,
+  noticeImpressions,
   otpCodes,
   refreshTokens,
   syncChanges,
@@ -72,6 +74,13 @@ export interface PrivacyServiceDeps {
   now: () => Date;
   policies?: ConsentPolicySet;
   withdrawalHandlers?: Partial<Record<ConsentDataType, ConsentWithdrawalHandler[]>>;
+  /** M20: records the decision in the defensibility log, in the same transaction (L11). */
+  onConsentRecorded?: (
+    tx: Tx,
+    userId: string,
+    record: { dataType: ConsentDataType; decision: ConsentRecord['decision']; version: number; locale: ConsentRecord['locale']; jurisdiction: string },
+    at: Date,
+  ) => Promise<void>;
 }
 
 export interface RetentionRunResult {
@@ -168,6 +177,7 @@ export class PrivacyService {
     await this.deps.db.transaction(async (tx) => {
       await tx.insert(consentRecords).values({ id: randomUUID(), userId, ...update, recordedAt: now });
       await this.audit(tx, userId, update.decision === 'granted' ? 'consent.granted' : 'consent.withdrawn', now, update.dataType, update.version);
+      await this.deps.onConsentRecorded?.(tx, userId, { dataType: update.dataType, decision: update.decision, version: update.version, locale: update.locale, jurisdiction: update.jurisdiction }, now);
       if (update.decision === 'withdrawn') {
         for (const handler of this.deps.withdrawalHandlers?.[update.dataType] ?? []) await handler(tx, userId, update.dataType);
       }
@@ -214,6 +224,8 @@ export class PrivacyService {
       const mutationRows = await tx.select().from(syncMutations).where(eq(syncMutations.userId, userId)).orderBy(asc(syncMutations.createdAt));
       const requestRows = await tx.select().from(dataRequests).where(eq(dataRequests.subjectRef, subjectRef)).orderBy(asc(dataRequests.requestedAt));
       const auditRows = await tx.select().from(auditEntries).where(eq(auditEntries.subjectRef, subjectRef)).orderBy(asc(auditEntries.occurredAt));
+      const acceptanceRows = await tx.select().from(legalAcceptances).where(eq(legalAcceptances.userId, userId)).orderBy(asc(legalAcceptances.acceptedAt), asc(legalAcceptances.seq));
+      const noticeRows = await tx.select().from(noticeImpressions).where(eq(noticeImpressions.userId, userId)).orderBy(asc(noticeImpressions.occurredAt), asc(noticeImpressions.seq));
 
       return {
         format: DATA_EXPORT_FORMAT,
@@ -244,6 +256,10 @@ export class PrivacyService {
         },
         dataRequests: requestRows.map(toDataRequest),
         auditTrail: auditRows.map((a) => ({ id: a.id, action: a.action, dataType: a.dataType, version: a.version, occurredAt: iso(a.occurredAt) })),
+        legal: {
+          acceptances: acceptanceRows.map((a) => ({ id: a.id, documentId: a.documentId, version: a.version, locale: a.locale, jurisdiction: a.jurisdiction, source: a.source, contentHash: a.contentHash, acceptedAt: iso(a.acceptedAt) })),
+          notices: noticeRows.map((n) => ({ id: n.id, noticeId: n.noticeId, version: n.version, kind: n.kind, locale: n.locale, jurisdiction: n.jurisdiction, contentHash: n.contentHash, occurredAt: iso(n.occurredAt) })),
+        },
       };
     });
   }

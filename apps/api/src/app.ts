@@ -1,4 +1,5 @@
 import swagger from '@fastify/swagger';
+import type { LegalRegistry, NoticeDefinition } from '@fitadapt/legal';
 import type { ConsentPolicySet } from '@fitadapt/privacy';
 import { SyncServer } from '@fitadapt/sync';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
@@ -26,6 +27,8 @@ import { NoBackupsCatalog, type BackupCatalog } from './privacy/backup-catalog.j
 import { PrivacyService, type PrivacyServiceDeps } from './privacy/service.js';
 import { analyticsRoutes } from './routes/analytics.js';
 import { authRoutes } from './routes/auth.js';
+import { LegalService } from './legal/service.js';
+import { legalRoutes } from './routes/legal.js';
 import { privacyRoutes } from './routes/privacy.js';
 import { syncRoutes } from './routes/sync.js';
 import { PgServerStore } from './sync/pg-store.js';
@@ -48,10 +51,14 @@ export interface AppDeps {
   analyticsSink?: AnalyticsSink;
   consentPolicies?: ConsentPolicySet;
   withdrawalHandlers?: PrivacyServiceDeps['withdrawalHandlers'];
+  /** Legal document registry and notices (tests inject versions with material changes). */
+  legalRegistry?: LegalRegistry;
+  notices?: readonly NoticeDefinition[];
 }
 
 export interface AppServices {
   privacy: PrivacyService;
+  legal: LegalService;
 }
 
 declare module 'fastify' {
@@ -113,6 +120,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     now,
   });
   const sync = new SyncServer({ store: new PgServerStore(deps.db) });
+  const legal = new LegalService({ db: deps.db, pepper: deps.pepper, now, registry: deps.legalRegistry, notices: deps.notices, consentPolicies: deps.consentPolicies });
   const privacy = new PrivacyService({
     db: deps.db,
     rateLimiter,
@@ -121,14 +129,17 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     now,
     policies: deps.consentPolicies,
     withdrawalHandlers: deps.withdrawalHandlers,
+    // L2/L11: every consent decision also goes to the defensibility log, in the same transaction.
+    onConsentRecorded: (tx, userId, record, at) => legal.logConsent(tx, userId, record, at),
   });
-  app.decorate('services', { privacy });
+  app.decorate('services', { privacy, legal });
 
   app.get('/health', { schema: { hide: true } }, async () => ({ status: 'ok' }));
   app.get('/docs/openapi.json', { schema: { hide: true } }, async () => app.swagger());
   await app.register(authRoutes(auth));
   await app.register(syncRoutes(auth, sync));
   await app.register(privacyRoutes(auth, privacy));
+  await app.register(legalRoutes(auth, legal));
   await app.register(analyticsRoutes(auth, privacy, deps.analyticsSink ?? new NoopAnalyticsSink()));
   return app;
 }

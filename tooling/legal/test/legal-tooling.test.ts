@@ -75,6 +75,21 @@ describe('pnpm legal:claims (L1, L7)', () => {
     ]);
   });
 
+  it('lints marketing copy with both languages, skips binary files and works without an app.json', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'claims-any-'));
+    mkdirSync(join(tmp, 'docs/legal'), { recursive: true });
+    writeFileSync(join(tmp, SUBSTANTIATION_FILE), substantiation);
+    mkdirSync(join(tmp, 'marketing'), { recursive: true });
+    writeFileSync(join(tmp, 'marketing/landing.md'), 'Maigrir vite and melt away fat.');
+    writeFileSync(join(tmp, 'marketing/hero.png'), 'Burn fat fast');
+    mkdirSync(join(tmp, 'store/assets'), { recursive: true });
+    writeFileSync(join(tmp, 'store/assets/icon.png'), 'png');
+    const r = runClaimsLint(tmp, { catalogues: { en: {}, fr: {} } });
+    expect(r.findings.map((f) => f.ruleId).sort()).toEqual(['en.melt_fat', 'fr.maigrir_vite']);
+    expect(r.codename).toEqual([]);
+    expect(r.filesScanned).toBe(2);
+  });
+
   it('guesses the locale from the path', () => {
     expect(localeOf('store/metadata/fr-FR/name.txt')).toBe('fr');
     expect(localeOf('prompts/system.en.md')).toBe('en');
@@ -224,6 +239,24 @@ describe('pnpm legal:docs (goal condition 6)', () => {
       'trademark-register.md: the codename must be recorded as a codename, not cleared',
       ...['Escalation', 'Legal hold', 'Regulator notification', 'Insurer notification', 'Complaint'].map((s) => `incident-procedure.md: no section for "${s}"`),
     ]);
+  });
+
+  it('flags an unknown tracker status, a draft link to a missing file and a missing codename row', () => {
+    const docs = realLegalDocs();
+    const t = `${LEGAL_DIR}/counsel-signoff-tracker.md`;
+    const l = `${LEGAL_DIR}/document-list.md`;
+    const problems = checkLegalDocs({
+      ...docs,
+      [t]: docs[t]!.replace('| `privacy` | 1 | GB | pending |', '| `privacy` | 1 | GB | reviewed |'),
+      [l]: docs[l]!.replace('[drafts/coach-agreement.md](drafts/coach-agreement.md)', '[drafts/missing.md](drafts/missing.md)'),
+      [`${LEGAL_DIR}/trademark-register.md`]: 'requires counsel review\n| Mark | Role | Classes | Markets | Status |\n|---|---|---|---|---|\n| Other | brand | 9 | EU | open |',
+    });
+    expect(problems).toContain('counsel-signoff-tracker.md: out of date with packages/legal approvals (run pnpm legal:docs --write)');
+    expect(problems).toContain('counsel-signoff-tracker.md: `privacy` GB has unknown status "reviewed"'.replace(/`/g, ''));
+    expect(problems).toContain('document-list.md: "Coach Agreement + data-processing terms" links a missing draft drafts/missing.md');
+    expect(problems).toContain('trademark-register.md: the codename row is missing');
+    expect(checkLegalDocs({ ...docs, [`${LEGAL_DIR}/founder-checklist.md`]: 'requires counsel review' })).toContain('founder-checklist.md: no table with Item, Action, Status');
+    expect(checkLegalDocs({ ...docs, [t]: 'requires counsel review' })).toContain('counsel-signoff-tracker.md: generated block markers missing');
   });
 
   it('regenerates blocks and parses tables', () => {

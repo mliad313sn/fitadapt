@@ -7,6 +7,7 @@ import { keyedHash } from '../../src/auth/crypto.js';
 import { MemoryAnalyticsSink } from '../../src/privacy/analytics-sink.js';
 import { MemoryBackupCatalog } from '../../src/privacy/backup-catalog.js';
 import { DATA_INVENTORY } from '../../src/privacy/inventory.js';
+import { notice, renderNotice } from '@fitadapt/legal';
 import { PEPPER, bearer, createHarness, device, requestCode, signIn, truncateAll, uniqueEmail, type Harness } from './harness.js';
 
 /** Fictional personal data (L12) used to prove that nothing reaches logs or analytics. */
@@ -98,6 +99,12 @@ async function populatedUser() {
   expect((await consent(token, 'health', 'granted')).statusCode).toBe(201);
   expect((await consent(token, 'analytics', 'granted')).statusCode).toBe(201);
   expect((await consent(token, 'analytics', 'withdrawn')).statusCode).toBe(201);
+  // M20: an accepted legal text and a point-of-risk notice.
+  const terms = (await h.app.inject({ method: 'GET', url: '/v1/legal/documents/terms?locale=fr&jurisdiction=FR' })).json() as { version: number; contentHash: string };
+  const accepted = await h.app.inject({ method: 'POST', url: '/v1/legal/acceptances', headers: bearer(token), payload: { documentId: 'terms', version: terms.version, locale: 'fr', jurisdiction: 'FR', source: 'mobile', contentHash: terms.contentHash } });
+  expect(accepted.statusCode).toBe(201);
+  const shown = await h.app.inject({ method: 'POST', url: '/v1/legal/notices', headers: bearer(token), payload: { noticeId: 'first_workout', version: 1, kind: 'shown', locale: 'fr', jurisdiction: 'FR', contentHash: renderNotice(notice('first_workout'), 'fr', 'FR').contentHash } });
+  expect(shown.statusCode).toBe(204);
   // An outstanding sign-in code (keyed by the email hash, not by user id).
   expect((await requestCode(h, email)).statusCode).toBe(202);
   return { email, token, userId: first.user.id, first, second };

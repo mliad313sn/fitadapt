@@ -25,7 +25,7 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/**/*.ts'],
       // Process entry points (listen / CLI) are exercised by `pnpm dev` and `db:migrate`, not by tests.
-      exclude: ['src/server.ts', 'src/db/migrate-cli.ts'],
+      exclude: ['src/server.ts', 'src/db/migrate-cli.ts', 'src/legal/export-cli.ts', 'src/legal/demo-seed-cli.ts'],
       reporter: ['text-summary', 'lcov'],
       reportsDirectory: 'coverage/integration',
       thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },

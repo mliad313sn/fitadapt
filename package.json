@@ -23,7 +23,9 @@
     "legal:licences": "node tooling/legal/scripts/licences.mjs",
     "legal:docs": "pnpm -s legal:build && node tooling/legal/scripts/docs.mjs",
     "legal:store": "pnpm -s legal:build && node tooling/legal/scripts/store.mjs",
-    "legal:check": "pnpm legal:claims && pnpm legal:licences && pnpm legal:docs"
+    "legal:check": "pnpm legal:claims && pnpm legal:licences && pnpm legal:docs",
+    "legal:export": "pnpm --filter @fitadapt/api run -s build:deps && pnpm --filter @fitadapt/api run -s legal:export",
+    "legal:demo-seed": "pnpm --filter @fitadapt/api run -s build:deps && pnpm --filter @fitadapt/api run -s legal:demo-seed"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

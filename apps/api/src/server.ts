@@ -1,4 +1,5 @@
 import { Redis } from 'ioredis';
+import { assertLegalReleaseReady } from '@fitadapt/legal';
 import { buildApp } from './app.js';
 import { MemoryMailer } from './auth/mailer.js';
 import { loadEnv } from './config/env.js';
@@ -9,6 +10,8 @@ import { initErrorReporting } from './observability/sentry.js';
 const env = loadEnv();
 const reporter = await initErrorReporting(env.SENTRY_DSN, env.NODE_ENV);
 if (env.NODE_ENV === 'production') {
+  // M20: production refuses legal texts that lack counsel approval (every text is a draft today).
+  assertLegalReleaseReady('production');
   // No production mail provider is chosen yet (see docs/status/M00.md). Refuse to start
   // rather than silently dropping sign-in codes.
   throw new Error('No mail provider configured for production');
@@ -38,6 +41,8 @@ const retention = setInterval(() => {
       }
     })
     .catch((error: unknown) => app.log.error({ err: error }, 'retention job failed'));
+  // M20: expired defensibility chains (not under legal hold) are purged per legalConfig.defensibilityRetentionDays.
+  app.services.legal.log.purgeExpired(new Date()).catch((error: unknown) => app.log.error({ err: error }, 'defensibility retention failed'));
 }, privacyValue('retentionJobIntervalSeconds') * 1000);
 retention.unref();
 

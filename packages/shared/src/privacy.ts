@@ -145,5 +145,16 @@ export const DataExportSchema = z.object({
   }),
   dataRequests: z.array(DataRequestSchema),
   auditTrail: z.array(AuditEntrySchema),
+  /** M20: acceptances of legal texts and point-of-risk notices shown (L2, L3). */
+  legal: z.object({
+    acceptances: z.array(
+      z.object({ id: UuidSchema, documentId: z.string(), version: z.number().int().positive(), locale: LocaleSchema, jurisdiction: z.string(), source: z.enum(['mobile', 'web', 'api']), contentHash: z.string(), acceptedAt: IsoDateTimeSchema }),
+    ),
+    notices: z.array(
+      z.object({ id: UuidSchema, noticeId: z.string(), version: z.number().int().positive(), kind: z.enum(['shown', 'acknowledged']), locale: LocaleSchema, jurisdiction: z.string(), contentHash: z.string(), occurredAt: IsoDateTimeSchema }),
+    ),
+  })
+    // Exports produced before M20 have no legal section.
+    .default({ acceptances: [], notices: [] }),
 });
 export type DataExport = z.infer<typeof DataExportSchema>;

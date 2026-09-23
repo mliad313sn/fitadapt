@@ -38,6 +38,12 @@ importers:
       '@fastify/swagger':
         specifier: 9.9.0
         version: 9.9.0
+      '@fitadapt/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
+      '@fitadapt/legal':
+        specifier: workspace:*
+        version: link:../../packages/legal
       '@fitadapt/privacy':
         specifier: workspace:*
         version: link:../../packages/privacy
@@ -130,6 +136,9 @@ importers:
       '@fitadapt/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@fitadapt/legal':
+        specifier: workspace:*
+        version: link:../../packages/legal
       '@fitadapt/privacy':
         specifier: workspace:*
         version: link:../../packages/privacy

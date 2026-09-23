@@ -14,10 +14,15 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "vitest run --coverage",
-    "test:integration": "turbo run build --filter=@fitadapt/api^... --output-logs=errors-only && vitest run --config vitest.integration.config.ts --coverage"
+    "test:integration": "turbo run build --filter=@fitadapt/api^... --output-logs=errors-only && vitest run --config vitest.integration.config.ts --coverage",
+    "legal:export": "tsx src/legal/export-cli.ts",
+    "legal:demo-seed": "tsx src/legal/demo-seed-cli.ts",
+    "build:deps": "turbo run build --filter=@fitadapt/api^... --output-logs=errors-only"
   },
   "dependencies": {
     "@fastify/swagger": "9.9.0",
+    "@fitadapt/engine": "workspace:*",
+    "@fitadapt/legal": "workspace:*",
     "@fitadapt/privacy": "workspace:*",
     "@fitadapt/shared": "workspace:*",
     "@fitadapt/sync": "workspace:*",

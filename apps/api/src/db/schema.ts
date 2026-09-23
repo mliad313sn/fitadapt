@@ -1,4 +1,4 @@
-import { bigint, bigserial, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { bigint, bigserial, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
 
@@ -172,4 +172,72 @@ export const auditEntries = pgTable(
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
   },
   (t) => [index('audit_entries_subject_idx').on(t.subjectRef, t.occurredAt)],
+);
+
+/**
+ * L2 acceptances of legal documents (M20, ADR-008). Append-only (UPDATE
+ * rejected by trigger); rows leave with the user. A pseudonymous copy of
+ * each acceptance is kept in `defensibility_events`.
+ */
+export const legalAcceptances = pgTable(
+  'legal_acceptances',
+  {
+    id: uuid('id').primaryKey(),
+    seq: bigserial('seq', { mode: 'number' }).notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    documentId: text('document_id').notNull(),
+    version: integer('version').notNull(),
+    locale: text('locale', { enum: ['fr', 'en'] }).notNull(),
+    jurisdiction: text('jurisdiction').notNull(),
+    source: text('source', { enum: ['mobile', 'web', 'api'] }).notNull(),
+    contentHash: text('content_hash').notNull(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('legal_acceptances_user_idx').on(t.userId, t.documentId, t.acceptedAt)],
+);
+
+/** L3 point-of-risk notices shown and acknowledged (M20). Append-only. */
+export const noticeImpressions = pgTable(
+  'notice_impressions',
+  {
+    id: uuid('id').primaryKey(),
+    seq: bigserial('seq', { mode: 'number' }).notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    noticeId: text('notice_id').notNull(),
+    version: integer('version').notNull(),
+    kind: text('kind', { enum: ['shown', 'acknowledged'] }).notNull(),
+    locale: text('locale', { enum: ['fr', 'en'] }).notNull(),
+    jurisdiction: text('jurisdiction').notNull(),
+    contentHash: text('content_hash').notNull(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('notice_impressions_user_idx').on(t.userId, t.noticeId)],
+);
+
+/**
+ * Defensibility log (L11, ADR-009): one hash chain per pseudonymous subject
+ * plus a 'global' chain. UPDATE and DELETE are rejected by trigger; only the
+ * retention purge may delete whole expired chains. No foreign key to users:
+ * the file survives account deletion. `occurred_at` is the exact ISO string
+ * that was hashed.
+ */
+export const defensibilityEvents = pgTable(
+  'defensibility_events',
+  {
+    seq: bigserial('seq', { mode: 'number' }).primaryKey(),
+    id: uuid('id').notNull().unique(),
+    chain: text('chain').notNull(),
+    chainSeq: integer('chain_seq').notNull(),
+    type: text('type').notNull(),
+    occurredAt: text('occurred_at').notNull(),
+    payload: jsonb('payload').notNull(),
+    prevHash: text('prev_hash').notNull(),
+    hash: text('hash').notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('defensibility_events_chain_idx').on(t.chain, t.chainSeq), index('defensibility_events_type_idx').on(t.type)],
 );
