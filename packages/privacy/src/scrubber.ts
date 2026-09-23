@@ -38,17 +38,65 @@ const KEY_RULES: ReadonlyArray<readonly [RegExp, PersonalDataCategory]> = [
   [/^ip$|ip[-_]?addr|remote[-_]?addr|^ips$/i, 'ip'],
 ];
 
-const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)*\.[A-Z]{2,}/gi;
+// Every pattern below runs on untrusted input (log values, analytics props), so
+// each has a star height of 1 (no nested quantifiers) to rule out catastrophic
+// backtracking (ReDoS). Names and sentences are recognised by tokenising instead.
+// Emails are found from each "@" outwards within the RFC 5321 length limits
+// (local part ≤ 64, domain ≤ 255 characters), which keeps the scan linear.
+const LOCAL_PART_MAX = 64;
+const DOMAIN_MAX = 255;
+const LOCAL_CHAR = /[A-Z0-9._%+-]/i;
+const DOMAIN_AT_START = /^[A-Z0-9-][A-Z0-9.-]{0,252}\.[A-Z]{2,24}/i;
 const JWT = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g;
 const BEARER = /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi;
-const WEIGHT = /\b\d{1,3}(?:[.,]\d+)?\s?(?:kg|kgs|kilo(?:gram(?:me)?)?s?|lbs?|pounds?|livres?)\b/gi;
-const PHONE = /\+\d{1,3}[\s.-]?\d{1,4}(?:[\s.-]?\d{2,4}){2,4}\b/g;
-const IPV4 = /\b(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}\b/g;
-const PAIN = /\b(?:pain|painful|hurts?|hurting|ache|aching|sore|douleurs?|douloureu(?:x|se)|mal\s+(?:au|aux|à la|a la|à l'|au niveau))\b|\b(?:10|\d)\s?\/\s?10\b/i;
+const WEIGHT = /\b\d{1,3}[.,]?\d{0,3}\s?(?:kgs?|kilos?|kilogrammes?|kilograms?|lbs?|pounds?|livres?)\b/gi;
+const PHONE = /\+\d[\d\s.-]{7,18}\d\b/g;
+const IPV4 = /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g;
+const PAIN = /\b(?:pain|painful|hurts?|hurting|ache|aching|sore|douleurs?|douloureux|douloureuse|mal au|mal aux|mal à la|mal a la|mal à l'|mal au niveau)\b|\b(?:10|\d)\s?\/\s?10\b/i;
+const NAME_WORD = /^\p{Lu}[\p{Ll}'’-]+$/u;
+const WORD = /^\p{L}{2,}$/u;
+const SEPARATORS = /[\s,;:!?.'’]+/u;
+
+/** [start, end) ranges of email addresses in `value`. */
+function emailRanges(value: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = [];
+  let at = value.indexOf('@');
+  while (at !== -1) {
+    let start = at;
+    while (start > 0 && at - start < LOCAL_PART_MAX && LOCAL_CHAR.test(value.charAt(start - 1))) start -= 1;
+    const domain = DOMAIN_AT_START.exec(value.slice(at + 1, at + 1 + DOMAIN_MAX));
+    if (start < at && domain) ranges.push([start, at + 1 + domain[0].length]);
+    at = value.indexOf('@', at + 1);
+  }
+  return ranges;
+}
+
+function replaceRanges(value: string, ranges: Array<[number, number]>, replacement: string): string {
+  let out = '';
+  let cursor = 0;
+  for (const [start, end] of ranges) {
+    if (start < cursor) continue;
+    out += value.slice(cursor, start) + replacement;
+    cursor = end;
+  }
+  return out + value.slice(cursor);
+}
+
 /** Two or more capitalised words and nothing else, e.g. "Jeanne Testeur". */
-const FULL_NAME = /^\p{Lu}[\p{Ll}'’-]+(?:\s+\p{Lu}[\p{Ll}'’-]+)+$/u;
-/** Three or more words: a sentence someone typed rather than a code or an identifier. */
-const FREE_TEXT = /(?:\p{L}{2,}[\s,;:!?.'’]+){2,}\p{L}{2,}/u;
+function isFullName(value: string): boolean {
+  const parts = value.trim().split(/\s+/);
+  return parts.length >= 2 && parts.every((p) => NAME_WORD.test(p));
+}
+
+/** Three or more consecutive words: a sentence someone typed rather than a code or an identifier. */
+function isFreeText(value: string): boolean {
+  let run = 0;
+  for (const token of value.split(SEPARATORS)) {
+    run = WORD.test(token) ? run + 1 : 0;
+    if (run >= 3) return true;
+  }
+  return false;
+}
 
 function keyCategory(key: string): PersonalDataCategory | undefined {
   for (const [pattern, category] of KEY_RULES) if (pattern.test(key)) return category;
@@ -63,15 +111,15 @@ const reset = (re: RegExp) => {
 /** Categories a single string value matches (value patterns only). */
 export function valueCategories(value: string, options: { allowSentences?: boolean } = {}): PersonalDataCategory[] {
   const found = new Set<PersonalDataCategory>();
-  if (reset(EMAIL).test(value)) found.add('email');
+  if (emailRanges(value).length > 0) found.add('email');
   if (reset(JWT).test(value) || reset(BEARER).test(value)) found.add('secret');
   if (reset(WEIGHT).test(value)) found.add('weight');
   if (reset(PHONE).test(value)) found.add('phone');
   if (reset(IPV4).test(value)) found.add('ip');
   if (PAIN.test(value)) found.add('pain');
   if (!options.allowSentences) {
-    if (FULL_NAME.test(value.trim())) found.add('name');
-    else if (FREE_TEXT.test(value)) found.add('free_text');
+    if (isFullName(value)) found.add('name');
+    else if (isFreeText(value)) found.add('free_text');
   }
   return [...found];
 }
@@ -82,8 +130,7 @@ export function valueCategories(value: string, options: { allowSentences?: boole
  * constant text written by developers, but interpolated values are redacted.
  */
 export function scrubText(text: string): string {
-  let out = text
-    .replace(reset(EMAIL), `${REDACTED}`)
+  let out = replaceRanges(text, emailRanges(text), REDACTED)
     .replace(reset(JWT), REDACTED)
     .replace(reset(BEARER), REDACTED)
     .replace(reset(WEIGHT), REDACTED)
