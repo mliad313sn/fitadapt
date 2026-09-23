@@ -8,6 +8,7 @@ import { useMemo } from 'react';
 import { AppProviders } from '../src/AppProviders';
 import { createAgeGateStore } from '../src/privacy/age-gate';
 import { createConsentStore } from '../src/privacy/consents';
+import { LibraryStore } from '../src/library/library-store';
 import { useAgeGate } from '../src/privacy/PrivacyProvider';
 import { SqliteKeyValueStore, wipeLocalDatabase } from '../src/storage/app-state';
 import { createDeviceSyncClient } from '../src/sync/device';
@@ -24,6 +25,7 @@ function GatedStack() {
       <Stack.Protected guard={passed}>
         <Stack.Screen name="index" />
         <Stack.Screen name="privacy" />
+        <Stack.Screen name="library" />
       </Stack.Protected>
       <Stack.Protected guard={!passed}>
         <Stack.Screen name="age-gate" />
@@ -37,7 +39,11 @@ export default function RootLayout() {
     const db = openExpoDatabase();
     const kv = new SqliteKeyValueStore(db);
     const locales = getLocales();
+    // M06: the exercise library lives in the on-device database (offline); installed or refreshed at start.
+    const library = new LibraryStore(db);
+    library.install();
     return {
+      library,
       syncClient: createDeviceSyncClient({ openDatabase: () => db, randomUUID, apiUrl: process.env.EXPO_PUBLIC_API_URL }),
       initialLocale: resolveLocale(locales.map((l) => l.languageTag)),
       privacy: {
@@ -49,7 +55,7 @@ export default function RootLayout() {
     };
   }, []);
   return (
-    <AppProviders syncClient={app.syncClient} initialLocale={app.initialLocale} privacy={app.privacy}>
+    <AppProviders syncClient={app.syncClient} initialLocale={app.initialLocale} privacy={app.privacy} library={app.library}>
       <StatusBar style="auto" />
       <GatedStack />
     </AppProviders>

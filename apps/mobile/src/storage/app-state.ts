@@ -56,5 +56,9 @@ export function wipeLocalDatabase(db: SyncSqliteDatabase): void {
   db.transaction((tx) => {
     for (const table of ['sync_records', 'sync_outbox', 'sync_state']) tx.run(sql.raw(`DELETE FROM ${table}`));
     tx.run(sql`DELETE FROM app_kv WHERE key NOT IN (${sql.join(DEVICE_KEYS.map((k) => sql`${k}`), sql`, `)})`);
+    // M06: favourites and custom exercises are user data; the bundled exercise library is not.
+    for (const table of ['library_favourite', 'library_custom_exercise']) {
+      if (tx.get<{ name?: string }>(sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ${table}`)?.name) tx.run(sql.raw(`DELETE FROM ${table}`));
+    }
   });
 }

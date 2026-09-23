@@ -6,6 +6,8 @@ import { useMemo, type ReactNode } from 'react';
 import { useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createAgeGateStore } from './privacy/age-gate';
+import { LibraryProvider } from './library/LibraryProvider';
+import type { LibraryStore } from './library/library-store';
 import { createConsentStore } from './privacy/consents';
 import { PrivacyProvider, type PrivacyProviderProps } from './privacy/PrivacyProvider';
 import { useSettings } from './state/settings';
@@ -18,6 +20,8 @@ export interface AppProvidersProps {
   initialUnitSystem?: UnitSystem;
   /** Age gate, consent ledger and privacy client; defaults to empty in-memory state (nothing consented). */
   privacy?: Omit<PrivacyProviderProps, 'children'>;
+  /** The on-device exercise library (M06); absent in tests of screens that do not use it. */
+  library?: LibraryStore;
   children?: ReactNode;
 }
 
@@ -44,14 +48,16 @@ function ThemedApp({ children }: { children?: ReactNode }) {
   );
 }
 
-export function AppProviders({ syncClient, initialLocale, initialUnitSystem = 'metric', privacy, children }: AppProvidersProps) {
+export function AppProviders({ syncClient, initialLocale, initialUnitSystem = 'metric', privacy, library, children }: AppProvidersProps) {
   const privacyProps = useDefaultPrivacy(privacy);
   return (
     <SafeAreaProvider>
       <I18nProvider initialLocale={initialLocale} initialUnitSystem={initialUnitSystem}>
         <PrivacyProvider {...privacyProps}>
           <SyncProvider client={syncClient}>
-            <ThemedApp>{children}</ThemedApp>
+            <LibraryProvider store={library ?? null}>
+              <ThemedApp>{children}</ThemedApp>
+            </LibraryProvider>
           </SyncProvider>
         </PrivacyProvider>
       </I18nProvider>

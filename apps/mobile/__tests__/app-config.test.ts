@@ -39,3 +39,18 @@ describe('app.config.js legal release guard', () => {
     expect(eas.build.production.env.APP_VARIANT).toBe('production');
   });
 });
+
+describe('app.config.js exercise-library release guard (M06)', () => {
+  const config = { name: 'Companion (dev)' };
+
+  it('refuses a production build while any exercise lacks the physio review, even once legal texts are approved', () => {
+    jest.isolateModules(() => {
+      jest.doMock('@fitadapt/legal', () => ({ ...jest.requireActual('@fitadapt/legal'), assertLegalReleaseReady: () => undefined }));
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const guarded = require('../app.config.js') as (ctx: { config: Record<string, unknown> }) => Record<string, unknown>;
+      expect(() => withEnv({ APP_VARIANT: 'production' }, () => guarded({ config }))).toThrow(/Production build refused: \d+ exercise\(s\) lack the physio review \(A2\)/);
+      expect(withEnv({ APP_VARIANT: 'preview' }, () => guarded({ config }))).toBe(config);
+    });
+    jest.dontMock('@fitadapt/legal');
+  });
+});

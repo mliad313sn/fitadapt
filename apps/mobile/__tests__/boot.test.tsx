@@ -4,6 +4,7 @@ import initSqlJs, { type SqlJsStatic } from 'sql.js';
 import RootLayout from '../app/_layout';
 import AgeGate from '../app/age-gate';
 import Index from '../app/index';
+import Library from '../app/library';
 import Privacy from '../app/privacy';
 
 let mockSql: SqlJsStatic;
@@ -28,7 +29,7 @@ beforeAll(async () => {
 
 describe('app boot', () => {
   it('mounts the root layout and routes to the home screen', async () => {
-    const router = renderRouter({ _layout: RootLayout, index: Index, 'age-gate': AgeGate, privacy: Privacy }, { initialUrl: '/' });
+    const router = renderRouter({ _layout: RootLayout, index: Index, 'age-gate': AgeGate, privacy: Privacy, library: Library }, { initialUrl: '/' });
     // M17: a fresh install opens on the S7 age gate (see age-gate.e2e.test.tsx); pass it as an adult.
     await screen.findByRole('header', { name: 'Before you start' });
     fireEvent.changeText(screen.getByTestId('age-gate-day'), '1');

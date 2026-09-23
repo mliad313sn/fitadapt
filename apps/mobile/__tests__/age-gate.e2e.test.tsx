@@ -5,6 +5,7 @@ import initSqlJs, { type Database, type SqlJsStatic } from 'sql.js';
 import RootLayout from '../app/_layout';
 import AgeGate from '../app/age-gate';
 import Index from '../app/index';
+import Library from '../app/library';
 import Privacy from '../app/privacy';
 
 /**
@@ -25,7 +26,7 @@ jest.mock('../src/sync/expo-db', () => ({
 jest.mock('expo-crypto', () => ({ randomUUID: () => jest.requireActual('node:crypto').randomUUID() }));
 jest.mock('expo-localization', () => ({ getLocales: () => [{ languageTag: mockLanguage, regionCode: 'SN' }] }));
 
-const routes = { _layout: RootLayout, index: Index, 'age-gate': AgeGate, privacy: Privacy };
+const routes = { _layout: RootLayout, index: Index, 'age-gate': AgeGate, privacy: Privacy, library: Library };
 
 beforeAll(async () => {
   mockSql = await initSqlJs();
