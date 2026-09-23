@@ -1,0 +1,4 @@
+# Reviewed false positives only (M17, ADR-007). One fingerprint per line, each with its reason.
+# Fabricated JWT-shaped test fixture ({"alg":"HS256"} / {"sub":"12345"} / "signature-value"),
+# used to prove the log scrubber redacts tokens. Not a credential. The test now builds it at runtime.
+04b42e43e1c94bcdcc711ae6948bcb49e34c49df:packages/privacy/src/scrubber.test.ts:jwt:44

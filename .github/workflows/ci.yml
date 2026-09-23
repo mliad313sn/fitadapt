@@ -4,6 +4,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  # New advisories appear without code changes: audit the lockfile weekly too.
+  schedule:
+    - cron: '0 5 * * 1'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -31,6 +34,32 @@ jobs:
       - run: pnpm -w test
       - run: pnpm -w build
       - run: pnpm licences:check
+
+  security:
+    # M17 (ADR-007): each step fails the pipeline on a high or critical finding.
+    name: Security scans and compliance documents
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Secret scanning covers the whole history, not only the last commit.
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @fitadapt/privacy... build
+      - name: Dependency audit (fails on high/critical)
+        run: pnpm security:audit
+      - name: Secret scanning (gitleaks, pinned and checksum-verified)
+        run: pnpm security:secrets
+      - name: Static analysis (security rules, all errors)
+        run: pnpm security:sast
+      - name: Compliance documents
+        run: pnpm compliance:check
 
   integration:
     name: API integration tests

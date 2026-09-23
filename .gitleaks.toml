@@ -1,0 +1,7 @@
+# Secret scanning (M17, ADR-007): gitleaks default rules over the whole history.
+# Findings fail CI (`pnpm security:secrets`). Add an allowlist entry only for a
+# reviewed false positive, with the reason, never for a real secret.
+title = "secret scanning"
+
+[extend]
+useDefault = true

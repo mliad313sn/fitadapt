@@ -2,6 +2,7 @@
 import js from '@eslint/js';
 import { defineConfig } from 'eslint/config';
 import globals from 'globals';
+import security from 'eslint-plugin-security';
 import tseslint from 'typescript-eslint';
 import fitadapt from './tooling/eslint-plugin/index.js';
 
@@ -18,12 +19,16 @@ export default defineConfig(
       '**/expo-env.d.ts',
       // Lint-rule fixtures are linted on purpose by the rule's own tests.
       'tooling/eslint-plugin/test/fixtures/**',
+      'tooling/security/test/fixtures/**',
       'apps/api/drizzle/**',
     ],
   },
   js.configs.recommended,
   tseslint.configs.recommended,
   {
+    // Rules run in `pnpm security:sast` (tooling/security/eslint.security.config.mjs);
+    // registered here so justified `security/*` suppressions resolve in normal lint.
+    plugins: { security },
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
@@ -42,6 +47,12 @@ export default defineConfig(
   {
     files: ['**/jest.setup.js', '**/__tests__/**', '**/*.test.ts', '**/*.test.tsx'],
     languageOptions: { globals: { ...globals.jest } },
+  },
+  // The security tooling scripts touch the file system; keep the SAST rule on
+  // here so their justified suppressions stay checked in normal lint too.
+  {
+    files: ['tooling/security/scripts/**/*.mjs'],
+    rules: { 'security/detect-non-literal-fs-filename': 'error' },
   },
   // CLAUDE.md rule 5: no user-facing string outside packages/i18n.
   // Test files are not shipped UI; they may use literal fixture labels.

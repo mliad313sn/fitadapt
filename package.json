@@ -12,12 +12,18 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:integration": "pnpm --filter api test:integration",
-    "licences:check": "node tooling/scripts/check-licences.mjs"
+    "licences:check": "node tooling/scripts/check-licences.mjs",
+    "security:audit": "node tooling/security/scripts/audit-gate.mjs",
+    "security:secrets": "node tooling/security/scripts/secret-scan.mjs",
+    "security:sast": "eslint --no-config-lookup -c tooling/security/eslint.security.config.mjs --max-warnings 0 .",
+    "security:check": "pnpm security:audit && pnpm security:secrets && pnpm security:sast",
+    "compliance:check": "node tooling/security/scripts/compliance-check.mjs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@types/node": "22.20.4",
     "eslint": "10.11.0",
+    "eslint-plugin-security": "4.0.1",
     "globals": "17.12.0",
     "turbo": "2.11.3",
     "typescript": "5.9.3",
