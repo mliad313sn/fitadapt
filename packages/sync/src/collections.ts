@@ -19,6 +19,8 @@ export const SYNC_COLLECTIONS: CollectionRegistry = Object.freeze({
   equipment_profiles: Object.freeze({ appendOnly: false }),
   /** M01 screenings: append-only history; a re-screen is a new record and the latest counts. */
   screenings: Object.freeze({ appendOnly: true }),
+  /** M07 assessments (result + CapacityModel): append-only history; a re-assessment is a new record and the latest counts. */
+  assessments: Object.freeze({ appendOnly: true }),
 });
 
 export function policyFor(registry: CollectionRegistry, collection: string): CollectionPolicy | undefined {

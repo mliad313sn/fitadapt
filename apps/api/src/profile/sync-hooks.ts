@@ -1,7 +1,10 @@
 import { isDeepStrictEqual } from 'node:util';
-import { ENGINE_VERSION } from '@fitadapt/engine';
-import { evaluateAgeGate, evaluateScreening, type CalendarDate } from '@fitadapt/safety';
+import { ASSESSMENT_MIN_STOP_RIR, ENGINE_VERSION, assessmentStopRir } from '@fitadapt/engine';
+import { buildCapacityModel } from '@fitadapt/exercise-library';
+import { evaluateAgeGate, evaluateScreening, notScreenedSafetyProfile, type CalendarDate } from '@fitadapt/safety';
 import {
+  ASSESSMENT_COLLECTION,
+  AssessmentRecordSchema,
   EquipmentProfileSchema,
   PROFILE_COLLECTIONS,
   ProfileSchema,
@@ -10,14 +13,19 @@ import {
   type SyncMutation,
 } from '@fitadapt/shared';
 import type { MutationListener, MutationValidator } from '@fitadapt/sync';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
+import type { Database } from '../db/client.js';
 import { syncChanges } from '../db/schema.js';
 import type { LegalService } from '../legal/service.js';
 import type { ConsentWithdrawalHandler, PrivacyService } from '../privacy/service.js';
 import type { PgServerTx } from '../sync/pg-store.js';
 
-/** Collections holding health data (screening answers, biometrics): need the health consent (L9, ADR-004). */
-export const HEALTH_COLLECTIONS: readonly string[] = [PROFILE_COLLECTIONS.profile, PROFILE_COLLECTIONS.screenings];
+/**
+ * Collections holding health data (screening answers, biometrics, M07
+ * assessment results): need the health consent (L9, ADR-004) and are erased
+ * when it is withdrawn.
+ */
+export const HEALTH_COLLECTIONS: readonly string[] = [PROFILE_COLLECTIONS.profile, PROFILE_COLLECTIONS.screenings, ASSESSMENT_COLLECTION];
 
 /**
  * The latest calendar date anywhere on Earth right now (UTC+14). A user who is
@@ -36,6 +44,47 @@ export interface ProfileSyncDeps {
   privacy: PrivacyService;
   legal: LegalService;
   now: () => Date;
+  /** M07: reads the user's latest stored screening to re-check the S1 reserve of an assessment. */
+  db: Database;
+}
+
+/** The SafetyProfile of the user's latest stored screening, re-derived from its answers (fail closed: none → not screened). */
+async function latestSafetyProfile(db: Database, userId: string) {
+  const [row] = await db
+    .select({ data: syncChanges.data })
+    .from(syncChanges)
+    .where(and(eq(syncChanges.userId, userId), eq(syncChanges.collection, PROFILE_COLLECTIONS.screenings)))
+    .orderBy(desc(syncChanges.revision))
+    .limit(1);
+  const parsed = ScreeningRecordSchema.safeParse(row?.data);
+  return parsed.success ? evaluateScreening(parsed.data.responses) : notScreenedSafetyProfile();
+}
+
+/**
+ * M07: an assessment record must be what the engine derives from its result
+ * (CapacityModel re-computed on the seed library), made by this engine
+ * version, and stopped at least as far from failure as S1 requires for the
+ * user's latest screening (never below RIR 2).
+ */
+async function validateAssessment(deps: ProfileSyncDeps, userId: string, data: unknown): Promise<string | null> {
+  const parsed = AssessmentRecordSchema.safeParse(data);
+  if (!parsed.success) return 'assessment.invalid';
+  const { result, capacity, cappedByS1 } = parsed.data;
+  if (capacity.engineVersion !== ENGINE_VERSION) return 'assessment.engine_version_unsupported';
+  if (cappedByS1 !== result.stopRir > ASSESSMENT_MIN_STOP_RIR) return 'assessment.invalid';
+  let expected;
+  try {
+    expected = buildCapacityModel(result);
+  } catch {
+    return 'assessment.invalid';
+  }
+  if (!isDeepStrictEqual(expected, capacity)) return 'assessment.capacity_mismatch';
+  const profile = await latestSafetyProfile(deps.db, userId);
+  if (profile.screeningOutcome === 'blocked') return 'safety.s7.under_minimum_age';
+  const required = assessmentStopRir(profile);
+  if (profile.screeningOutcome === 'not_screened' || required === null || !profile.automaticProgrammingAllowed) return 'assessment.not_allowed';
+  if (result.stopRir < required) return 'safety.s1.assessment_reserve_too_low';
+  return null;
 }
 
 /**
@@ -69,6 +118,8 @@ export function profileSyncValidator(deps: ProfileSyncDeps): MutationValidator {
         if (!isDeepStrictEqual(evaluateScreening(responses), safetyProfile)) return 'screening.profile_mismatch';
         return consentRequired(userId, m);
       }
+      case ASSESSMENT_COLLECTION:
+        return (await consentRequired(userId, m)) ?? validateAssessment(deps, userId, m.data);
       default:
         return null;
     }
@@ -85,17 +136,25 @@ export function safetyEventsFor(profile: SafetyProfile) {
 }
 
 /**
- * When a screening is stored: write the safety gates it switched on to the
- * defensibility log IN THE SYNC TRANSACTION (L11). A failed log write rolls
- * the screening back and fails the push, so the device retries; a screening
- * is never stored without its safety events (fixes M01 deviation 14).
+ * When a screening (or an S1-capped M07 assessment) is stored: write the
+ * safety gates it switched on to the defensibility log IN THE SYNC
+ * TRANSACTION (L11). A failed log write rolls the record back and fails the
+ * push, so the device retries; a record is never stored without its safety
+ * events (fixes M01 deviation 14).
  */
 export function profileSyncListener(deps: ProfileSyncDeps): MutationListener<PgServerTx> {
   return async (userId, m, tx) => {
-    if (m.collection !== PROFILE_COLLECTIONS.screenings) return;
-    const record = ScreeningRecordSchema.parse(m.data);
-    for (const event of safetyEventsFor(record.safetyProfile)) {
-      await deps.legal.recordSafetyEvent(userId, { ...event, engineVersion: ENGINE_VERSION }, tx.db);
+    if (m.collection === PROFILE_COLLECTIONS.screenings) {
+      const record = ScreeningRecordSchema.parse(m.data);
+      for (const event of safetyEventsFor(record.safetyProfile)) {
+        await deps.legal.recordSafetyEvent(userId, { ...event, engineVersion: ENGINE_VERSION }, tx.db);
+      }
+    } else if (m.collection === ASSESSMENT_COLLECTION) {
+      // M07: S1 made the tests stop further from failure (L11), in the same transaction as the record.
+      const record = AssessmentRecordSchema.parse(m.data);
+      if (record.cappedByS1) {
+        await deps.legal.recordSafetyEvent(userId, { invariant: 'S1', reasonCode: 'safety.s1.rpe_above_cap', action: 'capped', engineVersion: record.capacity.engineVersion }, tx.db);
+      }
     }
   };
 }

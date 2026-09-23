@@ -41,6 +41,9 @@ importers:
       '@fitadapt/engine':
         specifier: workspace:*
         version: link:../../packages/engine
+      '@fitadapt/exercise-library':
+        specifier: workspace:*
+        version: link:../../packages/exercise-library
       '@fitadapt/legal':
         specifier: workspace:*
         version: link:../../packages/legal
