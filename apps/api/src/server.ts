@@ -2,6 +2,7 @@ import { Redis } from 'ioredis';
 import { buildApp } from './app.js';
 import { MemoryMailer } from './auth/mailer.js';
 import { loadEnv } from './config/env.js';
+import { privacyValue } from './config/privacy.config.js';
 import { createDatabase, runMigrations } from './db/client.js';
 import { initErrorReporting } from './observability/sentry.js';
 
@@ -27,7 +28,21 @@ const app = await buildApp({
   errorReporter: reporter,
 });
 
+// Retention schedule: backup-purge completion and expiry of old records (M17).
+const retention = setInterval(() => {
+  app.services.privacy
+    .runRetention()
+    .then((result) => {
+      if (result && result.backupPurgesOverdue.length > 0) {
+        app.log.error({ overdue: result.backupPurgesOverdue.length }, 'backup purge overdue: see docs/compliance/breach-runbook.md');
+      }
+    })
+    .catch((error: unknown) => app.log.error({ err: error }, 'retention job failed'));
+}, privacyValue('retentionJobIntervalSeconds') * 1000);
+retention.unref();
+
 const shutdown = async () => {
+  clearInterval(retention);
   await app.close();
   redis.disconnect();
   await database.close();

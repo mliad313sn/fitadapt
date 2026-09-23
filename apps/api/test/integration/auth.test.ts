@@ -210,12 +210,16 @@ describe('access control and stubs', () => {
     const doc = (await h.app.inject({ method: 'GET', url: '/docs/openapi.json' })).json() as { openapi: string; paths: Record<string, unknown> };
     expect(doc.openapi).toBe('3.1.0');
     expect(Object.keys(doc.paths).sort()).toEqual([
+      '/v1/analytics/events',
       '/v1/auth/federated',
       '/v1/auth/logout',
       '/v1/auth/otp/request',
       '/v1/auth/otp/verify',
       '/v1/auth/refresh',
       '/v1/me',
+      '/v1/privacy/consents',
+      '/v1/privacy/deletion',
+      '/v1/privacy/export',
       '/v1/sync/pull',
       '/v1/sync/push',
     ]);

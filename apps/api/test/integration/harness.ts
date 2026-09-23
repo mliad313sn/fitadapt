@@ -4,9 +4,11 @@ import type { AuthResponse } from '@fitadapt/shared';
 import { sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { Redis } from 'ioredis';
-import { buildApp } from '../../src/app.js';
+import { buildApp, type AppDeps } from '../../src/app.js';
 import { MemoryMailer } from '../../src/auth/mailer.js';
 import { createDatabase, type DatabaseHandle } from '../../src/db/client.js';
+import type { MemoryAnalyticsSink } from '../../src/privacy/analytics-sink.js';
+import type { MemoryBackupCatalog } from '../../src/privacy/backup-catalog.js';
 import { integrationEnv } from './env.js';
 
 export const JWT_SECRET = 'integration-test-secret-integration-test-secret';
@@ -32,7 +34,14 @@ export interface Harness {
   close(): Promise<void>;
 }
 
-export async function createHarness(): Promise<Harness> {
+export interface HarnessOptions {
+  backupCatalog?: MemoryBackupCatalog;
+  analyticsSink?: MemoryAnalyticsSink;
+  consentPolicies?: AppDeps['consentPolicies'];
+  withdrawalHandlers?: AppDeps['withdrawalHandlers'];
+}
+
+export async function createHarness(options: HarnessOptions = {}): Promise<Harness> {
   const { databaseUrl, redisUrl } = integrationEnv();
   const database = createDatabase(databaseUrl);
   const redis = new Redis(redisUrl, { lazyConnect: false, maxRetriesPerRequest: 1 });
@@ -56,6 +65,7 @@ export async function createHarness(): Promise<Harness> {
     logStream,
     now: clock.now,
     redisPrefix,
+    ...options,
   });
   await app.ready();
   return {
@@ -88,7 +98,7 @@ async function clearRedis(redis: Redis, prefix: string) {
 export async function truncateAll(h: Harness) {
   await clearRedis(h.redis, h.redisPrefix);
   await h.database.db.execute(
-    sql`TRUNCATE users, devices, otp_codes, auth_sessions, refresh_tokens, sync_heads, sync_changes, sync_mutations CASCADE`,
+    sql`TRUNCATE users, devices, otp_codes, auth_sessions, refresh_tokens, sync_heads, sync_changes, sync_mutations, consent_records, data_requests, audit_entries CASCADE`,
   );
 }
 

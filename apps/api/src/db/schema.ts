@@ -1,4 +1,4 @@
-import { bigint, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { bigint, bigserial, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
 
@@ -112,4 +112,64 @@ export const syncMutations = pgTable(
     createdAt: createdAt(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.mutationId] })],
+);
+
+/**
+ * Consent decisions per data type (M17, ADR-004). Append-only: a withdrawal is
+ * a new row; a database trigger rejects UPDATE. Rows are deleted with the user.
+ */
+export const consentRecords = pgTable(
+  'consent_records',
+  {
+    id: uuid('id').primaryKey(),
+    /** Insertion order: breaks ties between decisions recorded in the same instant. */
+    seq: bigserial('seq', { mode: 'number' }).notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    dataType: text('data_type', { enum: ['health', 'photos', 'wearables', 'ai_coach', 'analytics'] }).notNull(),
+    decision: text('decision', { enum: ['granted', 'withdrawn'] }).notNull(),
+    version: integer('version').notNull(),
+    locale: text('locale', { enum: ['fr', 'en'] }).notNull(),
+    jurisdiction: text('jurisdiction').notNull(),
+    source: text('source', { enum: ['mobile', 'web', 'api'] }).notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('consent_records_user_idx').on(t.userId, t.dataType, t.recordedAt)],
+);
+
+/**
+ * Data-subject requests (export, deletion). Keyed by a pseudonymous subject
+ * reference (keyed hash of the user id), not by a foreign key, so the record
+ * of a deletion survives the deletion itself without holding personal data.
+ */
+export const dataRequests = pgTable(
+  'data_requests',
+  {
+    id: uuid('id').primaryKey(),
+    subjectRef: text('subject_ref').notNull(),
+    kind: text('kind', { enum: ['export', 'deletion'] }).notNull(),
+    status: text('status', { enum: ['completed', 'backup_purge_pending'] }).notNull(),
+    requestedAt: timestamp('requested_at', { withTimezone: true }).notNull(),
+    primaryCompletedAt: timestamp('primary_completed_at', { withTimezone: true }).notNull(),
+    backupPurgeDueAt: timestamp('backup_purge_due_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+  },
+  (t) => [index('data_requests_subject_idx').on(t.subjectRef), index('data_requests_due_idx').on(t.status, t.backupPurgeDueAt)],
+);
+
+/** Pseudonymous audit trail (AuditEntry, L11): no personal data, append-only (UPDATE rejected by trigger). */
+export const auditEntries = pgTable(
+  'audit_entries',
+  {
+    id: uuid('id').primaryKey(),
+    subjectRef: text('subject_ref').notNull(),
+    action: text('action', {
+      enum: ['consent.granted', 'consent.withdrawn', 'data.exported', 'data.corrected', 'account.deleted', 'backup.purged'],
+    }).notNull(),
+    dataType: text('data_type', { enum: ['health', 'photos', 'wearables', 'ai_coach', 'analytics'] }),
+    version: integer('version'),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('audit_entries_subject_idx').on(t.subjectRef, t.occurredAt)],
 );

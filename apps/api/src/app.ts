@@ -1,4 +1,5 @@
 import swagger from '@fastify/swagger';
+import type { ConsentPolicySet } from '@fitadapt/privacy';
 import { SyncServer } from '@fitadapt/sync';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import {
@@ -19,7 +20,13 @@ import type { Database } from './db/client.js';
 import { applyLoggingHygiene, loggerOptions } from './observability/logger.js';
 import { noopReporter, type ErrorReporter } from './observability/sentry.js';
 import { registerTracing } from './observability/tracing.js';
+import { registerSecurityHeaders } from './plugins/security-headers.js';
+import { NoopAnalyticsSink, type AnalyticsSink } from './privacy/analytics-sink.js';
+import { NoBackupsCatalog, type BackupCatalog } from './privacy/backup-catalog.js';
+import { PrivacyService, type PrivacyServiceDeps } from './privacy/service.js';
+import { analyticsRoutes } from './routes/analytics.js';
 import { authRoutes } from './routes/auth.js';
+import { privacyRoutes } from './routes/privacy.js';
 import { syncRoutes } from './routes/sync.js';
 import { PgServerStore } from './sync/pg-store.js';
 
@@ -36,6 +43,21 @@ export interface AppDeps {
   errorReporter?: ErrorReporter;
   /** Namespace for Redis keys (isolates test runs). */
   redisPrefix?: string;
+  /** Backup system view used to complete deletions (M19 provides the production one). */
+  backupCatalog?: BackupCatalog;
+  analyticsSink?: AnalyticsSink;
+  consentPolicies?: ConsentPolicySet;
+  withdrawalHandlers?: PrivacyServiceDeps['withdrawalHandlers'];
+}
+
+export interface AppServices {
+  privacy: PrivacyService;
+}
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    services: AppServices;
+  }
 }
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
@@ -69,28 +91,44 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     if (error.statusCode && error.statusCode < 500) {
       return reply.code(error.statusCode).send({ error: { code: 'bad_request' } });
     }
-    request.log.error({ err: { type: error.name, message: error.message } }, 'unhandled error');
+    // Type and machine code only: error messages can quote user input (M17 log hygiene).
+    request.log.error({ err: { type: error.name, errorCode: typeof error.code === 'string' ? error.code : undefined } }, 'unhandled error');
     reporter.capture(error);
     return reply.code(500).send({ error: { code: 'internal_error' } });
   });
 
   applyLoggingHygiene(app);
+  registerSecurityHeaders(app);
   registerTracing(app);
+
+  const rateLimiter = new RateLimiter(deps.redis, deps.redisPrefix ?? 'api:');
 
   const auth = new AuthService({
     db: deps.db,
     mailer: deps.mailer,
-    rateLimiter: new RateLimiter(deps.redis, deps.redisPrefix ?? 'api:'),
+    rateLimiter,
     signer: new AccessTokenSigner(deps.jwtSecret, authValue('accessTokenTtlSeconds'), now),
     identityVerifier: deps.identityVerifier ?? new NotConfiguredIdentityVerifier(),
     pepper: deps.pepper,
     now,
   });
   const sync = new SyncServer({ store: new PgServerStore(deps.db) });
+  const privacy = new PrivacyService({
+    db: deps.db,
+    rateLimiter,
+    backups: deps.backupCatalog ?? new NoBackupsCatalog(),
+    pepper: deps.pepper,
+    now,
+    policies: deps.consentPolicies,
+    withdrawalHandlers: deps.withdrawalHandlers,
+  });
+  app.decorate('services', { privacy });
 
   app.get('/health', { schema: { hide: true } }, async () => ({ status: 'ok' }));
   app.get('/docs/openapi.json', { schema: { hide: true } }, async () => app.swagger());
   await app.register(authRoutes(auth));
   await app.register(syncRoutes(auth, sync));
+  await app.register(privacyRoutes(auth, privacy));
+  await app.register(analyticsRoutes(auth, privacy, deps.analyticsSink ?? new NoopAnalyticsSink()));
   return app;
 }

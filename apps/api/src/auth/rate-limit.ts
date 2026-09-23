@@ -16,4 +16,9 @@ export class RateLimiter {
     const [[, count]] = (await this.redis.multi().incr(key).expire(key, windowSeconds, 'NX').exec()) as [[Error | null, number]];
     return count <= limit;
   }
+
+  /** Removes the counters of a subject (e.g. after account deletion). */
+  async clear(buckets: readonly string[], subjectHash: string): Promise<void> {
+    await this.redis.del(...buckets.map((bucket) => `${this.prefix}rl:${bucket}:${subjectHash}`));
+  }
 }
