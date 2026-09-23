@@ -25,11 +25,15 @@ export const programEn = {
   'calendar.restDay': 'Rest day',
   'calendar.today': 'Today',
   'calendar.day': '{day}, {date}',
+  'calendar.dayToday': '{day}, {date} (today)',
+  'calendar.slot': '{pattern}: {sets}',
+  'calendar.goneLine': '{session}: {status}',
   'calendar.minutes': 'About {minutes} min',
   'calendar.effort': 'Effort up to {rpe} out of 10',
   'calendar.sets': '{count, plural, one {# hard set} other {# hard sets}}',
   'calendar.aerobic': '{minutes} min of aerobic work this week',
   'calendar.cantMakeIt': 'I can’t do this one',
+  'calendar.cantMakeItFor': 'I can’t do the {session} session on {day}',
   'calendar.cantMakeItHint': 'Moves this session to another day or adjusts the week',
   'calendar.movedFrom': 'Moved from {day}',
   'calendar.skippedLabel': 'Not this week',
@@ -38,8 +42,8 @@ export const programEn = {
   'calendar.draftNote': 'Draft plan: volumes and templates are starting points awaiting review by qualified coaches.',
 
   // After a missed session (no-guilt copy)
-  'calendar.reflow.shifted': 'No problem. {session} is now on {day}.',
-  'calendar.reflow.merged': 'No problem. The main exercises of {session} are added to {day}.',
+  'calendar.reflow.shifted': 'No problem. The {session} session is now on {day}.',
+  'calendar.reflow.merged': 'No problem. The main exercises of the {session} session are added to {day}’s session.',
   'calendar.reflow.skipped': 'No problem. The rest of the week stays as planned.',
   'calendar.reflow.week_over': 'No problem. Your plan continues with the next session.',
 

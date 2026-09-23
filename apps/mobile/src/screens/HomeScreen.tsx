@@ -14,6 +14,8 @@ export interface HomeScreenProps {
   onOpenFirstWorkout?: () => void;
   /** M07: first assessment, end-of-mesocycle re-assessment prompt, re-test on demand. */
   onOpenAssessment?: () => void;
+  /** M08: the week of the training plan. */
+  onOpenCalendar?: () => void;
   onReviewLegal?: (missing: readonly string[]) => void;
   onRescreen?: (reason: 'annual' | 'new_condition') => void;
   onOpenEquipment?: () => void;
@@ -21,7 +23,7 @@ export interface HomeScreenProps {
 }
 
 /** The entries are wired by the route (app/index.tsx); without their callbacks they are hidden. */
-export function HomeScreen({ onOpenPrivacy, onOpenLibrary, onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, onReviewLegal, onRescreen, onOpenEquipment, onSignIn }: HomeScreenProps = {}) {
+export function HomeScreen({ onOpenPrivacy, onOpenLibrary, onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, onOpenCalendar, onReviewLegal, onRescreen, onOpenEquipment, onSignIn }: HomeScreenProps = {}) {
   const theme = useTheme();
   const { t, locale, setLocale, unitSystem, setUnitSystem } = useI18n();
   const { pendingCount } = useSync();
@@ -36,7 +38,7 @@ export function HomeScreen({ onOpenPrivacy, onOpenLibrary, onStartOnboarding, on
         </Text>
         <Text style={{ color: theme.colors.textMuted, fontSize: theme.fontSize.body }}>{t('home.subtitle')}</Text>
 
-        {onStartOnboarding ? <M01Entries {...{ onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, onReviewLegal, onRescreen, onOpenEquipment, onSignIn }} /> : null}
+        {onStartOnboarding ? <M01Entries {...{ onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, onOpenCalendar, onReviewLegal, onRescreen, onOpenEquipment, onSignIn }} /> : null}
 
         <Card title={t('home.offlineCard.title')}>
           <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.body }}>{t('home.offlineCard.body')}</Text>
@@ -75,7 +77,7 @@ export function HomeScreen({ onOpenPrivacy, onOpenLibrary, onStartOnboarding, on
 }
 
 /** M01: what to do next — set up, train, review changed texts, update health answers, places, account. */
-function M01Entries({ onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, onReviewLegal, onRescreen, onOpenEquipment, onSignIn }: Omit<HomeScreenProps, 'onOpenPrivacy' | 'onOpenLibrary'>) {
+function M01Entries({ onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, onOpenCalendar, onReviewLegal, onRescreen, onOpenEquipment, onSignIn }: Omit<HomeScreenProps, 'onOpenPrivacy' | 'onOpenLibrary'>) {
   const theme = useTheme();
   const { t } = useI18n();
   const access = useFirstWorkoutAccess();
@@ -93,6 +95,7 @@ function M01Entries({ onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, o
         <Button label={started ? t('home.onboarding.continue') : t('home.onboarding.start')} hint={t('home.onboarding.startHint')} onPress={onStartOnboarding} testID="start-onboarding" />
       ) : null}
       {access.allowed && onOpenFirstWorkout ? <Button label={t('home.firstWorkout.open')} hint={t('home.firstWorkout.openHint')} onPress={onOpenFirstWorkout} testID="open-first-workout" /> : null}
+      {access.allowed && onOpenCalendar ? <Button label={t('home.calendar.open')} hint={t('home.calendar.openHint')} onPress={onOpenCalendar} testID="open-calendar" /> : null}
       {access.allowed && onOpenAssessment && capacity === null ? (
         <Button label={t('home.assessment.start')} hint={t('home.assessment.startHint')} variant="secondary" onPress={onOpenAssessment} testID="open-assessment" />
       ) : null}

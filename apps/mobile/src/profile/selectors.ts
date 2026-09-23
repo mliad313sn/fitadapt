@@ -1,8 +1,8 @@
 import { featureOn } from '../privacy/consents';
 import { notScreenedSafetyProfile, rescreenStatus, evaluateScreening, type RescreenStatus } from '@fitadapt/safety';
-import { fixedClock, reassessmentStatus, type ReassessmentStatus } from '@fitadapt/engine';
-import type { CapacityModel, ConsentRecord, SafetyProfile } from '@fitadapt/shared';
-import type { StoredAssessment, StoredScreening } from './profile-store';
+import { fixedClock, reassessmentDateFor, reassessmentStatus, type ReassessmentStatus } from '@fitadapt/engine';
+import type { CapacityModel, ConsentRecord, IsoDate, ProgramRecord, ReflowRecord, SafetyProfile } from '@fitadapt/shared';
+import type { StoredAssessment, StoredProgram, StoredReflow, StoredScreening } from './profile-store';
 
 /**
  * The user's SafetyProfile (S1, S4, S7) as every module must read it.
@@ -36,4 +36,39 @@ export function selectCapacity(assessments: readonly StoredAssessment[], consent
 /** M07: re-assessment prompt at the end of the mesocycle (engine rule, app clock). */
 export function selectReassessment(capacity: CapacityModel | null, now: Date, mesocycleEndsAt: string | null = null): ReassessmentStatus {
   return reassessmentStatus(capacity, fixedClock(now.getTime()), mesocycleEndsAt);
+}
+
+/** The device's local calendar date ('YYYY-MM-DD'); programs are planned on the user's own calendar. */
+export function localIsoDate(at: Date): IsoDate {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+}
+
+/** Local midnight at the start of a calendar date, as an instant. */
+export function localMidnight(date: IsoDate): Date {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  return new Date(y, m - 1, d);
+}
+
+/** M08: the latest program, or null. Programs embed the SafetyProfile (health data): none without the health consent. */
+export function selectProgram(programs: readonly StoredProgram[], consents: readonly ConsentRecord[]): ProgramRecord | null {
+  if (!featureOn('health.screening', consents)) return null;
+  return programs[programs.length - 1]?.data ?? null;
+}
+
+/** M08: the reflows of a program, in the order they were decided. */
+export function selectReflows(reflows: readonly StoredReflow[], programId: string | null): ReflowRecord[] {
+  return programId ? reflows.map((r) => r.data).filter((r) => r.programId === programId) : [];
+}
+
+/**
+ * M07 + M08: the re-assessment falls due at the end of the mesocycle the
+ * assessment was made in (engine rule, reassessmentDateFor), at local
+ * midnight; without a program, or after it, the CapacityModel's default
+ * (4 weeks) applies.
+ */
+export function selectMesocycleEnd(capacity: CapacityModel | null, program: ProgramRecord | null): string | null {
+  if (!capacity || !program) return null;
+  const due = reassessmentDateFor(program.program, localIsoDate(new Date(capacity.assessedAt)));
+  return due ? localMidnight(due).toISOString() : null;
 }

@@ -1,6 +1,6 @@
 import { firstWorkoutGate, type LegalDocumentId } from '@fitadapt/legal';
 import type { ReassessmentStatus } from '@fitadapt/engine';
-import type { CapacityModel, SafetyProfile } from '@fitadapt/shared';
+import type { CapacityModel, ProgramRecord, ReflowRecord, SafetyProfile } from '@fitadapt/shared';
 import type { RescreenStatus } from '@fitadapt/safety';
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
@@ -10,7 +10,7 @@ import type { LegalStore, LegalStoreState } from '../legal/legal-store';
 import { currentLegalRegistry } from '../legal/registry';
 import { useConsents, usePrivacy } from '../privacy/PrivacyProvider';
 import type { ProfileState, ProfileStore } from './profile-store';
-import { selectCapacity, selectReassessment, selectRescreen, selectSafetyProfile } from './selectors';
+import { selectCapacity, selectMesocycleEnd, selectProgram, selectReassessment, selectReflows, selectRescreen, selectSafetyProfile } from './selectors';
 
 export interface ProfileContextValue {
   profile: ProfileStore;
@@ -85,9 +85,25 @@ export function useCapacity(): CapacityModel | null {
   return useMemo(() => selectCapacity(assessments, consents), [assessments, consents]);
 }
 
-/** M07: whether the end-of-mesocycle re-assessment is due, on the app clock. */
+/** M08: the latest program (null before the first one or without health consent). */
+export function useProgram(): ProgramRecord | null {
+  const programs = useProfile((s) => s.programs);
+  const consents = useConsents((s) => s.records);
+  return useMemo(() => selectProgram(programs, consents), [programs, consents]);
+}
+
+/** M08: the recorded reflows of the current program, in order. */
+export function useReflows(): ReflowRecord[] {
+  const reflows = useProfile((s) => s.reflows);
+  const programId = useProgram()?.program.programId ?? null;
+  return useMemo(() => selectReflows(reflows, programId), [reflows, programId]);
+}
+
+/** M07: whether the end-of-mesocycle re-assessment is due, on the app clock (M08 gives the real mesocycle end when a program exists). */
 export function useReassessment(): ReassessmentStatus {
-  return selectReassessment(useCapacity(), clock.now());
+  const capacity = useCapacity();
+  const program = useProgram();
+  return selectReassessment(capacity, clock.now(), selectMesocycleEnd(capacity, program));
 }
 
 export interface FirstWorkoutAccess {

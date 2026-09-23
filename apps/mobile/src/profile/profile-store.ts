@@ -7,7 +7,10 @@ import {
   EquipmentProfileSchema,
   PROFILE_COLLECTIONS,
   PROFILE_RECORD_ID,
+  PROGRAM_COLLECTIONS,
   ProfileSchema,
+  ProgramRecordSchema,
+  ReflowRecordSchema,
   ScreeningRecordSchema,
   type AssessmentRecord,
   type Biometrics,
@@ -19,6 +22,8 @@ import {
   type GoalId,
   type Joint,
   type Profile,
+  type ProgramRecord,
+  type ReflowRecord,
   type Schedule,
   type ScreeningAnswer,
   type ScreeningQuestionId,
@@ -74,6 +79,16 @@ export interface StoredAssessment {
   readonly data: AssessmentRecord;
 }
 
+export interface StoredProgram {
+  readonly id: string;
+  readonly data: ProgramRecord;
+}
+
+export interface StoredReflow {
+  readonly id: string;
+  readonly data: ReflowRecord;
+}
+
 export interface ProfileStoreDeps {
   sync: SyncClient;
   kv: KeyValueStore;
@@ -88,6 +103,9 @@ export interface ProfileState {
   screenings: StoredScreening[];
   /** M07 assessments (append-only; the latest CapacityModel counts). */
   assessments: StoredAssessment[];
+  /** M08 programs (append-only; the latest counts) and reflows (append-only, in the order decided). */
+  programs: StoredProgram[];
+  reflows: StoredReflow[];
   draft: OnboardingDraft;
   newConditionReportedAt: string | null;
   /** Re-reads the synced records (after a pull). */
@@ -103,6 +121,10 @@ export interface ProfileState {
   completeOnboarding(): void;
   /** M07: stores a completed assessment with its CapacityModel (append-only, works offline). */
   saveAssessment(record: AssessmentRecord): AssessmentRecord;
+  /** M08: stores a generated program with its inputs (append-only, works offline). */
+  saveProgram(record: ProgramRecord): ProgramRecord;
+  /** M08: stores what the engine decided for a session the user could not do (append-only, works offline). */
+  saveReflow(record: ReflowRecord): ReflowRecord;
   reportNewCondition(): void;
   /** Health consent withdrawn or account wiped: forget health data held on the device. */
   forgetHealthData(): void;
@@ -145,6 +167,16 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
       .map((r) => ({ id: r.id, data: parsed(AssessmentRecordSchema, r.data) }))
       .filter((r): r is StoredAssessment => r.data !== null)
       .sort((a, b) => a.data.capacity.assessedAt.localeCompare(b.data.capacity.assessedAt) || a.id.localeCompare(b.id)),
+    programs: sync
+      .list(PROGRAM_COLLECTIONS.programs)
+      .map((r) => ({ id: r.id, data: parsed(ProgramRecordSchema, r.data) }))
+      .filter((r): r is StoredProgram => r.data !== null)
+      .sort((a, b) => a.data.program.generatedAt.localeCompare(b.data.program.generatedAt) || a.id.localeCompare(b.id)),
+    reflows: sync
+      .list(PROGRAM_COLLECTIONS.reflows)
+      .map((r) => ({ id: r.id, data: parsed(ReflowRecordSchema, r.data) }))
+      .filter((r): r is StoredReflow => r.data !== null)
+      .sort((a, b) => a.data.decidedAt.localeCompare(b.data.decidedAt) || a.id.localeCompare(b.id)),
   });
   const writeProfile = (profile: Profile) => {
     const data = ProfileSchema.parse(profile);
@@ -236,6 +268,18 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
       saveAssessment(record) {
         const data = AssessmentRecordSchema.parse(record);
         sync.insert(ASSESSMENT_COLLECTION, data);
+        written();
+        return data;
+      },
+      saveProgram(record) {
+        const data = ProgramRecordSchema.parse(record);
+        sync.insert(PROGRAM_COLLECTIONS.programs, data);
+        written();
+        return data;
+      },
+      saveReflow(record) {
+        const data = ReflowRecordSchema.parse(record);
+        sync.insert(PROGRAM_COLLECTIONS.reflows, data);
         written();
         return data;
       },
