@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import Fastify from 'fastify';
 import { authConfig, authValue } from '../../src/config/auth.config.js';
 import { loadEnv } from '../../src/config/env.js';
@@ -142,5 +142,24 @@ describe('observability', () => {
     expect(await initErrorReporting(undefined, 'test')).toBe(noopReporter);
     expect(() => noopReporter.capture(new Error('x'))).not.toThrow();
     expect(scrubEvent({ message: 'm', request: { url: 'u' }, user: { email: 'e' }, breadcrumbs: [], extra: { a: 1 } })).toEqual({ message: 'm' });
+  });
+
+  it('with a DSN, initialises the SDK with scrubbing and no PII', async () => {
+    const init = vi.fn();
+    const captureException = vi.fn();
+    const reporter = await initErrorReporting('https://key@example.test/1', 'test', async () => ({ init, captureException }));
+    const options = init.mock.calls[0]![0] as Record<string, unknown> & { beforeSend: (e: object) => object; beforeSendTransaction: (e: object) => object };
+    expect(options).toMatchObject({ dsn: 'https://key@example.test/1', sendDefaultPii: false, dataCollection: { userInfo: false, httpBodies: [] } });
+    expect(options.beforeSend({ message: 'm', user: { id: 1 } })).toEqual({ message: 'm' });
+    expect(options.beforeSendTransaction({ transaction: 't', request: {} })).toEqual({ transaction: 't' });
+    reporter.capture(new Error('x'));
+    expect(captureException).toHaveBeenCalledTimes(1);
+  });
+
+  it('with a DSN but no SDK installed, warns and stays a no-op', async () => {
+    const warn = vi.fn();
+    const reporter = await initErrorReporting('https://key@example.test/1', 'test', async () => Promise.reject(new Error('missing')), warn);
+    expect(reporter).toBe(noopReporter);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('not installed'));
   });
 });

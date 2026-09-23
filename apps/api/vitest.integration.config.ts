@@ -14,7 +14,8 @@ for (const file of ['.env', '.env.example']) {
 
 export default defineConfig({
   test: {
-    include: ['test/integration/**/*.test.ts'],
+    // Unit tests run too, so this report is the API's complete coverage.
+    include: ['test/unit/**/*.test.ts', 'test/integration/**/*.test.ts'],
     globalSetup: ['test/integration/global-setup.ts'],
     // One shared test database: run files one after another.
     fileParallelism: false,

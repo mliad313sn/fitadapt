@@ -14,14 +14,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "test": "vitest run --coverage",
-    "test:integration": "vitest run --config vitest.integration.config.ts --coverage"
+    "test:integration": "turbo run build --filter=@fitadapt/api^... --output-logs=errors-only && vitest run --config vitest.integration.config.ts --coverage"
   },
   "dependencies": {
     "@fastify/swagger": "9.9.0",
     "@fitadapt/shared": "workspace:*",
     "@fitadapt/sync": "workspace:*",
     "@opentelemetry/api": "1.9.1",
-    "@sentry/node": "11.0.0",
     "drizzle-orm": "0.45.3",
     "fastify": "5.12.5",
     "fastify-type-provider-zod": "7.0.0",
