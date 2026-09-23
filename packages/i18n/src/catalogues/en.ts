@@ -1,5 +1,7 @@
 import { legalEn } from './legal.en.js';
 import { libraryEn } from './library.en.js';
+import { onboardingEn } from './onboarding.en.js';
+import { screeningEn } from './screening.en.js';
 
 /**
  * English catalogue (ICU MessageFormat). Every key must also exist in fr.ts;
@@ -112,6 +114,12 @@ export const en = {
 
   // M06 exercise library: labels, engine substitution reasons and exercise wording (seed content, not expert-validated).
   ...libraryEn,
+
+  // M01 onboarding, profile, sign-in and first session.
+  ...onboardingEn,
+
+  // M01 health screening: original wording, licence check pending, awaiting seat A1 review (screening.en.ts).
+  ...screeningEn,
 } as const;
 
 export type MessageKey = keyof typeof en;

@@ -133,3 +133,17 @@ describe('units', () => {
     expect(formatDistance(1.609344, 'imperial', tEn, { maximumFractionDigits: 2 })).toBe('1 mi');
   });
 });
+
+describe('M01 screening content', () => {
+  it('lives in content files marked "licence check pending", in FR and EN', async () => {
+    const { SCREENING_CONTENT_STATUS } = await import('./index.js');
+    expect(SCREENING_CONTENT_STATUS).toBe('licence check pending');
+    const { readFileSync } = await import('node:fs');
+    for (const file of ['screening.en.ts', 'screening.fr.ts']) {
+      expect(readFileSync(new URL(`./catalogues/${file}`, import.meta.url), 'utf8')).toContain('licence check pending');
+    }
+    const keys = Object.keys(en).filter((k) => k.startsWith('screening.question.'));
+    expect(keys).toHaveLength(10);
+    for (const k of keys) expect(fr[k as keyof typeof fr].length).toBeGreaterThan(0);
+  });
+});

@@ -1,6 +1,8 @@
 import type { MessageKey } from './en.js';
 import { legalFr } from './legal.fr.js';
 import { libraryFr } from './library.fr.js';
+import { onboardingFr } from './onboarding.fr.js';
+import { screeningFr } from './screening.fr.js';
 
 /** Catalogue français (ICU MessageFormat). Mêmes clés et mêmes variables que en.ts. */
 export const fr: Record<MessageKey, string> = {
@@ -107,4 +109,6 @@ export const fr: Record<MessageKey, string> = {
   // Textes juridiques M20 : PROJETS à faire revoir par un avocat (voir legal.fr.ts).
   ...legalFr,
   ...libraryFr,
+  ...onboardingFr,
+  ...screeningFr,
 };
