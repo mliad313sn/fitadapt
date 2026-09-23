@@ -25,6 +25,7 @@ export const en = {
   'ui.timer.pause': 'Pause timer',
   'ui.timer.reset': 'Reset timer',
   'ui.timer.remaining': '{minutes, plural, one {# minute} other {# minutes}} {seconds, plural, one {# second} other {# seconds}} remaining',
+  'ui.numberDisplay.value': '{label}: {value}',
   'ui.sheet.close': 'Close',
   'ui.toast.dismiss': 'Dismiss notification',
 

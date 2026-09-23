@@ -24,6 +24,7 @@ export const fr: Record<MessageKey, string> = {
   'ui.timer.pause': 'Mettre le minuteur en pause',
   'ui.timer.reset': 'Réinitialiser le minuteur',
   'ui.timer.remaining': '{minutes, plural, one {# minute} other {# minutes}} {seconds, plural, one {# seconde} other {# secondes}} restantes',
+  'ui.numberDisplay.value': '{label} : {value}',
   'ui.sheet.close': 'Fermer',
   'ui.toast.dismiss': 'Fermer la notification',
 

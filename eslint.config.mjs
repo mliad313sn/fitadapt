@@ -40,8 +40,10 @@ export default defineConfig(
     rules: { '@typescript-eslint/no-require-imports': 'off' },
   },
   // CLAUDE.md rule 5: no user-facing string outside packages/i18n.
+  // Test files are not shipped UI; they may use literal fixture labels.
   {
     files: ['**/*.tsx', '**/*.jsx'],
+    ignores: ['**/*.test.tsx', '**/*.test.jsx', '**/test-utils.tsx', '**/__tests__/**'],
     plugins: { fitadapt },
     rules: { 'fitadapt/no-hardcoded-jsx-strings': 'error' },
   },
