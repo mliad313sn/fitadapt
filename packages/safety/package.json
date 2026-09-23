@@ -21,7 +21,9 @@
     "lint": "eslint .",
     "test": "vitest run --coverage"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@fitadapt/shared": "workspace:*"
+  },
   "devDependencies": {
     "@vitest/coverage-v8": "5.0.1",
     "vitest": "5.0.1",

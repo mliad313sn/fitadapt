@@ -397,9 +397,43 @@ export type JointFlag = z.infer<typeof JointFlagSchema>;
 export const JointFlagsSchema = z.partialRecord(JointSchema, JointFlagSchema);
 export type JointFlags = z.infer<typeof JointFlagsSchema>;
 
+/** M01 screening outcomes (docs/specs/M01). `not_screened` and `blocked` are fail-closed states, not answers. */
+export const SCREENING_OUTCOMES = ['cleared', 'cleared_with_restrictions', 'consult_professional', 'not_screened', 'blocked'] as const;
+export const ScreeningOutcomeSchema = z.enum(SCREENING_OUTCOMES);
+export type ScreeningOutcome = z.infer<typeof ScreeningOutcomeSchema>;
+
 /**
- * SafetyProfile produced by M01 screening (S1). M06 defines the fields the
- * library needs; M01 owns the screening that fills them and may add fields.
+ * M01 screening questions (ids only; wording lives in packages/i18n
+ * `screening.*`, original text, licence check pending). The mapping from
+ * answers to restrictions lives in packages/safety (seat A1 review).
+ */
+export const SCREENING_QUESTION_IDS = [
+  'heart_or_blood_pressure',
+  'chest_discomfort',
+  'fainting_or_dizziness',
+  'unusual_breathlessness',
+  'ongoing_condition',
+  'medication_affecting_effort',
+  'advised_to_limit_activity',
+  'bone_joint_back',
+  'pregnancy_or_recent_birth',
+  'advised_against_calorie_restriction',
+] as const;
+export const ScreeningQuestionIdSchema = z.enum(SCREENING_QUESTION_IDS);
+export type ScreeningQuestionId = z.infer<typeof ScreeningQuestionIdSchema>;
+
+export const SPECIAL_POPULATIONS = ['none', 'pregnancy_postpartum'] as const;
+export const SpecialPopulationSchema = z.enum(SPECIAL_POPULATIONS);
+export type SpecialPopulation = z.infer<typeof SpecialPopulationSchema>;
+
+/** Stable reason code (FR/EN explanation in packages/i18n `safetyProfile.reason.*`). */
+export const SafetyReasonCodeSchema = z.string().regex(/^[a-z0-9_.]{1,80}$/);
+
+/**
+ * SafetyProfile produced by M01 screening (S1, S4, S7) and consumed by M02,
+ * M03, M06, M07 and M10. M06 defined the first six fields (what the library
+ * needs); M01 extends the same schema (never a fork) with the screening
+ * outcome and the flags other modules must respect.
  */
 export const SafetyProfileSchema = z.strictObject({
   maxRPE: z.number().min(1).max(10),
@@ -410,6 +444,26 @@ export const SafetyProfileSchema = z.strictObject({
   avoidTags: z.array(ContraindicationTagSchema),
   /** Exercises the user asked to avoid (M01 limitations). */
   excludedExerciseIds: z.array(SlugSchema),
+  // ---- M01 extension
+  screeningOutcome: ScreeningOutcomeSchema,
+  /** S1: flags awaiting an attested professional clearance (caps apply while non-empty). */
+  unresolvedFlags: z.array(ScreeningQuestionIdSchema),
+  /** S4: false under 18 or when a professional advised against calorie restriction. */
+  deficitNutritionAllowed: z.boolean(),
+  /** S7: pregnancy/postpartum routes to professional guidance and the low-intensity library. */
+  specialPopulation: SpecialPopulationSchema,
+  /** S7: false excludes the user from automatic programming (M02, M08). */
+  automaticProgrammingAllowed: z.boolean(),
+  /** Only the low-intensity library may be offered. */
+  lowIntensityLibraryOnly: z.boolean(),
+  /** Show "talk to a health professional" guidance. */
+  professionalGuidance: z.boolean(),
+  /** Body regions the user reported as limited (M01 limitations); M05 treats them with caution. */
+  limitedJoints: z.array(JointSchema),
+  /** Why the profile is what it is, for the "why" explanation. */
+  reasonCodes: z.array(SafetyReasonCodeSchema),
+  /** Version of the screening rules that produced it (packages/safety). */
+  rulesVersion: z.string().regex(/^\d+\.\d+\.\d+$/),
 });
 export type SafetyProfile = z.infer<typeof SafetyProfileSchema>;
 

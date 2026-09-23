@@ -351,6 +351,10 @@ importers:
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@22.20.4)(@vitest/coverage-v8@5.0.1)(jsdom@20.0.3)(vite@8.3.0(@types/node@22.20.4)(esbuild@0.28.2)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/safety:
+    dependencies:
+      '@fitadapt/shared':
+        specifier: workspace:*
+        version: link:../shared
     devDependencies:
       '@vitest/coverage-v8':
         specifier: 5.0.1

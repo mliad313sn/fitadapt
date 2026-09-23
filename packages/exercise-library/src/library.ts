@@ -64,6 +64,17 @@ export const UNRESTRICTED_SAFETY_PROFILE: SafetyProfile = Object.freeze({
   impactCeiling: 'high',
   avoidTags: [],
   excludedExerciseIds: [],
+  // M01 fields (the SafetyProfile schema was extended by M01; values are the unrestricted ones).
+  screeningOutcome: 'cleared',
+  unresolvedFlags: [],
+  deficitNutritionAllowed: true,
+  specialPopulation: 'none',
+  automaticProgrammingAllowed: true,
+  lowIntensityLibraryOnly: false,
+  professionalGuidance: false,
+  limitedJoints: [],
+  reasonCodes: [],
+  rulesVersion: '0.1.0',
 });
 
 /** Share of exercises with at least one valid substitute on an equipment set (M06 KPI). */

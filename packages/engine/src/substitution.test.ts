@@ -44,7 +44,8 @@ const edges: ExerciseEdge[] = [
   { type: 'PROGRESSES_TO', from: 'knee_push', to: 'push', ladderId: 'p', source: 'test', validated: false },
 ];
 const graph = createExerciseGraph(exercises, edges);
-const open: SafetyProfile = { maxRPE: 10, allowHIIT: true, allowMaxTests: true, impactCeiling: 'high', avoidTags: [], excludedExerciseIds: [] };
+// M01 extended SafetyProfile; the added fields take their unrestricted values.
+const open: SafetyProfile = { maxRPE: 10, allowHIIT: true, allowMaxTests: true, impactCeiling: 'high', avoidTags: [], excludedExerciseIds: [], screeningOutcome: 'cleared', unresolvedFlags: [], deficitNutritionAllowed: true, specialPopulation: 'none', automaticProgrammingAllowed: true, lowIntensityLibraryOnly: false, professionalGuidance: false, limitedJoints: [], reasonCodes: [], rulesVersion: '0.1.0' };
 
 describe('substitution over a graph', () => {
   it('picks the highest-similarity valid option and skips too-large skill jumps', () => {

@@ -32,6 +32,17 @@ const arbProfile: fc.Arbitrary<SafetyProfile> = fc.record({
   impactCeiling: fc.constantFrom(...IMPACT_LEVELS),
   avoidTags: fc.subarray([...CONTRAINDICATION_TAGS]),
   excludedExerciseIds: fc.subarray(ids, { maxLength: 5 }),
+  // M01 extended SafetyProfile; the substitution filters do not read these fields.
+  screeningOutcome: fc.constant('cleared' as const),
+  unresolvedFlags: fc.constant([]),
+  deficitNutritionAllowed: fc.constant(true),
+  specialPopulation: fc.constant('none' as const),
+  automaticProgrammingAllowed: fc.constant(true),
+  lowIntensityLibraryOnly: fc.constant(false),
+  professionalGuidance: fc.constant(false),
+  limitedJoints: fc.constant([]),
+  reasonCodes: fc.constant([]),
+  rulesVersion: fc.constant('0.1.0'),
 });
 
 describe('substitute', () => {

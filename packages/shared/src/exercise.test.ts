@@ -102,7 +102,10 @@ describe('M06 schemas', () => {
     expect(ContentVersionSchema.safeParse({ contentId: 'exercise.a1', entityType: 'exercise', version: 1, contentHash: 'a'.repeat(64), createdAt: '2026-09-23T10:00:00.000Z', status: 'draft', approvals: [] }).success).toBe(true);
     expect(JointFlagsSchema.safeParse({ knee: 'red' }).success).toBe(true);
     expect(JointFlagsSchema.safeParse({ knee: 'purple' }).success).toBe(false);
-    expect(SafetyProfileSchema.safeParse({ maxRPE: 7, allowHIIT: false, allowMaxTests: false, impactCeiling: 'low', avoidTags: ['inversion'], excludedExerciseIds: [] }).success).toBe(true);
+    // M01 extended the schema (docs/status/M01.md): the M06 fields plus the screening fields are all required.
+    const m01Fields = { screeningOutcome: 'consult_professional', unresolvedFlags: ['chest_discomfort'], deficitNutritionAllowed: true, specialPopulation: 'none', automaticProgrammingAllowed: true, lowIntensityLibraryOnly: false, professionalGuidance: true, limitedJoints: [], reasonCodes: ['safety_profile.s1.unresolved_flag'], rulesVersion: '0.1.0' };
+    expect(SafetyProfileSchema.safeParse({ ...m01Fields, maxRPE: 7, allowHIIT: false, allowMaxTests: false, impactCeiling: 'low', avoidTags: ['inversion'], excludedExerciseIds: [] }).success).toBe(true);
+    expect(SafetyProfileSchema.safeParse({ maxRPE: 7, allowHIIT: false, allowMaxTests: false, impactCeiling: 'low', avoidTags: ['inversion'], excludedExerciseIds: [] }).success).toBe(false);
     expect(impactRank('none')).toBeLessThan(impactRank('high'));
     expect(skillRank('entry')).toBe(0);
     expect(skillRank('expert')).toBe(4);
