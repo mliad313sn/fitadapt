@@ -1,7 +1,8 @@
 import { featureOn } from '../privacy/consents';
 import { notScreenedSafetyProfile, rescreenStatus, evaluateScreening, type RescreenStatus } from '@fitadapt/safety';
-import type { ConsentRecord, SafetyProfile } from '@fitadapt/shared';
-import type { StoredScreening } from './profile-store';
+import { fixedClock, reassessmentStatus, type ReassessmentStatus } from '@fitadapt/engine';
+import type { CapacityModel, ConsentRecord, SafetyProfile } from '@fitadapt/shared';
+import type { StoredAssessment, StoredScreening } from './profile-store';
 
 /**
  * The user's SafetyProfile (S1, S4, S7) as every module must read it.
@@ -21,4 +22,18 @@ export function selectSafetyProfile(screenings: readonly StoredScreening[], cons
 /** Re-screen every 12 months or after a newly reported condition (M01). */
 export function selectRescreen(screenings: readonly StoredScreening[], newConditionReportedAt: string | null, now: Date): RescreenStatus {
   return rescreenStatus(screenings[screenings.length - 1]?.data.completedAt ?? null, now, newConditionReportedAt);
+}
+
+/**
+ * M07: the latest CapacityModel, or null. Assessment results are health data:
+ * without the health consent the device does not use them (fail closed, like the SafetyProfile).
+ */
+export function selectCapacity(assessments: readonly StoredAssessment[], consents: readonly ConsentRecord[]): CapacityModel | null {
+  if (!featureOn('health.screening', consents)) return null;
+  return assessments[assessments.length - 1]?.data.capacity ?? null;
+}
+
+/** M07: re-assessment prompt at the end of the mesocycle (engine rule, app clock). */
+export function selectReassessment(capacity: CapacityModel | null, now: Date, mesocycleEndsAt: string | null = null): ReassessmentStatus {
+  return reassessmentStatus(capacity, fixedClock(now.getTime()), mesocycleEndsAt);
 }

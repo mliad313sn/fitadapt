@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",
+    "@fitadapt/engine": "workspace:*",
     "@fitadapt/exercise-library": "workspace:*",
     "@fitadapt/i18n": "workspace:*",
     "@fitadapt/legal": "workspace:*",

@@ -1,3 +1,6 @@
+import { createEngineContext } from '@fitadapt/engine';
+import { generateSession } from '@fitadapt/exercise-library';
+import { formatMass, type MessageKey } from '@fitadapt/i18n';
 import { NOTICES, noticesToShow, renderNotice } from '@fitadapt/legal';
 import { useI18n } from '@fitadapt/i18n/react';
 import { Button, Card, Chip, useTheme } from '@fitadapt/ui';
@@ -6,17 +9,20 @@ import { useEffect, useMemo } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLibraryStore } from '../library/LibraryProvider';
-import { useLegal, useProfile, useSafetyProfile } from '../profile/ProfileProvider';
+import { clock } from '../clock';
+import { useCapacity, useLegal, useProfile, useSafetyProfile } from '../profile/ProfileProvider';
 
 /**
  * The first-workout screen (reachable only through the L2 gate, see
  * app/_layout.tsx). Shows the L3 first-workout notice, lets the user choose
  * today's place (M01: location chosen at session start) and shows the
- * exercise pool of that place under the SafetyProfile. Prescriptions come
- * from the engine (M02), which is not built yet.
+ * exercise pool of that place under the SafetyProfile. M07: once the user
+ * has measured their starting point, the first session comes from the
+ * engine's generateSession() over the CapacityModel (M02 extends it).
  */
 export function FirstWorkoutScreen() {
-  const { t, locale } = useI18n();
+  const i18n = useI18n();
+  const { t, locale, unitSystem } = i18n;
   const theme = useTheme();
   const router = useRouter();
   const library = useLibraryStore();
@@ -27,9 +33,16 @@ export function FirstWorkoutScreen() {
   const impressions = useLegal((s) => s.notices);
   const jurisdiction = useLegal((s) => s.jurisdiction);
   const recordNotice = useLegal((s) => s.recordNotice);
+  const capacity = useCapacity();
+  const minutes = useProfile((s) => s.profile?.schedule.minutesPerSession ?? 30);
 
   const active = equipment.find((p) => p.id === activeId) ?? equipment[0];
   const pending = noticesToShow('workout.start', impressions, NOTICES);
+  const session = useMemo(() => {
+    if (!capacity || !active) return null;
+    const now = clock.now().getTime();
+    return generateSession({ capacity, safetyProfile: safety, equipment: active.data.equipment, minutesAvailable: minutes }, createEngineContext({ clock: { now: () => now }, seed: 1 }));
+  }, [capacity, active, safety, minutes]);
   const pool = useMemo(() => (library && active ? library.pool(locale, active.data.equipment, safety) : []), [library, active, locale, safety]);
 
   // L3: record that the notice was shown (once per version until acknowledged).
@@ -65,7 +78,41 @@ export function FirstWorkoutScreen() {
           {t('firstWorkout.available', { count: pool.length })}
         </Text>
         {safety.lowIntensityLibraryOnly ? <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.body }}>{t('firstWorkout.lowIntensity')}</Text> : null}
-        <Text style={{ color: theme.colors.textMuted, fontSize: theme.fontSize.body }}>{t('firstWorkout.builderPending')}</Text>
+        {session?.status === 'ok' ? (
+          <View style={{ gap: theme.spacing.md }} testID="first-session-plan">
+            <Text accessibilityRole="header" style={{ color: theme.colors.text, fontSize: theme.fontSize.title, fontWeight: theme.fontWeight.bold }}>
+              {t('firstWorkout.plan.title')}
+            </Text>
+            <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.body }}>{t('firstWorkout.plan.minutes', { minutes: Math.round(session.plan.estimatedMinutes) })}</Text>
+            <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.body }}>{t('firstWorkout.plan.reserve', { rir: session.plan.targetRir })}</Text>
+            {session.plan.exercises.map((e) => {
+              const set = e.sets[0]!;
+              const dose = set.target.kind === 'hold' ? t('firstWorkout.plan.hold', { sets: e.sets.length, seconds: set.target.seconds }) : t('firstWorkout.plan.reps', { sets: e.sets.length, min: set.target.min, max: set.target.max });
+              return (
+                <Card key={e.slot} title={t(`exercise.${e.exerciseId}.name` as MessageKey)} testID={`first-session-${e.slot}`}>
+                  <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.body }}>
+                    {set.loadKg !== null ? `${dose} ${t('firstWorkout.plan.load', { load: formatMass(set.loadKg, unitSystem, i18n) })}` : dose}
+                  </Text>
+                  {set.reasonCodes.slice(0, 2).map((code) => (
+                    <Text key={code} style={{ color: theme.colors.textMuted, fontSize: theme.fontSize.label }}>
+                      {t(`engine.reason.${code}` as MessageKey)}
+                    </Text>
+                  ))}
+                </Card>
+              );
+            })}
+          </View>
+        ) : session?.status === 'unavailable' ? (
+          <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.body }} testID="first-session-unavailable">
+            {t(`engine.reason.${session.reasonCodes[session.reasonCodes.length - 1]!}` as MessageKey)}
+          </Text>
+        ) : (
+          <Card testID="first-session-needs-assessment">
+            <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.body }}>{t('firstWorkout.plan.needsAssessment')}</Text>
+            <Button label={t('firstWorkout.plan.assess')} onPress={() => router.push('/assessment')} testID="first-workout-assess" />
+          </Card>
+        )}
+        {session?.status !== 'ok' ? <Text style={{ color: theme.colors.textMuted, fontSize: theme.fontSize.body }}>{t('firstWorkout.builderPending')}</Text> : null}
         <Button label={t('firstWorkout.home')} variant="secondary" onPress={() => router.replace('/')} testID="first-workout-home" />
       </ScrollView>
     </SafeAreaView>

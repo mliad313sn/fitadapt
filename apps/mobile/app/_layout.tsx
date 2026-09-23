@@ -32,7 +32,8 @@ import { openExpoDatabase } from '../src/sync/expo-db';
  * age gate; once blocked, it stays the only screen.
  * L2 (M01): the first-workout screen is reachable only once onboarding is
  * complete and the current Terms, Privacy Policy, health-data consent and
- * exercise-risk acknowledgment are accepted.
+ * exercise-risk acknowledgment are accepted. The M07 assessment sits behind
+ * the same gate.
  */
 function GatedStack() {
   const passed = useAgeGate((s) => s.status === 'allowed');
@@ -51,6 +52,8 @@ function GatedStack() {
       </Stack.Protected>
       <Stack.Protected guard={passed && workout}>
         <Stack.Screen name="first-workout" />
+        {/* M07: the assessment is a workout activity: same L2 gate as the first workout. */}
+        <Stack.Screen name="assessment" />
       </Stack.Protected>
       <Stack.Protected guard={!passed}>
         <Stack.Screen name="age-gate" />

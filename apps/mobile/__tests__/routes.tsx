@@ -1,5 +1,6 @@
 import RootLayout from '../app/_layout';
 import AgeGate from '../app/age-gate';
+import Assessment from '../app/assessment';
 import Equipment from '../app/equipment';
 import FirstWorkout from '../app/first-workout';
 import Index from '../app/index';
@@ -16,9 +17,10 @@ import Terms from '../app/onboarding/terms';
 import Privacy from '../app/privacy';
 import SignIn from '../app/sign-in';
 
-/** M01 routes declared by the root layout (the map every router test passes to renderRouter). */
+/** M01 routes declared by the root layout (the map every router test passes to renderRouter), plus the M07 assessment behind the same gate. */
 export const m01Routes = {
   'sign-in': SignIn,
+  assessment: Assessment,
   equipment: Equipment,
   'first-workout': FirstWorkout,
   'onboarding/goals': Goals,

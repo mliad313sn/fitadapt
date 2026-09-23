@@ -1,5 +1,6 @@
 import { firstWorkoutGate, type LegalDocumentId } from '@fitadapt/legal';
-import type { SafetyProfile } from '@fitadapt/shared';
+import type { ReassessmentStatus } from '@fitadapt/engine';
+import type { CapacityModel, SafetyProfile } from '@fitadapt/shared';
 import type { RescreenStatus } from '@fitadapt/safety';
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
@@ -9,7 +10,7 @@ import type { LegalStore, LegalStoreState } from '../legal/legal-store';
 import { currentLegalRegistry } from '../legal/registry';
 import { useConsents, usePrivacy } from '../privacy/PrivacyProvider';
 import type { ProfileState, ProfileStore } from './profile-store';
-import { selectRescreen, selectSafetyProfile } from './selectors';
+import { selectCapacity, selectReassessment, selectRescreen, selectSafetyProfile } from './selectors';
 
 export interface ProfileContextValue {
   profile: ProfileStore;
@@ -75,6 +76,18 @@ export function useRescreen(): RescreenStatus {
   const screenings = useProfile((s) => s.screenings);
   const reported = useProfile((s) => s.newConditionReportedAt);
   return selectRescreen(screenings, reported, clock.now());
+}
+
+/** M07: the latest CapacityModel (null before the first assessment or without health consent). */
+export function useCapacity(): CapacityModel | null {
+  const assessments = useProfile((s) => s.assessments);
+  const consents = useConsents((s) => s.records);
+  return useMemo(() => selectCapacity(assessments, consents), [assessments, consents]);
+}
+
+/** M07: whether the end-of-mesocycle re-assessment is due, on the app clock. */
+export function useReassessment(): ReassessmentStatus {
+  return selectReassessment(useCapacity(), clock.now());
 }
 
 export interface FirstWorkoutAccess {

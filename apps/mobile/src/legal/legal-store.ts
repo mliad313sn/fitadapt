@@ -7,6 +7,7 @@ import {
   type AcceptanceRecord,
   type DefensibilityEvent,
   type DefensibilityEventInput,
+  type DefensibilityPayload,
   type LegalDocumentId,
   type NoticeDefinition,
   type NoticeImpression,
@@ -81,6 +82,8 @@ export interface LegalStoreState {
   recordNotice(notice: NoticeDefinition, kind: 'shown' | 'acknowledged', locale: Locale): DeviceNoticeImpression;
   /** Adds a consent decision to the device defensibility buffer (the ledger itself is the M17 consent store). */
   logConsent(record: ConsentRecord): void;
+  /** M07: a safety gate that changed what the user was asked to do (e.g. S1 capping an assessment), for the device buffer (L11). */
+  logSafetyEvent(payload: DefensibilityPayload<'safety.event'>): void;
   clear(): void;
 }
 
@@ -167,6 +170,9 @@ export function createLegalStore({ kv, newId, now, jurisdiction }: LegalStoreDep
           payload: { dataType: record.dataType, decision: record.decision, version: record.version, locale: record.locale, jurisdiction: record.jurisdiction },
         }),
       });
+    },
+    logSafetyEvent(payload) {
+      set({ events: append(get().events, { type: 'safety.event', occurredAt: now().toISOString(), payload }) });
     },
     clear() {
       for (const key of [ACCEPTANCES_KEY, NOTICES_KEY, LOG_KEY]) kv.remove(key);

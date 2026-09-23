@@ -1,5 +1,7 @@
 import { evaluateScreening } from '@fitadapt/safety';
 import {
+  ASSESSMENT_COLLECTION,
+  AssessmentRecordSchema,
   EMPTY_BIOMETRICS,
   EQUIPMENT_LOCATIONS,
   EquipmentProfileSchema,
@@ -7,6 +9,7 @@ import {
   PROFILE_RECORD_ID,
   ProfileSchema,
   ScreeningRecordSchema,
+  type AssessmentRecord,
   type Biometrics,
   type CalendarDateValue,
   type EquipmentId,
@@ -66,6 +69,11 @@ export interface StoredScreening {
   readonly data: ScreeningRecord;
 }
 
+export interface StoredAssessment {
+  readonly id: string;
+  readonly data: AssessmentRecord;
+}
+
 export interface ProfileStoreDeps {
   sync: SyncClient;
   kv: KeyValueStore;
@@ -78,6 +86,8 @@ export interface ProfileState {
   profile: Profile | null;
   equipment: StoredEquipmentProfile[];
   screenings: StoredScreening[];
+  /** M07 assessments (append-only; the latest CapacityModel counts). */
+  assessments: StoredAssessment[];
   draft: OnboardingDraft;
   newConditionReportedAt: string | null;
   /** Re-reads the synced records (after a pull). */
@@ -91,6 +101,8 @@ export interface ProfileState {
   /** Evaluates the draft's answers and stores the screening (append-only). */
   saveScreening(reason: ScreeningRecord['reason'], answeredOn: CalendarDateValue): ScreeningRecord;
   completeOnboarding(): void;
+  /** M07: stores a completed assessment with its CapacityModel (append-only, works offline). */
+  saveAssessment(record: AssessmentRecord): AssessmentRecord;
   reportNewCondition(): void;
   /** Health consent withdrawn or account wiped: forget health data held on the device. */
   forgetHealthData(): void;
@@ -128,6 +140,11 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
       .map((r) => ({ id: r.id, data: parsed(ScreeningRecordSchema, r.data) }))
       .filter((r): r is StoredScreening => r.data !== null)
       .sort((a, b) => a.data.completedAt.localeCompare(b.data.completedAt)),
+    assessments: sync
+      .list(ASSESSMENT_COLLECTION)
+      .map((r) => ({ id: r.id, data: parsed(AssessmentRecordSchema, r.data) }))
+      .filter((r): r is StoredAssessment => r.data !== null)
+      .sort((a, b) => a.data.capacity.assessedAt.localeCompare(b.data.capacity.assessedAt) || a.id.localeCompare(b.id)),
   });
   const writeProfile = (profile: Profile) => {
     const data = ProfileSchema.parse(profile);
@@ -215,6 +232,12 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
         if (!profile || profile.onboardingCompletedAt) return;
         writeProfile({ ...profile, onboardingCompletedAt: now().toISOString() });
         written();
+      },
+      saveAssessment(record) {
+        const data = AssessmentRecordSchema.parse(record);
+        sync.insert(ASSESSMENT_COLLECTION, data);
+        written();
+        return data;
       },
       reportNewCondition() {
         const at = now().toISOString();
