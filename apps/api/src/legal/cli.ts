@@ -14,6 +14,7 @@ export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..
 export function loadLocalEnv(root = REPO_ROOT, env: NodeJS.ProcessEnv = process.env): void {
   for (const file of env.NODE_ENV === 'production' ? ['.env'] : ['.env', '.env.example']) {
     const path = join(root, file);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- fixed file names (.env, .env.example) at the repository root
     if (existsSync(path)) {
       process.loadEnvFile(path);
       return;
@@ -50,7 +51,9 @@ export async function runLegalHoldExport(legal: LegalService, args: ExportArgs, 
   const result = await legal.legalHoldExport(args.userId, args.actor);
   const stamp = result.generatedAt.replace(/[:.]/g, '-');
   const path = args.out ? (isAbsolute(args.out) ? args.out : resolve(cwd, args.out)) : join(REPO_ROOT, 'reports/legal', `legal-hold-${result.subjectRef.replace(/[^A-Za-z0-9]/g, '').slice(0, 12)}-${stamp}.json`);
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- output path chosen by the operator running the CLI (--out) or reports/legal
   mkdirSync(dirname(path), { recursive: true });
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- same operator-chosen output path
   writeFileSync(path, `${JSON.stringify(result, null, 2)}\n`);
   return { path, result };
 }
