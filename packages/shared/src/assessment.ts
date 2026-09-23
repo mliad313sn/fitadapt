@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IsoDateTimeSchema, UuidSchema } from './common.js';
+import { IsoDateTimeSchema } from './common.js';
 import { SlugSchema } from './exercise.js';
 
 /**
@@ -119,37 +119,4 @@ export type AssessmentRecord = z.infer<typeof AssessmentRecordSchema>;
 
 export const ASSESSMENT_COLLECTION = 'assessments' as const;
 
-// ---- First session (M07 → M02): the plan generateSession() returns.
-
-export const PlannedSetSchema = z.strictObject({
-  index: z.number().int().min(1),
-  target: SlotTargetSchema,
-  loadKg: z.number().min(0).nullable(),
-  targetRir: z.number().int().min(0).max(10),
-  restSeconds: z.number().int().min(0),
-  reasonCodes: z.array(ReasonCodeSchema).min(1),
-});
-export type PlannedSet = z.infer<typeof PlannedSetSchema>;
-
-export const PlannedExerciseSchema = z.strictObject({
-  slot: CapacitySlotIdSchema,
-  exerciseId: SlugSchema,
-  sets: z.array(PlannedSetSchema).min(1),
-  reasonCodes: z.array(ReasonCodeSchema).min(1),
-});
-export type PlannedExercise = z.infer<typeof PlannedExerciseSchema>;
-
-export const SessionPlanSchema = z.strictObject({
-  planId: UuidSchema,
-  kind: z.literal('first_session'),
-  engineVersion: z.string().regex(/^\d+\.\d+\.\d+$/),
-  generatedAt: IsoDateTimeSchema,
-  seed: z.number().int(),
-  /** The capacity model the plan was built from (its assessment time). */
-  capacityAssessedAt: IsoDateTimeSchema,
-  targetRir: z.number().int().min(0).max(10),
-  estimatedMinutes: z.number().min(0),
-  exercises: z.array(PlannedExerciseSchema).min(1),
-  reasonCodes: z.array(ReasonCodeSchema).min(1),
-});
-export type SessionPlan = z.infer<typeof SessionPlanSchema>;
+// ---- The plan generateSession() returns (first session M07, program sessions M02) lives in session.ts.

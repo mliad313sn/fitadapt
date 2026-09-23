@@ -105,10 +105,36 @@ export const ProfileSchema = z.strictObject({
 });
 export type Profile = z.infer<typeof ProfileSchema>;
 
+/**
+ * M02: the loads a place actually offers, so prescriptions round to the
+ * smallest step the user's equipment allows (plates, dumbbell pairs, machine
+ * stacks). Every list is optional information: an empty list (or null) means
+ * "not known", and the engine then asks the user to choose a light load
+ * rather than inventing a number. Metric, per implement (a dumbbell load is
+ * per dumbbell).
+ */
+export const EquipmentLoadsSchema = z.strictObject({
+  /** Barbell (and Smith machine bar) weight; null when unknown. */
+  barKg: z.number().min(0).max(50).nullable(),
+  /** Plate sizes available in pairs (e.g. 20, 10, 5, 2.5, 1.25; microplates 0.5, 0.25). */
+  platePairsKg: z.array(z.number().positive().max(50)).max(20),
+  /** Dumbbells available, kg per dumbbell (each one as a pair). */
+  dumbbellsKg: z.array(z.number().positive().max(100)).max(80),
+  kettlebellsKg: z.array(z.number().positive().max(100)).max(40),
+  /** Weight-stack machines and cables: first step, step size and top of the stack. */
+  stack: z
+    .strictObject({ minKg: z.number().min(0).max(100), stepKg: z.number().positive().max(50), maxKg: z.number().positive().max(500) })
+    .refine((s) => s.maxKg >= s.minKg, { message: 'stack top below its first step' })
+    .nullable(),
+});
+export type EquipmentLoads = z.infer<typeof EquipmentLoadsSchema>;
+
 /** One equipment profile per location (Home, Gym, Park, Travel), built from the M06 taxonomy. */
 export const EquipmentProfileSchema = z.strictObject({
   location: EquipmentLocationSchema,
   equipment: z.array(EquipmentIdSchema).refine((ids) => new Set(ids).size === ids.length, { message: 'duplicate equipment' }),
+  /** M02 (optional, added in place): the loads this place offers; absent = the engine's defaults for the location. */
+  loads: EquipmentLoadsSchema.optional(),
 });
 export type EquipmentProfile = z.infer<typeof EquipmentProfileSchema>;
 
