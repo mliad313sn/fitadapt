@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/*
+  - tooling/*
+
+# React Native / Metro and jest-expo resolve packages from a flat node_modules
+# tree; see ADR-001 ("pnpm with the hoisted node linker").
+nodeLinker: hoisted
+
+# pnpm 10 blocks dependency lifecycle scripts by default; allow only the ones we need.
+onlyBuiltDependencies:
+  - esbuild
