@@ -4,5 +4,6 @@ export * from './context.js';
 export * from './version.js';
 export * from './substitution.js';
 export * from './assessment/index.js';
-export * from './session/first-session.js';
+export * from './session/index.js';
+export * from './config/index.js';
 export * from './program/index.js';

@@ -142,9 +142,9 @@ describe('M01 profile sync with server-side validation', () => {
     const chain = await h.app.services.legal.log.chain(h.app.services.legal.subjectRef(s.userId));
     const safety = chain.filter((e) => e.type === 'safety.event').map((e) => e.payload);
     expect(safety).toEqual([
-      { invariant: 'S1', reasonCode: 'safety.s1.unresolved_flag', action: 'capped', engineVersion: '0.1.0' },
-      { invariant: 'S7', reasonCode: 'safety.s7.pregnancy_postpartum', action: 'capped', engineVersion: '0.1.0' },
-      { invariant: 'S4', reasonCode: 'safety.s4.deficit_disabled', action: 'blocked', engineVersion: '0.1.0' },
+      { invariant: 'S1', reasonCode: 'safety.s1.unresolved_flag', action: 'capped', engineVersion: ENGINE_VERSION },
+      { invariant: 'S7', reasonCode: 'safety.s7.pregnancy_postpartum', action: 'capped', engineVersion: ENGINE_VERSION },
+      { invariant: 'S4', reasonCode: 'safety.s4.deficit_disabled', action: 'blocked', engineVersion: ENGINE_VERSION },
     ]);
   });
 

@@ -1,69 +1,37 @@
-import { screeningGateCheck } from '@fitadapt/safety';
+import { S5_MAX_INCREASE_FRACTION, S5_WINDOW_DAYS, s5LoadCeiling, screeningGateCheck } from '@fitadapt/safety';
 import {
-  CapacityModelSchema,
-  SafetyProfileSchema,
   SessionPlanSchema,
-  type CapacityModel,
   type CapacitySlot,
-  type EquipmentId,
-  type JointFlags,
   type LoadType,
   type PlannedExercise,
   type PlannedSet,
   type SafetyProfile,
-  type SessionPlan,
   type SlotTarget,
 } from '@fitadapt/shared';
 import { assessmentValue, firstSessionValue } from '../assessment/config.js';
-import type { CapacityLibrary } from '../assessment/capacity.js';
 import { loadForReps, roundDownToIncrement } from '../assessment/e1rm.js';
+import { SESSION_RULES_VERSION } from '../config/session.js';
 import { stamp, type EngineContext } from '../context.js';
 import { uuidFrom } from '../random.js';
-import { blockingReasons, substitute, substitutionSafetyEvent, type ExerciseGraph } from '../substitution.js';
+import { blockingReasons, substitute, substitutionSafetyEvent } from '../substitution.js';
 import { ENGINE_VERSION } from '../version.js';
+import { achievableAtMost, implementFor } from './increments.js';
+import type { SessionLibrary } from './library.js';
+import { loadReferencesFor } from './program-session.js';
+import type { GenerateSessionInput, GenerateSessionResult, SessionSafetyEvent } from './types.js';
+
+export type { SessionLibrary } from './library.js';
+export type { GenerateSessionInput, GenerateSessionResult, RecentLoad, SessionSafetyEvent } from './types.js';
+// M07 callers import the generator from here; it lives in generate.ts (one generator for every session).
+export { generateSession } from './generate.js';
 
 /**
  * S5 load ceiling (docs/specs/00-product-vision.md): a prescribed load never
- * rises more than 10 % within 7 days. Invariant constants, not configuration.
+ * rises more than 10 % within 7 days. Invariant constants, not configuration
+ * (defined in packages/safety since M02; re-exported here for M07 callers).
  */
-export const S5_MAX_INCREASE_FRACTION = 0.1 as const;
-export const S5_WINDOW_DAYS = 7 as const;
-const DAY_MS = 86_400_000;
+export { S5_MAX_INCREASE_FRACTION, S5_WINDOW_DAYS };
 const MAX_TARGET_RIR = 5;
-
-export interface SessionLibrary extends CapacityLibrary {
-  readonly graph: ExerciseGraph;
-  readonly loadType: (exerciseId: string) => LoadType | undefined;
-}
-
-export interface RecentLoad {
-  readonly exerciseId: string;
-  readonly loadKg: number;
-  readonly prescribedAt: string;
-}
-
-export interface GenerateSessionInput {
-  readonly capacity: CapacityModel;
-  readonly safetyProfile: SafetyProfile;
-  /** Equipment of the active equipment profile. */
-  readonly equipment: readonly EquipmentId[];
-  readonly minutesAvailable: number;
-  readonly jointFlags?: JointFlags;
-  /** Loads prescribed recently (S5). */
-  readonly recentLoads?: readonly RecentLoad[];
-  readonly loadIncrementKg?: number;
-}
-
-export interface SessionSafetyEvent {
-  readonly invariant: 'S2' | 'S5';
-  readonly reasonCode: string;
-  readonly action: 'substituted' | 'capped';
-  readonly engineVersion: string;
-}
-
-export type GenerateSessionResult =
-  | { readonly status: 'ok'; readonly plan: SessionPlan; readonly safetyEvents: readonly SessionSafetyEvent[] }
-  | { readonly status: 'unavailable'; readonly reasonCodes: readonly string[] };
 
 /** First-session reserve: the configured RIR, raised until S1 (screeningGateCheck) accepts the matching RPE. */
 export function firstSessionRir(profile: SafetyProfile): number | null {
@@ -119,34 +87,31 @@ function minutesOf(exercises: readonly PlannedExercise[]): number {
 }
 
 /**
- * First session from the assessment (M07 → M02): one exercise per capacity
- * slot at the assessed rung and starting load, within the SafetyProfile and
- * the active equipment, fitted to the minutes available. Pure and
- * deterministic (injected clock and seed); every set carries reason codes.
+ * First session from the assessment (M07, extended by M02): one exercise per
+ * capacity slot at the assessed rung and starting load, within the
+ * SafetyProfile and the active equipment, fitted to the minutes available.
+ * Pure and deterministic (injected clock and seed); every set carries reason
+ * codes. Called by generateSession() once the common gates (S1 effort cap,
+ * S3, S7) have passed.
  *
  * Safety: S1 via screeningGateCheck (target RIR raised until the RPE is
  * allowed; no HIIT, no maximal efforts), S2 and the SafetyProfile filters via
- * the M06 substitution rules, S5 via the load ceiling against recent loads,
- * S7 (no automatic programming) → no plan. M02 extends this generator
- * (progression, full slot model, time-boxing by supersets); it must keep
- * these guarantees.
+ * the M06 substitution rules, S5 via the load ceiling against every load of
+ * the last 7 days (and any dated later: a clock moved back never escapes it).
+ * M02: when the place's loads are known, loads round down to what that
+ * equipment can make; when they are not, the user chooses a light load.
  */
-export function generateSession(rawInput: GenerateSessionInput, library: SessionLibrary, ctx: EngineContext): GenerateSessionResult {
-  const input: GenerateSessionInput = { ...rawInput, capacity: CapacityModelSchema.parse(rawInput.capacity), safetyProfile: SafetyProfileSchema.parse(rawInput.safetyProfile) };
-  const profile = input.safetyProfile;
-  if (profile.screeningOutcome === 'blocked') return { status: 'unavailable', reasonCodes: ['session.unavailable.blocked'] };
-  if (profile.screeningOutcome === 'not_screened') return { status: 'unavailable', reasonCodes: ['session.unavailable.not_screened'] };
-  if (!profile.automaticProgrammingAllowed || profile.lowIntensityLibraryOnly) return { status: 'unavailable', reasonCodes: ['session.unavailable.professional_guidance'] };
-  const targetRir = firstSessionRir(profile);
-  if (targetRir === null) return { status: 'unavailable', reasonCodes: ['session.unavailable.effort_cap'] };
+export function firstSession(input: GenerateSessionInput, library: SessionLibrary, ctx: EngineContext, targetRir: number): GenerateSessionResult {
+  const capacity = input.capacity!;
   const rirReason = targetRir > firstSessionValue('targetRir') ? 'session.rir.s1_capped' : 'session.rir.first_session';
-
   const now = ctx.clock.now();
   const safetyEvents: SessionSafetyEvent[] = [];
   const planReasons: string[] = ['session.first.from_assessment'];
   const exercises: PlannedExercise[] = [];
+  const equipment = new Set(input.equipment);
+  const increment = input.loadIncrementKg ?? assessmentValue('defaultLoadIncrementKg');
 
-  for (const slot of input.capacity.slots) {
+  for (const slot of capacity.slots) {
     const choice = chooseExercise(slot, input, library);
     if (!choice) {
       planReasons.push(`session.slot_dropped.${slot.slot}`);
@@ -156,28 +121,32 @@ export function generateSession(rawInput: GenerateSessionInput, library: Session
     const target = targetFor(choice, slot, library);
     const loadReasons: string[] = [];
     let loadKg: number | null = null;
-    const increment = input.loadIncrementKg ?? assessmentValue('defaultLoadIncrementKg');
+    const exercise = library.graph.exercises.get(choice.exerciseId)!;
+    const loading = input.equipmentLoads ? implementFor(exercise, library.loadType(choice.exerciseId), equipment, input.equipmentLoads, increment) : null;
+    const round = (raw: number): number | null => (input.equipmentLoads ? (loading?.implement ? achievableAtMost(raw, loading.implement) : null) : roundDownToIncrement(raw, increment));
     if (choice.fromCapacity && slot.e1rmKg !== null && target.kind === 'reps') {
-      loadKg = roundDownToIncrement(loadForReps(slot.e1rmKg, target.max, targetRir) * assessmentValue('firstSessionLoadFactor'), increment);
-      loadReasons.push('session.load.from_e1rm');
+      loadKg = round(loadForReps(slot.e1rmKg, target.max, targetRir) * assessmentValue('firstSessionLoadFactor'));
+      loadReasons.push(loadKg === null ? 'session.load.self_select_light' : 'session.load.from_e1rm');
     } else if (choice.fromCapacity && slot.loadKg !== null) {
-      loadKg = slot.loadKg;
-      loadReasons.push('session.load.from_test_load');
+      loadKg = input.equipmentLoads ? round(slot.loadKg) : slot.loadKg;
+      loadReasons.push(loadKg === null ? 'session.load.self_select_light' : 'session.load.from_test_load');
     } else if (isLoaded(library.loadType(choice.exerciseId))) {
       loadReasons.push('session.load.self_select_light');
     } else {
       loadReasons.push('session.load.bodyweight_variant');
     }
     if (loadKg !== null) {
-      const since = now - S5_WINDOW_DAYS * DAY_MS;
-      const recent = (input.recentLoads ?? []).filter((r) => r.exerciseId === choice.exerciseId && Date.parse(r.prescribedAt) >= since && Date.parse(r.prescribedAt) <= now);
-      if (recent.length > 0) {
-        const ceiling = roundDownToIncrement(Math.min(...recent.map((r) => r.loadKg)) * (1 + S5_MAX_INCREASE_FRACTION), increment);
-        if (loadKg > ceiling) {
-          loadKg = ceiling;
-          loadReasons.push('session.load.s5_capped');
-          safetyEvents.push({ invariant: 'S5', reasonCode: 'safety.s5.load_ceiling', action: 'capped', engineVersion: ENGINE_VERSION });
+      const ceiling = s5LoadCeiling(loadReferencesFor(input.history ?? [], input.recentLoads ?? [], choice.exerciseId), now);
+      if (ceiling !== null && loadKg > ceiling) {
+        const capped = input.equipmentLoads ? round(ceiling) : roundDownToIncrement(ceiling, increment);
+        if (capped === null) {
+          // No load this equipment can make is under the S5 ceiling: the slot is not prescribed.
+          planReasons.push(`session.slot_dropped.${slot.slot}`);
+          continue;
         }
+        loadKg = capped;
+        loadReasons.push('session.load.s5_capped');
+        safetyEvents.push({ invariant: 'S5', reasonCode: 'safety.s5.load_ceiling', action: 'capped', engineVersion: ENGINE_VERSION });
       }
     }
     const restSeconds = loadKg !== null ? firstSessionValue('restSecondsLoaded') : firstSessionValue('restSecondsBodyweight');
@@ -187,9 +156,12 @@ export function generateSession(rawInput: GenerateSessionInput, library: Session
       loadKg,
       targetRir,
       restSeconds,
+      tempo: null,
       reasonCodes: [choice.reasonCode, ...loadReasons, rirReason],
+      reasonParams: {},
     }));
-    exercises.push({ slot: slot.slot, exerciseId: choice.exerciseId, sets, reasonCodes: [choice.reasonCode, ...slot.reasonCodes] });
+    const ladderId = library.ladders.find((l) => l.id === slot.ladderId && l.steps.some((s) => s.includes(choice.exerciseId)))?.id ?? null;
+    exercises.push({ slot: slot.slot, role: slot.slot === 'core' ? 'accessory' : 'primary', exerciseId: choice.exerciseId, ladderId, supersetGroup: null, sets, reasonCodes: [choice.reasonCode, ...slot.reasonCodes] });
   }
 
   // Fit the clock: one set per exercise (from the last slot back), then drop the last slots.
@@ -212,11 +184,17 @@ export function generateSession(rawInput: GenerateSessionInput, library: Session
     planId: uuidFrom(ctx.rng),
     kind: 'first_session',
     engineVersion: s.engineVersion,
+    rulesVersion: SESSION_RULES_VERSION,
     generatedAt: s.evaluatedAt,
     seed: s.seed,
-    capacityAssessedAt: input.capacity.assessedAt,
+    capacityAssessedAt: capacity.assessedAt,
+    program: null,
+    equipmentProfileId: input.equipmentProfileId ?? null,
     targetRir,
+    minutesAvailable: input.minutesAvailable,
     estimatedMinutes: minutesOf(exercises),
+    warmUp: { minutes: firstSessionValue('warmUpMinutes'), minimumMinutes: firstSessionValue('warmUpMinutes') },
+    conditioning: null,
     exercises,
     reasonCodes: planReasons,
   });

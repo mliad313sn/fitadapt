@@ -113,9 +113,11 @@ describe('generateSession uses the CapacityModel for the first session', () => {
     expect(plan.exercises[0]!.sets[0]!.loadKg).toBe(110);
     expect(plan.exercises[0]!.sets[0]!.reasonCodes).toContain('session.load.s5_capped');
     expect(safetyEvents).toEqual([{ invariant: 'S5', reasonCode: 'safety.s5.load_ceiling', action: 'capped', engineVersion: ENGINE_VERSION }]);
-    // Older than 7 days, or from the future: not in the window.
+    // Older than 7 days: not in the window.
     expect(ok({ recentLoads: [{ ...recent[0]!, prescribedAt: '2026-09-16T07:59:59.000Z' }] }).plan.exercises[0]!.sets[0]!.loadKg).toBe(115);
-    expect(ok({ recentLoads: [{ ...recent[0]!, prescribedAt: '2026-09-25T08:00:00.000Z' }] }).plan.exercises[0]!.sets[0]!.loadKg).toBe(115);
+    // M02 (docs/status/M02.md, deviation "S5 and time travel"): a load dated after the engine clock (a device clock moved
+    // back) now counts as inside the window, so it caps the load too (was 115 under M07, which ignored it).
+    expect(ok({ recentLoads: [{ ...recent[0]!, prescribedAt: '2026-09-25T08:00:00.000Z' }] }).plan.exercises[0]!.sets[0]!.loadKg).toBe(110);
   });
 
   it('uses the tested load when there was no e1RM, and the equipment step given', () => {
