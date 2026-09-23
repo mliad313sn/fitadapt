@@ -5,3 +5,4 @@ export * from './version.js';
 export * from './substitution.js';
 export * from './assessment/index.js';
 export * from './session/first-session.js';
+export * from './program/index.js';

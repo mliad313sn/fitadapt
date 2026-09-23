@@ -29,3 +29,12 @@ export function createRng(seed: number): Rng {
     },
   };
 }
+
+/** A deterministic RFC 4122 version-4 UUID from the injected seed (the engine never calls Math.random). */
+export function uuidFrom(rng: Rng): string {
+  const bytes = Array.from({ length: 16 }, () => rng.int(0, 255));
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}

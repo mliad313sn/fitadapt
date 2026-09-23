@@ -18,7 +18,7 @@ import { assessmentValue, firstSessionValue } from '../assessment/config.js';
 import type { CapacityLibrary } from '../assessment/capacity.js';
 import { loadForReps, roundDownToIncrement } from '../assessment/e1rm.js';
 import { stamp, type EngineContext } from '../context.js';
-import type { Rng } from '../random.js';
+import { uuidFrom } from '../random.js';
 import { blockingReasons, substitute, substitutionSafetyEvent, type ExerciseGraph } from '../substitution.js';
 import { ENGINE_VERSION } from '../version.js';
 
@@ -64,15 +64,6 @@ export interface SessionSafetyEvent {
 export type GenerateSessionResult =
   | { readonly status: 'ok'; readonly plan: SessionPlan; readonly safetyEvents: readonly SessionSafetyEvent[] }
   | { readonly status: 'unavailable'; readonly reasonCodes: readonly string[] };
-
-/** A deterministic RFC 4122 version-4 UUID from the injected seed (the engine never calls Math.random). */
-function uuidFrom(rng: Rng): string {
-  const bytes = Array.from({ length: 16 }, () => rng.int(0, 255));
-  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
-  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
-  const hex = bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
 
 /** First-session reserve: the configured RIR, raised until S1 (screeningGateCheck) accepts the matching RPE. */
 export function firstSessionRir(profile: SafetyProfile): number | null {
