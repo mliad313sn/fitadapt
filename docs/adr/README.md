@@ -14,3 +14,4 @@ One ADR per significant decision (template: context, decision, alternatives, con
 | [ADR-008](ADR-008-legal-acceptance-model.md) | Legal documents, acceptance, notices and the production release guard | M20 |
 | [ADR-009](ADR-009-defensibility-log.md) | Defensibility log: append-only, hash-chained, pseudonymous | M20 |
 | [ADR-010](ADR-010-claims-and-licence-controls.md) | Claims linter, substantiation file and licence controls | M20 |
+| [ADR-011](ADR-011-exercise-knowledge-graph.md) | Exercise knowledge graph, substitution and offline library | M06 |
