@@ -17,12 +17,14 @@ import Screening from '../app/onboarding/screening';
 import Terms from '../app/onboarding/terms';
 import Privacy from '../app/privacy';
 import SignIn from '../app/sign-in';
+import Workout from '../app/workout';
 
-/** M01 routes declared by the root layout (the map every router test passes to renderRouter), plus the M07 assessment and the M08 calendar behind the same gate. */
+/** M01 routes declared by the root layout (the map every router test passes to renderRouter), plus the M07 assessment the M08 calendar and the M02 workout behind the same gate. */
 export const m01Routes = {
   'sign-in': SignIn,
   assessment: Assessment,
   calendar: Calendar,
+  workout: Workout,
   equipment: Equipment,
   'first-workout': FirstWorkout,
   'onboarding/goals': Goals,

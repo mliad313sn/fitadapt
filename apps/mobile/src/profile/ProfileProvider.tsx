@@ -1,6 +1,6 @@
 import { firstWorkoutGate, type LegalDocumentId } from '@fitadapt/legal';
 import type { ReassessmentStatus } from '@fitadapt/engine';
-import type { CapacityModel, ProgramRecord, ReflowRecord, SafetyProfile } from '@fitadapt/shared';
+import type { CapacityModel, IntensityLock, JointFlags, ProgramRecord, ReflowRecord, SafetyProfile, SessionHistoryEntry } from '@fitadapt/shared';
 import type { RescreenStatus } from '@fitadapt/safety';
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
@@ -10,7 +10,7 @@ import type { LegalStore, LegalStoreState } from '../legal/legal-store';
 import { currentLegalRegistry } from '../legal/registry';
 import { useConsents, usePrivacy } from '../privacy/PrivacyProvider';
 import type { ProfileState, ProfileStore } from './profile-store';
-import { selectCapacity, selectMesocycleEnd, selectProgram, selectReassessment, selectReflows, selectRescreen, selectSafetyProfile } from './selectors';
+import { selectCapacity, selectHistory, selectIntensityLock, selectJointFlags, selectMesocycleEnd, selectProgram, selectReassessment, selectReflows, selectRescreen, selectSafetyProfile } from './selectors';
 
 export interface ProfileContextValue {
   profile: ProfileStore;
@@ -104,6 +104,27 @@ export function useReassessment(): ReassessmentStatus {
   const capacity = useCapacity();
   const program = useProgram();
   return selectReassessment(capacity, clock.now(), selectMesocycleEnd(capacity, program));
+}
+
+/** M02: the engine's history of started sessions (none without the health consent). */
+export function useSessionHistory(): SessionHistoryEntry[] {
+  const workouts = useProfile((s) => s.workouts);
+  const setLogs = useProfile((s) => s.setLogs);
+  const executionLogs = useProfile((s) => s.executionLogs);
+  const consents = useConsents((s) => s.records);
+  return useMemo(() => selectHistory(workouts, setLogs, executionLogs, consents), [workouts, setLogs, executionLogs, consents]);
+}
+
+/** M02 (S2): joint flags from the pain flags logged in sessions. */
+export function useJointFlags(): JointFlags {
+  const executionLogs = useProfile((s) => s.executionLogs);
+  return useMemo(() => selectJointFlags(executionLogs), [executionLogs]);
+}
+
+/** M02 (S3): the intensity lock after a red-flag stop. */
+export function useIntensityLock(): IntensityLock {
+  const executionLogs = useProfile((s) => s.executionLogs);
+  return useMemo(() => selectIntensityLock(executionLogs), [executionLogs]);
 }
 
 export interface FirstWorkoutAccess {

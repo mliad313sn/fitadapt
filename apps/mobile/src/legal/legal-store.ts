@@ -84,6 +84,10 @@ export interface LegalStoreState {
   logConsent(record: ConsentRecord): void;
   /** M07: a safety gate that changed what the user was asked to do (e.g. S1 capping an assessment), for the device buffer (L11). */
   logSafetyEvent(payload: DefensibilityPayload<'safety.event'>): void;
+  /** M02: a started session (engine and rules versions, reason codes), for the device buffer (L11). */
+  logPrescription(payload: DefensibilityPayload<'prescription.issued'>): void;
+  /** M02 (S3): the user attested the review that lifts a lock. */
+  logSafetyAttested(payload: DefensibilityPayload<'safety.attested'>): void;
   clear(): void;
 }
 
@@ -173,6 +177,12 @@ export function createLegalStore({ kv, newId, now, jurisdiction }: LegalStoreDep
     },
     logSafetyEvent(payload) {
       set({ events: append(get().events, { type: 'safety.event', occurredAt: now().toISOString(), payload }) });
+    },
+    logPrescription(payload) {
+      set({ events: append(get().events, { type: 'prescription.issued', occurredAt: now().toISOString(), payload }) });
+    },
+    logSafetyAttested(payload) {
+      set({ events: append(get().events, { type: 'safety.attested', occurredAt: now().toISOString(), payload }) });
     },
     clear() {
       for (const key of [ACCEPTANCES_KEY, NOTICES_KEY, LOG_KEY]) kv.remove(key);

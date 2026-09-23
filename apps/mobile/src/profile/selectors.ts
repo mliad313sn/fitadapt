@@ -1,8 +1,8 @@
 import { featureOn } from '../privacy/consents';
-import { notScreenedSafetyProfile, rescreenStatus, evaluateScreening, type RescreenStatus } from '@fitadapt/safety';
-import { fixedClock, reassessmentDateFor, reassessmentStatus, type ReassessmentStatus } from '@fitadapt/engine';
-import type { CapacityModel, ConsentRecord, IsoDate, ProgramRecord, ReflowRecord, SafetyProfile } from '@fitadapt/shared';
-import type { StoredAssessment, StoredProgram, StoredReflow, StoredScreening } from './profile-store';
+import { intensityLockStatus, jointFlagsFromPain, notScreenedSafetyProfile, rescreenStatus, evaluateScreening, type RescreenStatus } from '@fitadapt/safety';
+import { buildSessionHistory, fixedClock, reassessmentDateFor, reassessmentStatus, type ReassessmentStatus } from '@fitadapt/engine';
+import type { CapacityModel, ConsentRecord, IntensityLock, IsoDate, JointFlags, ProgramRecord, ReflowRecord, SafetyProfile, SessionHistoryEntry } from '@fitadapt/shared';
+import type { StoredAssessment, StoredExecutionLog, StoredProgram, StoredReflow, StoredScreening, StoredSetLog, StoredWorkout } from './profile-store';
 
 /**
  * The user's SafetyProfile (S1, S4, S7) as every module must read it.
@@ -71,4 +71,27 @@ export function selectMesocycleEnd(capacity: CapacityModel | null, program: Prog
   if (!capacity || !program) return null;
   const due = reassessmentDateFor(program.program, localIsoDate(new Date(capacity.assessedAt)));
   return due ? localMidnight(due).toISOString() : null;
+}
+
+/**
+ * M02: the engine's history from the device's records (started sessions, set
+ * logs, execution events). Health data: nothing without the health consent.
+ */
+export function selectHistory(workouts: readonly StoredWorkout[], setLogs: readonly StoredSetLog[], executionLogs: readonly StoredExecutionLog[], consents: readonly ConsentRecord[]): SessionHistoryEntry[] {
+  if (!featureOn('health.screening', consents)) return [];
+  return buildSessionHistory(
+    workouts.map((w) => w.data),
+    setLogs,
+    executionLogs.map((e) => e.data),
+  );
+}
+
+/** M02 (S2): joint flags from the pain flags logged during sessions (packages/safety; M05 builds the full model). */
+export function selectJointFlags(executionLogs: readonly StoredExecutionLog[]): JointFlags {
+  return jointFlagsFromPain(executionLogs.flatMap((e) => (e.data.kind === 'pain' ? [{ joint: e.data.joint, score: e.data.score, at: e.data.at }] : [])));
+}
+
+/** M02 (S3): intensity stays locked after a red-flag stop until a medical review is attested (packages/safety). */
+export function selectIntensityLock(executionLogs: readonly StoredExecutionLog[]): IntensityLock {
+  return intensityLockStatus(executionLogs.map((e) => e.data));
 }

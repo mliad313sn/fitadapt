@@ -33,7 +33,7 @@ import { openExpoDatabase } from '../src/sync/expo-db';
  * L2 (M01): the first-workout screen is reachable only once onboarding is
  * complete and the current Terms, Privacy Policy, health-data consent and
  * exercise-risk acknowledgment are accepted. The M07 assessment and the M08
- * calendar sit behind the same gate.
+ * calendar and the M02 workout sit behind the same gate.
  */
 function GatedStack() {
   const passed = useAgeGate((s) => s.status === 'allowed');
@@ -56,6 +56,8 @@ function GatedStack() {
         <Stack.Screen name="assessment" />
         {/* M08: the training calendar is a workout activity too. */}
         <Stack.Screen name="calendar" />
+        {/* M02: session execution, behind the same L2 gate. */}
+        <Stack.Screen name="workout" />
       </Stack.Protected>
       <Stack.Protected guard={!passed}>
         <Stack.Screen name="age-gate" />

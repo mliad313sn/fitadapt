@@ -11,7 +11,11 @@ import {
   ProfileSchema,
   ProgramRecordSchema,
   ReflowRecordSchema,
+  SESSION_COLLECTIONS,
   ScreeningRecordSchema,
+  SetLogSchema,
+  ExecutionLogSchema,
+  WorkoutSessionRecordSchema,
   type AssessmentRecord,
   type Biometrics,
   type CalendarDateValue,
@@ -28,6 +32,9 @@ import {
   type ScreeningAnswer,
   type ScreeningQuestionId,
   type ScreeningRecord,
+  type ExecutionLog,
+  type SetLog,
+  type WorkoutSessionRecord,
 } from '@fitadapt/shared';
 import type { SyncClient } from '@fitadapt/sync';
 import type { z } from 'zod';
@@ -89,6 +96,22 @@ export interface StoredReflow {
   readonly data: ReflowRecord;
 }
 
+/** M02: a started session (the executed prescription), a logged set, an execution event. */
+export interface StoredWorkout {
+  readonly id: string;
+  readonly data: WorkoutSessionRecord;
+}
+
+export interface StoredSetLog {
+  readonly id: string;
+  readonly data: SetLog;
+}
+
+export interface StoredExecutionLog {
+  readonly id: string;
+  readonly data: ExecutionLog;
+}
+
 export interface ProfileStoreDeps {
   sync: SyncClient;
   kv: KeyValueStore;
@@ -106,6 +129,10 @@ export interface ProfileState {
   /** M08 programs (append-only; the latest counts) and reflows (append-only, in the order decided). */
   programs: StoredProgram[];
   reflows: StoredReflow[];
+  /** M02 started sessions, set logs and execution events (all append-only, in the order recorded). */
+  workouts: StoredWorkout[];
+  setLogs: StoredSetLog[];
+  executionLogs: StoredExecutionLog[];
   draft: OnboardingDraft;
   newConditionReportedAt: string | null;
   /** Re-reads the synced records (after a pull). */
@@ -125,6 +152,12 @@ export interface ProfileState {
   saveProgram(record: ProgramRecord): ProgramRecord;
   /** M08: stores what the engine decided for a session the user could not do (append-only, works offline). */
   saveReflow(record: ReflowRecord): ReflowRecord;
+  /** M02: stores the plan the user starts (with its inputs), works offline. */
+  saveWorkout(record: WorkoutSessionRecord): WorkoutSessionRecord;
+  /** M02: appends one logged set (append-only; a correction is a new entry). */
+  logSet(log: SetLog): SetLog;
+  /** M02: appends an execution event (swap, skip, pain flag, end, S3 red flag, attested review). */
+  logExecution(event: ExecutionLog): ExecutionLog;
   reportNewCondition(): void;
   /** Health consent withdrawn or account wiped: forget health data held on the device. */
   forgetHealthData(): void;
@@ -177,6 +210,22 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
       .map((r) => ({ id: r.id, data: parsed(ReflowRecordSchema, r.data) }))
       .filter((r): r is StoredReflow => r.data !== null)
       .sort((a, b) => a.data.decidedAt.localeCompare(b.data.decidedAt) || a.id.localeCompare(b.id)),
+    workouts: sync
+      .list(SESSION_COLLECTIONS.workoutSessions)
+      .map((r) => ({ id: r.id, data: parsed(WorkoutSessionRecordSchema, r.data) }))
+      .filter((r): r is StoredWorkout => r.data !== null)
+      .sort((a, b) => a.data.startedAt.localeCompare(b.data.startedAt) || a.id.localeCompare(b.id)),
+    // Set logs from M00 demos (or any other shape) are ignored: only M02 set logs count.
+    setLogs: sync
+      .list(SESSION_COLLECTIONS.setLogs)
+      .map((r) => ({ id: r.id, data: parsed(SetLogSchema, r.data) }))
+      .filter((r): r is StoredSetLog => r.data !== null)
+      .sort((a, b) => a.data.loggedAt.localeCompare(b.data.loggedAt) || a.id.localeCompare(b.id)),
+    executionLogs: sync
+      .list(SESSION_COLLECTIONS.executionLogs)
+      .map((r) => ({ id: r.id, data: parsed(ExecutionLogSchema, r.data) }))
+      .filter((r): r is StoredExecutionLog => r.data !== null)
+      .sort((a, b) => a.data.at.localeCompare(b.data.at) || a.id.localeCompare(b.id)),
   });
   const writeProfile = (profile: Profile) => {
     const data = ProfileSchema.parse(profile);
@@ -280,6 +329,24 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
       saveReflow(record) {
         const data = ReflowRecordSchema.parse(record);
         sync.insert(PROGRAM_COLLECTIONS.reflows, data);
+        written();
+        return data;
+      },
+      saveWorkout(record) {
+        const data = WorkoutSessionRecordSchema.parse(record);
+        sync.insert(SESSION_COLLECTIONS.workoutSessions, data);
+        written();
+        return data;
+      },
+      logSet(log) {
+        const data = SetLogSchema.parse(log);
+        sync.insert(SESSION_COLLECTIONS.setLogs, data);
+        written();
+        return data;
+      },
+      logExecution(event) {
+        const data = ExecutionLogSchema.parse(event);
+        sync.insert(SESSION_COLLECTIONS.executionLogs, data);
         written();
         return data;
       },
