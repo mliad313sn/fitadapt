@@ -274,14 +274,14 @@ for (const ph of PHASES) {
    (pmo/meridian/dogfood-log.md), each tied to its upstream record on
    github.com/mliad313sn/Meridian. "review" = fix is in an open PR. */
 const ITEMS = [
-  ["WI-01", "review", "DF-01 Import answered 400 for every book ('\\D' in a template literal) — PR #14", "PE-14", 3, "P1"],
-  ["WI-02", "review", "DF-02 Import dropped document uri, so imported evidence stopped counting — PR #14", "PE-14", 2, "P1"],
-  ["WI-03", "review", "DF-03 Quick start seeded an in-memory database; nobody could sign in — PR #14", "PE-14", 2, "P1"],
-  ["WI-04", "review", "DF-04 Import refused the bare book GET /export returns — PR #14", "PE-14", 1, "P2"],
-  ["WI-05", "review", "DF-05 restart.sh worked on Windows only — PR #14", "PE-14", 2, "P2"],
-  ["WI-06", "review", "DF-06 Unbudgeted project reported green and SPI/CPI 1.00 (MER-04 ported) — PR #14", "PE-14", 2, "P1"],
-  ["WI-07", "review", "DF-07 A refused import did not say which row — PR #14", "PE-14", 1, "P2"],
-  ["WI-08", "review", "DF-08 qs 6.15.3 moderate advisories on the request parsers — PR #14", "PE-14", 1, "P2"],
+  ["WI-01", "done", "DF-01 Import answered 400 for every book ('\\D' in a template literal) — merged in Meridian 5.9.1 (PR #14)", "PE-14", 3, "P1"],
+  ["WI-02", "done", "DF-02 Import dropped document uri, so imported evidence stopped counting — merged in Meridian 5.9.1 (PR #14)", "PE-14", 2, "P1"],
+  ["WI-03", "done", "DF-03 Quick start seeded an in-memory database; nobody could sign in — merged in Meridian 5.9.1 (PR #14)", "PE-14", 2, "P1"],
+  ["WI-04", "done", "DF-04 Import refused the bare book GET /export returns — merged in Meridian 5.9.1 (PR #14)", "PE-14", 1, "P2"],
+  ["WI-05", "done", "DF-05 restart.sh worked on Windows only — merged in Meridian 5.9.1 (PR #14)", "PE-14", 2, "P2"],
+  ["WI-06", "done", "DF-06 Unbudgeted project reported green and SPI/CPI 1.00 (MER-04 ported) — merged in Meridian 5.9.1 (PR #14)", "PE-14", 2, "P1"],
+  ["WI-07", "done", "DF-07 A refused import did not say which row — merged in Meridian 5.9.1 (PR #14)", "PE-14", 1, "P2"],
+  ["WI-08", "done", "DF-08 qs 6.15.3 moderate advisories on the request parsers — merged in Meridian 5.9.1 (PR #14)", "PE-14", 1, "P2"],
   ["WI-09", "backlog", "DF-09 main is behind three unmerged lines (gate ladder, MER-13) — issue #15", "PE-14", 5, "P1"],
   ["WI-10", "backlog", "DF-10 Council members cannot approve evidence without write authority — issue #16", "PE-14", 5, "P1"],
   ["WI-11", "backlog", "DF-11 No way to link a GitHub issue or PR to an activity or RAID row — issue #17", "PE-14", 5, "P2"],
