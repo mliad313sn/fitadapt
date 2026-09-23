@@ -1,0 +1,10 @@
+# Asset and dataset licence register (L6)
+
+> **DRAFT — requires counsel review.** Every media asset, font, sound, icon, image and dataset shipped or used by the product needs a row here with a licence that allows commercial use and a link to the evidence (licence file, purchase receipt, written permission, or IP assignment for work made for the company). `pnpm legal:licences` fails when a file in a scanned asset folder (`tooling/legal/licence-policy.json`: apps/mobile/assets, apps/coach-web/public, packages/ui/assets, store/assets, packages/legal/datasets) has no row, when a licence is not on the asset allowlist (share-alike such as CC-BY-SA or ODbL, and non-commercial licences, are refused), when evidence is missing, or when an in-use path does not exist. Software dependencies are covered by the SBOM, not by this table.
+
+| ID | Asset | Kind | Path | Licence | Commercial use | Evidence | Status |
+|---|---|---|---|---|---|---|---|
+| AST-001 | Material Symbols font bundled by expo-router for its built-in screens | font | npm:expo-router | Apache-2.0 | yes | https://github.com/google/material-design-icons/blob/master/LICENSE (bundled via the expo-router package; see docs/status/M00.md deviation 18) | in_use |
+| AST-002 | System fonts (San Francisco / Roboto) used through the platform, not bundled | font | npm:react-native | Owned | yes | Platform system fonts are rendered by the OS and not redistributed (packages/ui typography uses system fonts, ADR-001) | in_use |
+| DATA-001 | PAR-Q+ questionnaire wording | dataset | — | unknown | no | Licence terms to be checked with the PAR-Q+ Collaboration before any verbatim use (docs/specs/00-product-vision.md, references); M01 must not ship its wording until then | not_in_use |
+| DATA-002 | Food composition database for M10 | dataset | — | unknown | no | Not chosen. Share-alike databases (e.g. ODbL) are refused by this register unless counsel approves an exception | not_in_use |

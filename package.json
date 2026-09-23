@@ -17,7 +17,13 @@
     "security:secrets": "node tooling/security/scripts/secret-scan.mjs",
     "security:sast": "eslint --no-config-lookup -c tooling/security/eslint.security.config.mjs --max-warnings 0 .",
     "security:check": "pnpm security:audit && pnpm security:secrets && pnpm security:sast",
-    "compliance:check": "node tooling/security/scripts/compliance-check.mjs"
+    "compliance:check": "node tooling/security/scripts/compliance-check.mjs",
+    "legal:build": "turbo run build --filter=@fitadapt/legal-tooling^... --output-logs=errors-only",
+    "legal:claims": "pnpm -s legal:build && node tooling/legal/scripts/claims.mjs",
+    "legal:licences": "node tooling/legal/scripts/licences.mjs",
+    "legal:docs": "pnpm -s legal:build && node tooling/legal/scripts/docs.mjs",
+    "legal:store": "pnpm -s legal:build && node tooling/legal/scripts/store.mjs",
+    "legal:check": "pnpm legal:claims && pnpm legal:licences && pnpm legal:docs"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

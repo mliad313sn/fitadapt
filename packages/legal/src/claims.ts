@@ -43,8 +43,8 @@ export const CLAIM_DENYLIST: readonly DenyRule[] = Object.freeze([
     description: 'lose N kg/lb in N days/weeks',
     pattern: /(?<!\p{L})lose\s{1,3}\d{1,3}\s{0,2}(?:kg|kilos?|lbs?|pounds)(?!\p{L})[^.!?\n]{0,20}(?<!\p{L})(?:in|within)\s{1,3}\d{1,3}\s{0,2}(?:days?|weeks?)(?!\p{L})/giu,
   },
-  { id: 'en.burn_fat', locale: 'en', category: 'fat_loss', description: 'burn fat (fast) / fat-burning', pattern: /(?<!\p{L})(?:burn(?:s|ing)?\s{1,3}(?:belly\s{1,3})?fat|fat[\s-]burn(?:ing|er|ers)?)(?!\p{L})/giu },
-  { id: 'en.melt_fat', locale: 'en', category: 'fat_loss', description: 'melt (away) fat', pattern: /(?<!\p{L})melt(?:s|ing)?\s{1,3}(?:away\s{1,3})?(?:the\s{1,3})?(?:fat|pounds|kilos)(?!\p{L})/giu },
+  { id: 'en.burn_fat', locale: 'en', category: 'fat_loss', description: 'burn fat (fast) / fat-burning', pattern: /(?<!\p{L})(?:burn(?:s|ing)?\s{1,3}fat|burn(?:s|ing)?\s{1,3}belly\sfat|fat[\s-]burn(?:ing|er|ers)?)(?!\p{L})/giu },
+  { id: 'en.melt_fat', locale: 'en', category: 'fat_loss', description: 'melt (away) fat', pattern: /(?<!\p{L})melt(?:s|ing)?\s{1,3}(?:away\sthe\s|away\s|the\s)?(?:fat|pounds|kilos)(?!\p{L})/giu },
 
   { id: 'fr.diagnostic', locale: 'fr', category: 'medical', description: 'diagnostic / diagnostiquer', pattern: /(?<!\p{L})diagnosti(?:c|cs|que|quer|quons|quez|qué|quée|qués)(?!\p{L})/giu },
   {
@@ -77,9 +77,9 @@ export const CLAIM_DENYLIST: readonly DenyRule[] = Object.freeze([
     locale: 'fr',
     category: 'fat_loss',
     description: 'brûler les graisses (vite) / brûle-graisse / zone de combustion des graisses',
-    pattern: /(?<!\p{L})(?:brûl(?:e|er|ez|ent)\s{1,3}(?:les\s{1,3}|la\s{1,3}|vos\s{1,3}|du\s{1,3})?(?:graisses?|gras)|brûle-graisses?|zone\s{1,3}de\s{1,3}(?:combustion|brûlage)\s{1,3}des\s{1,3}graisses)(?!\p{L})/giu,
+    pattern: /(?<!\p{L})(?:brûl(?:e|er|ez|ent)\s{1,3}(?:les\s|la\s|vos\s|du\s)?(?:graisses?|gras)|brûle-graisses?|zone\s{1,3}de\s{1,3}(?:combustion|brûlage)\s{1,3}des\s{1,3}graisses)(?!\p{L})/giu,
   },
-  { id: 'fr.fondre', locale: 'fr', category: 'fat_loss', description: 'faire fondre les graisses / kilos', pattern: /(?<!\p{L})fond(?:re|ez)\s{1,3}(?:les\s{1,3}|la\s{1,3}|vos\s{1,3})?(?:graisses?|gras|kilos)(?!\p{L})/giu },
+  { id: 'fr.fondre', locale: 'fr', category: 'fat_loss', description: 'faire fondre les graisses / kilos', pattern: /(?<!\p{L})fond(?:re|ez)\s{1,3}(?:les\s|la\s|vos\s)?(?:graisses?|gras|kilos)(?!\p{L})/giu },
   { id: 'fr.maigrir_vite', locale: 'fr', category: 'results', description: 'maigrir vite / rapidement', pattern: /(?<!\p{L})maigri(?:r|ssez)\s{1,3}(?:vite|rapidement)(?!\p{L})/giu },
 ] satisfies DenyRule[]);
 

@@ -1,0 +1,24 @@
+{
+  "name": "@fitadapt/legal-tooling",
+  "version": "0.0.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fitadapt/i18n": "workspace:*",
+    "@fitadapt/legal": "workspace:*",
+    "@fitadapt/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "5.0.1",
+    "eslint": "10.11.0",
+    "typescript-eslint": "8.70.1",
+    "vitest": "5.0.1",
+    "globals": "17.12.0"
+  }
+}

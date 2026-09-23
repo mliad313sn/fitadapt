@@ -1,0 +1,1 @@
+Explainable training plans that work offline, in English and French.

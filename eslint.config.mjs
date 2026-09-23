@@ -20,6 +20,7 @@ export default defineConfig(
       // Lint-rule fixtures are linted on purpose by the rule's own tests.
       'tooling/eslint-plugin/test/fixtures/**',
       'tooling/security/test/fixtures/**',
+      'tooling/legal/test/fixtures/**',
       'apps/api/drizzle/**',
     ],
   },
@@ -51,7 +52,7 @@ export default defineConfig(
   // The security tooling scripts touch the file system; keep the SAST rule on
   // here so their justified suppressions stay checked in normal lint too.
   {
-    files: ['tooling/security/scripts/**/*.mjs'],
+    files: ['tooling/security/scripts/**/*.mjs', 'tooling/legal/scripts/**/*.mjs', 'tooling/legal/lib/**/*.mjs'],
     rules: { 'security/detect-non-literal-fs-filename': 'error' },
   },
   // CLAUDE.md rule 5: no user-facing string outside packages/i18n.

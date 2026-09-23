@@ -24,7 +24,7 @@ const hash = z.string().regex(/^[0-9a-f]{64}$/);
 const jurisdiction = z.string().regex(/^[A-Z]{2}$/);
 const locale = z.enum(['fr', 'en']);
 const version = z.number().int().positive();
-const engineVersion = z.string().regex(/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/);
+const engineVersion = z.string().regex(/^\d{1,4}\.\d{1,4}\.\d{1,4}$|^\d{1,4}\.\d{1,4}\.\d{1,4}[-+][0-9A-Za-z.-]{1,40}$/);
 
 export const DefensibilityPayloads = {
   'acceptance.recorded': z.strictObject({ documentId: code, version, locale, jurisdiction, contentHash: hash, source: z.enum(['mobile', 'web', 'api']) }),

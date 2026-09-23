@@ -68,9 +68,30 @@ export function sha256Bytes(message: Uint8Array): Uint8Array {
   return out;
 }
 
+/** UTF-8 encoding without TextEncoder (not in every JS runtime); lone surrogates become U+FFFD, as TextEncoder does. */
+export function utf8(text: string): Uint8Array {
+  const out: number[] = [];
+  for (let i = 0; i < text.length; i++) {
+    let c = text.charCodeAt(i);
+    if (c >= 0xd800 && c <= 0xdbff && i + 1 < text.length) {
+      const d = text.charCodeAt(i + 1);
+      if (d >= 0xdc00 && d <= 0xdfff) {
+        c = 0x10000 + ((c - 0xd800) << 10) + (d - 0xdc00);
+        i++;
+      }
+    }
+    if (c >= 0xd800 && c <= 0xdfff) c = 0xfffd;
+    if (c < 0x80) out.push(c);
+    else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));
+    else if (c < 0x10000) out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+    else out.push(0xf0 | (c >> 18), 0x80 | ((c >> 12) & 63), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+  }
+  return Uint8Array.from(out);
+}
+
 /** Hex SHA-256 of the UTF-8 encoding of a string. */
 export function sha256Hex(text: string): string {
-  const bytes = sha256Bytes(new TextEncoder().encode(text));
+  const bytes = sha256Bytes(utf8(text));
   let hex = '';
   for (const byte of bytes) hex += byte.toString(16).padStart(2, '0');
   return hex;

@@ -1,0 +1,19 @@
+{
+  "$comment": "L6 licence policy, shared by `pnpm licences:check` (M00) and `pnpm legal:licences` (M20). Dependencies: permissive licences only, or a reviewed exception with its reason. Assets and datasets: see docs/legal/asset-licence-register.md. Changing this file needs review by seat B3 (docs/governance).",
+  "dependencies": {
+    "allowed": ["MIT", "MIT-0", "ISC", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "0BSD", "BlueOak-1.0.0", "Unlicense", "CC0-1.0", "Python-2.0", "Zlib"],
+    "exceptions": {
+      "lightningcss": "MPL-2.0 (file-level copyleft), CSS tool used unmodified at build time by Vite/Metro; no source changes, no redistribution of modified files.",
+      "lightningcss-linux-x64-gnu": "Platform binary of lightningcss (MPL-2.0); same reasoning.",
+      "lightningcss-linux-x64-musl": "Platform binary of lightningcss (MPL-2.0); same reasoning.",
+      "lightningcss-darwin-arm64": "Platform binary of lightningcss (MPL-2.0); same reasoning.",
+      "lightningcss-darwin-x64": "Platform binary of lightningcss (MPL-2.0); same reasoning.",
+      "caniuse-lite": "CC-BY-4.0 browser-support data used by build tooling; commercial use allowed with attribution."
+    }
+  },
+  "assets": {
+    "allowed": ["CC0-1.0", "CC-BY-4.0", "OFL-1.1", "MIT", "Apache-2.0", "BSD-3-Clause", "Owned"],
+    "statuses": ["in_use", "planned", "not_in_use"],
+    "scannedDirectories": ["apps/mobile/assets", "apps/coach-web/public", "packages/ui/assets", "store/assets", "packages/legal/datasets"]
+  }
+}

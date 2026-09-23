@@ -19,3 +19,4 @@ next-env.d.ts
 
 # Local Redis snapshot (the dev Redis may use the repo as its working dir)
 dump.rdb
+reports/

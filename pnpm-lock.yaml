@@ -408,6 +408,34 @@ importers:
         specifier: 5.0.1
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@22.20.4)(@vitest/coverage-v8@5.0.1)(jsdom@20.0.3)(vite@8.3.0(@types/node@22.20.4)(esbuild@0.28.2)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
 
+  tooling/legal:
+    dependencies:
+      '@fitadapt/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
+      '@fitadapt/legal':
+        specifier: workspace:*
+        version: link:../../packages/legal
+      '@fitadapt/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+    devDependencies:
+      '@vitest/coverage-v8':
+        specifier: 5.0.1
+        version: 5.0.1(vitest@5.0.1)
+      eslint:
+        specifier: 10.11.0
+        version: 10.11.0
+      globals:
+        specifier: 17.12.0
+        version: 17.12.0
+      typescript-eslint:
+        specifier: 8.70.1
+        version: 8.70.1(eslint@10.11.0)(typescript@5.9.3)
+      vitest:
+        specifier: 5.0.1
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@22.20.4)(@vitest/coverage-v8@5.0.1)(jsdom@20.0.3)(vite@8.3.0(@types/node@22.20.4)(esbuild@0.28.2)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
   tooling/security:
     dependencies:
       '@fitadapt/privacy':
