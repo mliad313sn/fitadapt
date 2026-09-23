@@ -1,6 +1,6 @@
 import { createExerciseGraph, rankSubstitutes as rankOnGraph, substitute as substituteOnGraph, type EquipmentSet, type ExerciseGraph, type SubstitutionOptions, type SubstitutionResult } from '@fitadapt/engine';
 import { canonicalJson, sha256Hex } from '@fitadapt/legal';
-import type { Equipment, Exercise, ExerciseEdge, JointFlags, Muscle, SafetyProfile } from '@fitadapt/shared';
+import { impactRank, type Equipment, type Exercise, type ExerciseEdge, type JointFlags, type Muscle, type SafetyProfile } from '@fitadapt/shared';
 import { SIMILARITY_CONFIG } from './config.js';
 import { buildEdges } from './edges.js';
 import { SEED_EXERCISES } from './seed/exercises.js';
@@ -90,4 +90,24 @@ export function ladderRank(library: ExerciseLibrary, ladderId: string, exerciseI
   const ladder = library.ladders.find((l) => l.id === ladderId);
   const index = ladder ? ladder.steps.findIndex((step) => step.includes(exerciseId)) : -1;
   return index < 0 ? null : index;
+}
+
+/**
+ * Whether an exercise may be offered to a user with this SafetyProfile (M01):
+ * within the impact ceiling, none of the avoided movement properties, not an
+ * exercise the user excluded, and, when only the low-intensity library is
+ * allowed (S7 pregnancy/postpartum routing), a low-impact, entry- or
+ * beginner-level exercise that is not conditioning work. That definition of
+ * the low-intensity library is an engineering choice awaiting seats A1 and A2.
+ */
+export function allowedBySafetyProfile(exercise: Exercise, profile: SafetyProfile): boolean {
+  if (impactRank(exercise.impact) > impactRank(profile.impactCeiling)) return false;
+  if (exercise.contraindications.some((tag) => profile.avoidTags.includes(tag))) return false;
+  if (profile.excludedExerciseIds.includes(exercise.id)) return false;
+  if (profile.lowIntensityLibraryOnly) {
+    const lowImpact = exercise.impact === 'none' || exercise.impact === 'low';
+    const easy = exercise.skill === 'entry' || exercise.skill === 'beginner';
+    if (!lowImpact || !easy || exercise.tags.includes('conditioning')) return false;
+  }
+  return true;
 }

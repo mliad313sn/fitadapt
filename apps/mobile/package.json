@@ -33,6 +33,7 @@
     "expo-linking": "~57.0.10",
     "expo-localization": "~57.0.2",
     "expo-router": "~57.0.22",
+    "expo-secure-store": "~57.0.4",
     "expo-sqlite": "~57.0.3",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
@@ -46,10 +47,10 @@
     "@testing-library/react-native": "13.3.3",
     "@types/jest": "29.5.14",
     "@types/react": "19.2.18",
+    "@types/sql.js": "1.4.11",
     "jest": "29.7.0",
     "jest-expo": "57.0.5",
     "react-test-renderer": "19.2.3",
-    "sql.js": "1.14.2",
-    "@types/sql.js": "1.4.11"
+    "sql.js": "1.14.2"
   }
 }

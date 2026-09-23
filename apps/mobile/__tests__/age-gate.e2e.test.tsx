@@ -7,6 +7,7 @@ import AgeGate from '../app/age-gate';
 import Index from '../app/index';
 import Library from '../app/library';
 import Privacy from '../app/privacy';
+import { m01Routes } from './routes';
 
 /**
  * Goal condition 6: the age gate blocks users under 16, end to end through the
@@ -26,7 +27,8 @@ jest.mock('../src/sync/expo-db', () => ({
 jest.mock('expo-crypto', () => ({ randomUUID: () => jest.requireActual('node:crypto').randomUUID() }));
 jest.mock('expo-localization', () => ({ getLocales: () => [{ languageTag: mockLanguage, regionCode: 'SN' }] }));
 
-const routes = { _layout: RootLayout, index: Index, 'age-gate': AgeGate, privacy: Privacy, library: Library };
+// M01: the root layout declares the onboarding, sign-in and first-workout routes too (no assertion changed).
+const routes = { _layout: RootLayout, index: Index, 'age-gate': AgeGate, privacy: Privacy, library: Library, ...m01Routes };
 
 beforeAll(async () => {
   mockSql = await initSqlJs();

@@ -15,6 +15,7 @@ import { LibraryScreen } from '../src/screens/LibraryScreen';
 import { SqliteKeyValueStore, wipeLocalDatabase } from '../src/storage/app-state';
 import { createDeviceSyncClient } from '../src/sync/device';
 import { memoryClient } from './helpers';
+import { m01Routes } from './routes';
 
 /**
  * Goal condition (5): the library is available offline in SQLite on the
@@ -199,7 +200,7 @@ describe('offline library in SQLite', () => {
   });
 
   it('opens from the home screen through the real router, with the library installed at start', async () => {
-    const router = renderRouter({ _layout: RootLayout, index: Index, 'age-gate': AgeGate, privacy: Privacy, library: Library }, { initialUrl: '/' });
+    const router = renderRouter({ _layout: RootLayout, index: Index, 'age-gate': AgeGate, privacy: Privacy, library: Library, ...m01Routes }, { initialUrl: '/' });
     await screen.findByRole('header', { name: 'Before you start' });
     fireEvent.changeText(screen.getByTestId('age-gate-day'), '1');
     fireEvent.changeText(screen.getByTestId('age-gate-month'), '1');

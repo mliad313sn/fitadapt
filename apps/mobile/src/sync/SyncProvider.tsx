@@ -12,19 +12,32 @@ interface SyncContextValue {
 
 const SyncContext = createContext<SyncContextValue | null>(null);
 
-export function SyncProvider({ client, children }: { client: SyncClient; children?: ReactNode }) {
+export interface SyncProviderProps {
+  client: SyncClient;
+  /** Runs instead of the plain sync when connectivity returns (M01: device ledgers first, then the outbox). */
+  runSync?: () => Promise<unknown>;
+  /** Called after each sync attempt (e.g. to re-read pulled records). */
+  onSynced?: () => void;
+  children?: ReactNode;
+}
+
+export function SyncProvider({ client, runSync, onSynced, children }: SyncProviderProps) {
   const [pendingCount, setPendingCount] = useState(() => client.pendingCount());
   const refresh = useCallback(() => setPendingCount(client.pendingCount()), [client]);
 
   useEffect(() => {
     // Push the outbox whenever connectivity comes back (offline-first, ADR-002).
     return NetInfo.addEventListener((state) => {
-      client
-        .handleConnectivityChange(state.isConnected === true)
+      const online = state.isConnected === true;
+      const run = runSync && online ? runSync() : client.handleConnectivityChange(online);
+      run
         .catch((error: unknown) => reportError(error, { area: 'sync' }))
-        .finally(refresh);
+        .finally(() => {
+          refresh();
+          onSynced?.();
+        });
     });
-  }, [client, refresh]);
+  }, [client, refresh, runSync, onSynced]);
 
   const value = useMemo(() => ({ client, pendingCount, refresh }), [client, pendingCount, refresh]);
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;

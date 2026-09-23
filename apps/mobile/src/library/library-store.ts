@@ -1,6 +1,6 @@
-import { normaliseSearchText, seedLibrary, type ExerciseLibrary } from '@fitadapt/exercise-library';
+import { allowedBySafetyProfile, normaliseSearchText, seedLibrary, type ExerciseLibrary } from '@fitadapt/exercise-library';
 import { createTranslator, type Locale } from '@fitadapt/i18n';
-import { CustomExerciseSchema, type CustomExercise, type EquipmentId, type Exercise, type MovementPattern, type MuscleId } from '@fitadapt/shared';
+import { CustomExerciseSchema, type CustomExercise, type EquipmentId, type Exercise, type MovementPattern, type MuscleId, type SafetyProfile } from '@fitadapt/shared';
 import type { SyncSqliteDatabase } from '@fitadapt/sync';
 import { sql, type SQL } from 'drizzle-orm';
 
@@ -116,6 +116,18 @@ export class LibraryStore {
     const row = this.db.get<{ data: string }>(sql`SELECT data FROM library_exercise WHERE id = ${id}`);
     // sql.js returns an empty row object when nothing matches.
     return row?.data ? (JSON.parse(row.data) as Exercise) : undefined;
+  }
+
+  /**
+   * M01: the exercise pool of a place — exercises doable with its equipment
+   * profile and allowed by the user's SafetyProfile (impact ceiling, avoided
+   * properties, exclusions, low-intensity library). Runs offline in SQLite.
+   */
+  pool(locale: Locale, equipment: readonly EquipmentId[], safetyProfile: SafetyProfile): LibraryRow[] {
+    return this.search({ locale, equipment }).filter((row) => {
+      const exercise = this.getExercise(row.id);
+      return exercise !== undefined && allowedBySafetyProfile(exercise, safetyProfile);
+    });
   }
 
   setFavourite(id: string, favourite: boolean): void {

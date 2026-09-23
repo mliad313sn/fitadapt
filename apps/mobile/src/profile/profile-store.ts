@@ -1,0 +1,233 @@
+import { evaluateScreening } from '@fitadapt/safety';
+import {
+  EMPTY_BIOMETRICS,
+  EQUIPMENT_LOCATIONS,
+  EquipmentProfileSchema,
+  PROFILE_COLLECTIONS,
+  PROFILE_RECORD_ID,
+  ProfileSchema,
+  ScreeningRecordSchema,
+  type Biometrics,
+  type CalendarDateValue,
+  type EquipmentId,
+  type EquipmentLocation,
+  type EquipmentProfile,
+  type ExperienceLevel,
+  type GoalId,
+  type Joint,
+  type Profile,
+  type Schedule,
+  type ScreeningAnswer,
+  type ScreeningQuestionId,
+  type ScreeningRecord,
+} from '@fitadapt/shared';
+import type { SyncClient } from '@fitadapt/sync';
+import type { z } from 'zod';
+import { createStore } from 'zustand';
+import type { KeyValueStore } from '../storage/app-state';
+
+const DRAFT_KEY = 'onboarding_draft';
+const NEW_CONDITION_KEY = 'health_new_condition_reported_at';
+
+/** What the user has entered so far; kept on the device so onboarding resumes after a relaunch. */
+export interface OnboardingDraft {
+  primaryGoal: GoalId | null;
+  secondaryGoal: GoalId | null;
+  experience: ExperienceLevel | null;
+  schedule: Schedule;
+  birthDate: CalendarDateValue | null;
+  biometrics: Biometrics;
+  limitations: Joint[];
+  motivation: string;
+  answers: Partial<Record<ScreeningQuestionId, ScreeningAnswer>>;
+  clearanceAttested: boolean;
+}
+
+export const EMPTY_DRAFT: OnboardingDraft = Object.freeze({
+  primaryGoal: null,
+  secondaryGoal: null,
+  experience: null,
+  schedule: { daysPerWeek: 3, minutesPerSession: 45, preferredTimes: [], remindersEnabled: false },
+  birthDate: null,
+  biometrics: EMPTY_BIOMETRICS,
+  limitations: [],
+  motivation: '',
+  answers: {},
+  clearanceAttested: false,
+});
+
+export interface StoredEquipmentProfile {
+  readonly id: string;
+  readonly data: EquipmentProfile;
+}
+
+export interface StoredScreening {
+  readonly id: string;
+  readonly data: ScreeningRecord;
+}
+
+export interface ProfileStoreDeps {
+  sync: SyncClient;
+  kv: KeyValueStore;
+  now: () => Date;
+  /** Called after every local write (e.g. to refresh the outbox count). */
+  onWrite?: () => void;
+}
+
+export interface ProfileState {
+  profile: Profile | null;
+  equipment: StoredEquipmentProfile[];
+  screenings: StoredScreening[];
+  draft: OnboardingDraft;
+  newConditionReportedAt: string | null;
+  /** Re-reads the synced records (after a pull). */
+  reload(): void;
+  updateDraft(patch: Partial<OnboardingDraft>): void;
+  saveEquipment(location: EquipmentLocation, equipment: readonly EquipmentId[]): string;
+  removeEquipment(id: string): void;
+  setActiveEquipment(id: string): void;
+  /** Writes the profile from the draft (onboarding step "About you"). */
+  saveProfileFromDraft(): Profile;
+  /** Evaluates the draft's answers and stores the screening (append-only). */
+  saveScreening(reason: ScreeningRecord['reason'], answeredOn: CalendarDateValue): ScreeningRecord;
+  completeOnboarding(): void;
+  reportNewCondition(): void;
+  /** Health consent withdrawn or account wiped: forget health data held on the device. */
+  forgetHealthData(): void;
+}
+
+function parsed<T>(schema: z.ZodType<T>, data: unknown): T | null {
+  const r = schema.safeParse(data);
+  return r.success ? r.data : null;
+}
+
+function loadDraft(kv: KeyValueStore): OnboardingDraft {
+  try {
+    const raw = kv.get(DRAFT_KEY);
+    return raw ? { ...EMPTY_DRAFT, ...(JSON.parse(raw) as Partial<OnboardingDraft>) } : EMPTY_DRAFT;
+  } catch {
+    return EMPTY_DRAFT;
+  }
+}
+
+/**
+ * M01 profile on the device (local-first, ADR-002): the profile, equipment
+ * profiles and screenings are sync records; the onboarding draft stays in
+ * device key/value storage. Every write works offline.
+ */
+export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps) {
+  const read = () => ({
+    profile: parsed(ProfileSchema, sync.get(PROFILE_COLLECTIONS.profile, PROFILE_RECORD_ID)?.data),
+    equipment: sync
+      .list(PROFILE_COLLECTIONS.equipmentProfiles)
+      .map((r) => ({ id: r.id, data: parsed(EquipmentProfileSchema, r.data) }))
+      .filter((r): r is StoredEquipmentProfile => r.data !== null)
+      .sort((a, b) => EQUIPMENT_LOCATIONS.indexOf(a.data.location) - EQUIPMENT_LOCATIONS.indexOf(b.data.location) || a.id.localeCompare(b.id)),
+    screenings: sync
+      .list(PROFILE_COLLECTIONS.screenings)
+      .map((r) => ({ id: r.id, data: parsed(ScreeningRecordSchema, r.data) }))
+      .filter((r): r is StoredScreening => r.data !== null)
+      .sort((a, b) => a.data.completedAt.localeCompare(b.data.completedAt)),
+  });
+  const writeProfile = (profile: Profile) => {
+    const data = ProfileSchema.parse(profile);
+    if (sync.get(PROFILE_COLLECTIONS.profile, PROFILE_RECORD_ID)) sync.update(PROFILE_COLLECTIONS.profile, PROFILE_RECORD_ID, data);
+    else sync.insert(PROFILE_COLLECTIONS.profile, data, PROFILE_RECORD_ID);
+  };
+
+  return createStore<ProfileState>((set, get) => {
+    const written = () => {
+      set(read());
+      onWrite?.();
+    };
+    return {
+      ...read(),
+      draft: loadDraft(kv),
+      newConditionReportedAt: kv.get(NEW_CONDITION_KEY) ?? null,
+      reload: () => set(read()),
+      updateDraft(patch) {
+        const draft = { ...get().draft, ...patch };
+        kv.set(DRAFT_KEY, JSON.stringify(draft));
+        set({ draft });
+      },
+      saveEquipment(location, equipment) {
+        const data = EquipmentProfileSchema.parse({ location, equipment: [...new Set(equipment)] });
+        const existing = get().equipment.find((p) => p.data.location === location);
+        const id = existing ? existing.id : sync.insert(PROFILE_COLLECTIONS.equipmentProfiles, data);
+        if (existing) sync.update(PROFILE_COLLECTIONS.equipmentProfiles, existing.id, data);
+        written();
+        return id;
+      },
+      removeEquipment(id) {
+        sync.remove(PROFILE_COLLECTIONS.equipmentProfiles, id);
+        const profile = get().profile;
+        if (profile?.activeEquipmentProfileId === id) writeProfile({ ...profile, activeEquipmentProfileId: null });
+        written();
+      },
+      setActiveEquipment(id) {
+        const profile = get().profile;
+        if (!profile) return;
+        writeProfile({ ...profile, activeEquipmentProfileId: id });
+        written();
+      },
+      saveProfileFromDraft() {
+        const d = get().draft;
+        if (!d.primaryGoal || !d.experience || !d.birthDate) throw new Error('onboarding draft incomplete');
+        const current = get().profile;
+        const profile: Profile = {
+          schemaVersion: 1,
+          goals: { primary: d.primaryGoal, secondary: d.secondaryGoal === d.primaryGoal ? null : d.secondaryGoal },
+          experience: d.experience,
+          schedule: d.schedule,
+          birthDate: d.birthDate,
+          biometrics: d.biometrics,
+          limitations: d.limitations.map((region) => ({ region })),
+          excludedExerciseIds: current?.excludedExerciseIds ?? [],
+          motivation: d.motivation.trim() === '' ? null : d.motivation.trim(),
+          activeEquipmentProfileId: current?.activeEquipmentProfileId ?? get().equipment[0]?.id ?? null,
+          onboardingCompletedAt: current?.onboardingCompletedAt ?? null,
+        };
+        writeProfile(profile);
+        written();
+        return profile;
+      },
+      saveScreening(reason, answeredOn) {
+        const d = get().draft;
+        const profile = get().profile;
+        if (!d.birthDate) throw new Error('date of birth missing');
+        const responses = {
+          answers: d.answers,
+          clearanceAttested: d.clearanceAttested,
+          birthDate: d.birthDate,
+          answeredOn,
+          limitations: d.limitations.map((region) => ({ region })),
+          excludedExerciseIds: profile?.excludedExerciseIds ?? [],
+        };
+        const record = ScreeningRecordSchema.parse({ reason, responses, safetyProfile: evaluateScreening(responses), completedAt: now().toISOString() });
+        sync.insert(PROFILE_COLLECTIONS.screenings, record);
+        kv.remove(NEW_CONDITION_KEY);
+        set({ newConditionReportedAt: null });
+        written();
+        return record;
+      },
+      completeOnboarding() {
+        const profile = get().profile;
+        if (!profile || profile.onboardingCompletedAt) return;
+        writeProfile({ ...profile, onboardingCompletedAt: now().toISOString() });
+        written();
+      },
+      reportNewCondition() {
+        const at = now().toISOString();
+        kv.set(NEW_CONDITION_KEY, at);
+        set({ newConditionReportedAt: at });
+      },
+      forgetHealthData() {
+        const draft = { ...get().draft, answers: {}, clearanceAttested: false, biometrics: EMPTY_BIOMETRICS };
+        kv.set(DRAFT_KEY, JSON.stringify(draft));
+        set({ draft });
+      },
+    };
+  });
+}
+
+export type ProfileStore = ReturnType<typeof createProfileStore>;

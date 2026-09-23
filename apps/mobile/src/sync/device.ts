@@ -41,6 +41,11 @@ export function assertSecureApiUrl(url: string, isDevelopment: boolean): string 
 declare const __DEV__: boolean | undefined;
 const isDevelopmentBuild = () => typeof __DEV__ !== 'undefined' && __DEV__ === true;
 
+/** The API base URL the app talks to (sync, sign-in, privacy, legal), https-only outside local development. */
+export function apiBaseUrl(apiUrl?: string, isDevelopment: boolean = isDevelopmentBuild()): string {
+  return assertSecureApiUrl(apiUrl ?? 'http://127.0.0.1:3000', isDevelopment);
+}
+
 /** Builds the local-first sync client: SQLite store, persistent device id, HTTP transport. */
 export function createDeviceSyncClient(deps: DeviceSyncDeps): SyncClient {
   const store = new DrizzleLocalStore(deps.openDatabase());
@@ -55,7 +60,7 @@ export function createDeviceSyncClient(deps: DeviceSyncDeps): SyncClient {
   const transport =
     deps.transport ??
     new HttpTransport({
-      baseUrl: assertSecureApiUrl(deps.apiUrl ?? 'http://127.0.0.1:3000', deps.isDevelopment ?? isDevelopmentBuild()),
+      baseUrl: apiBaseUrl(deps.apiUrl, deps.isDevelopment ?? isDevelopmentBuild()),
       getAccessToken: deps.getAccessToken ?? notSignedIn,
     });
   return new SyncClient({ deviceId, store, transport, newId: deps.randomUUID });
