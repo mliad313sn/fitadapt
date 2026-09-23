@@ -1,5 +1,6 @@
 import { s5LoadCeiling, screeningGateCheck, type LoadReference } from '@fitadapt/safety';
 import {
+  JOINTS,
   ProgramSessionContextSchema,
   SessionPlanSchema,
   type ProgramSessionContext,
@@ -86,6 +87,7 @@ interface Ctx {
 }
 
 const iso = (ms: number) => new Date(ms).toISOString();
+const isLoadedType = (t: string | undefined) => t === 'external' || t === 'machine';
 
 /** Session reserve from the program's target RPE, raised until S1 (screeningGateCheck) accepts it; null when no reserve up to rir.max is allowed. */
 export function sessionRir(profile: SafetyProfile, targetRpe: number | null, extra: number): { rir: number; s1Capped: boolean } | null {
@@ -131,15 +133,28 @@ function restFor(intent: SlotIntent, loaded: boolean): number {
   }
 }
 
-/** The most recent past exercise for this slot: same pattern and role first, then same pattern. */
+/** The most recent past exercise for this slot (same pattern and role) that the user actually did. */
 function previousFor(history: readonly SessionHistoryEntry[], pattern: MovementPattern, role: SlotRole): HistoryExercise | null {
-  for (const matchRole of [true, false]) {
-    for (let i = history.length - 1; i >= 0; i--) {
-      const found = [...history[i]!.exercises].reverse().find((e) => e.slot === pattern && (!matchRole || e.role === role) && e.performed.some((p) => p.status === 'done'));
-      if (found) return found;
-    }
+  for (let i = history.length - 1; i >= 0; i--) {
+    const found = [...history[i]!.exercises].reverse().find((e) => e.slot === pattern && e.role === role && e.performed.some((p) => p.status === 'done'));
+    if (found) return found;
   }
   return null;
+}
+
+/**
+ * Exercises of this pattern done in another role within the last 7 days (or dated later): a new choice
+ * avoids them when it can, so a heavy and a light day of one exercise do not cap each other through S5.
+ */
+function recentInOtherRole(ctx: Ctx, pattern: MovementPattern, role: SlotRole): Set<string> {
+  const since = ctx.nowMs - 7 * DAY_MS;
+  const out = new Set<string>();
+  for (const h of ctx.input.history ?? []) {
+    if (Date.parse(h.startedAt) < since) continue;
+    // Only loaded exercises: S5 applies to loads; a bodyweight variant can serve two roles.
+    for (const e of h.exercises) if (e.slot === pattern && e.role !== role && isLoadedType(ctx.library.loadType(e.exerciseId))) out.add(e.exerciseId);
+  }
+  return out;
 }
 
 function progressionSessions(ctx: Ctx, exerciseId: string) {
@@ -176,6 +191,17 @@ function ladderStep(ctx: Ctx, exerciseId: string, ladderId: string | null, direc
   return id ? { id, ladderId: found.ladder.id } : null;
 }
 
+/** The nearest allowed exercise at the same rung of its ladder (a sibling), or below it (any number of steps down), if any. */
+function lowerAllowedStep(ctx: Ctx, exerciseId: string, ladderId: string | null): { id: string; ladderId: string } | null {
+  const found = ladderOf(ctx.library, exerciseId, ladderId);
+  if (!found) return null;
+  for (let step = found.step; step >= 0; step--) {
+    const id = found.ladder.steps[step]!.find((x) => x !== exerciseId && allowed(ctx, x) !== null);
+    if (id) return { id, ladderId: found.ladder.id };
+  }
+  return null;
+}
+
 const SKILL_WANTS: Partial<Record<SlotIntent, number>> = { strength: 2, hypertrophy: 2, general: 1 };
 
 /** Exercises of the pattern for a slot without history or assessment, best first (deterministic; ties on id). */
@@ -194,6 +220,12 @@ function defaultCandidates(ctx: Ctx, slot: ProgramSlot): Candidate[] {
     if (tags.includes('conditioning')) score -= 5;
     if (tags.includes('eccentric_focus') && slot.intent !== 'skill') score -= 1;
     score -= 0.25 * Math.abs(skillRank(ex.skill) - ctx.maxSkill);
+    // Amber joints (M05 caution): exercises loading them are chosen less readily.
+    for (const joint of JOINTS) {
+      if (ctx.jointFlags[joint] !== 'amber') continue;
+      if (ex.jointLoad[joint] === 'high') score -= sessionValue('selection.amberHighPenalty');
+      else if (ex.jointLoad[joint] === 'medium') score -= sessionValue('selection.amberMediumPenalty');
+    }
     scored.push([score, ex.id]);
   }
   scored.sort((a, b) => b[0] - a[0] || (a[1] < b[1] ? -1 : 1));
@@ -332,15 +364,18 @@ function prescribe(ctx: Ctx, cand: Candidate, slot: ProgramSlot, prev: HistoryEx
 function mapBlocked(ctx: Ctx, cand: Candidate, ex: GraphExercise): Candidate | null {
   const reasons = blockingReasons(ex, ctx.equipment, ctx.jointFlags, ctx.profile);
   const red = redJointsLoaded(ex, ctx.jointFlags);
-  const sub = substitute(ctx.library.graph, ex, ctx.equipment, ctx.jointFlags, ctx.profile);
-  const lower = sub ? null : ladderStep(ctx, ex.id, cand.ladderId, -1);
-  const id = sub?.exerciseId ?? lower?.id ?? null;
+  // The same movement one or more steps easier first (never harder than where the person is), then the nearest stimulus.
+  const lower = lowerAllowedStep(ctx, ex.id, cand.ladderId);
+  const sub = lower ? null : substitute(ctx.library.graph, ex, ctx.equipment, ctx.jointFlags, ctx.profile);
+  const id = lower?.id ?? sub?.exerciseId ?? null;
   if (!id) return null;
   if (red.length > 0) {
     return { ...cand, exerciseId: id, ladderId: lower?.ladderId ?? null, origin: 's2', reasonCode: `session.exercise.s2_substituted.${red[0]!}` };
   }
-  if (reasons.some((r) => r.code === 'substitution.equipment_unavailable')) return { ...cand, exerciseId: id, ladderId: lower?.ladderId ?? null, origin: 'switcher', reasonCode: 'session.switcher.mapped' };
-  return { ...cand, exerciseId: id, ladderId: lower?.ladderId ?? null, origin: 'substituted', reasonCode: 'session.exercise.substituted' };
+  // An easier step of the same movement says so (M07 wording); a different exercise is the switcher's or a substitute.
+  if (lower) return { ...cand, exerciseId: id, ladderId: lower.ladderId, origin: 'substituted', reasonCode: 'session.exercise.stepped_down' };
+  if (reasons.some((r) => r.code === 'substitution.equipment_unavailable')) return { ...cand, exerciseId: id, ladderId: null, origin: 'switcher', reasonCode: 'session.switcher.mapped' };
+  return { ...cand, exerciseId: id, ladderId: null, origin: 'substituted', reasonCode: 'session.exercise.substituted' };
 }
 
 function planSlot(ctx: Ctx, slot: ProgramSlot, sets: number): Prescribed | null {
@@ -366,7 +401,9 @@ function planSlot(ctx: Ctx, slot: ProgramSlot, sets: number): Prescribed | null 
       const down = decision.action === 'variant_down';
       const moved = up || down ? ladderStep(ctx, prevEx.id, prev.ladderId, up ? 1 : -1) : null;
       if (moved) {
-        candidates.push({ exerciseId: moved.id, ladderId: moved.ladderId, origin: up ? 'next_variant' : 'easier_variant', reasonCode: up ? 'session.exercise.next_variant' : 'session.exercise.easier_variant', capacity: null, note: decision.reasonCodes, params: decision.reasonParams });
+        // The new variant carries why it was chosen (not the old variant's S5 note: its own load is decided afresh).
+        const note = decision.reasonCodes.filter((c) => c !== 'session.load.s5_capped');
+        candidates.push({ exerciseId: moved.id, ladderId: moved.ladderId, origin: up ? 'next_variant' : 'easier_variant', reasonCode: up ? 'session.exercise.next_variant' : 'session.exercise.easier_variant', capacity: null, note, params: decision.reasonParams });
       }
       const stay: string[] = up ? ['session.progression.next_variant_unavailable'] : down && !moved ? ['session.progression.easier_variant_unavailable'] : [];
       candidates.push({ exerciseId: prevEx.id, ladderId: prev.ladderId, origin: 'continued', reasonCode: 'session.exercise.continued', capacity: null, note: moved ? [] : stay, params: {} });
@@ -387,6 +424,7 @@ function planSlot(ctx: Ctx, slot: ProgramSlot, sets: number): Prescribed | null 
   const unflagged = candidates.length > 0 && candidates[0]!.origin !== 'from_program' ? candidates[0] : defaultCandidates({ ...ctx, jointFlags: {} }, slot)[0];
   const preferred = unflagged ? ctx.library.graph.exercises.get(unflagged.exerciseId) : undefined;
   const redPreferred = preferred ? redJointsLoaded(preferred, ctx.jointFlags) : [];
+  const otherRole = recentInOtherRole(ctx, slot.pattern, slot.role);
   const tried = new Set<string>();
   for (const pass of [false, true]) {
     for (const original of candidates) {
@@ -399,7 +437,7 @@ function planSlot(ctx: Ctx, slot: ProgramSlot, sets: number): Prescribed | null 
         if (!mapped) continue;
         cand = mapped;
       }
-      if ((!pass && ctx.used.has(cand.exerciseId)) || tried.has(`${pass}:${cand.exerciseId}:${cand.origin}`)) continue;
+      if ((!pass && (ctx.used.has(cand.exerciseId) || (cand.origin !== 'continued' && otherRole.has(cand.exerciseId)))) || tried.has(`${pass}:${cand.exerciseId}:${cand.origin}`)) continue;
       tried.add(`${pass}:${cand.exerciseId}:${cand.origin}`);
       const result = prescribe(ctx, redPreferred.length > 0 && cand.origin !== 's2' ? { ...cand, origin: 's2', reasonCode: `session.exercise.s2_substituted.${redPreferred[0]!}` } : cand, slot, prev, sets);
       if (result) return result;

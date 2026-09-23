@@ -1,0 +1,636 @@
+{
+  "reflows": [
+    "w01.s3 reported 2026-10-02: shifted to 2026-10-03",
+    "w02.s3 reported 2026-10-09: shifted to 2026-10-10"
+  ],
+  "sessions": [
+    {
+      "date": "2026-09-28 w01.s1 (planned, week 1 accumulation, hypertrophy)",
+      "budget": "37.5 of 45 min, warm-up 8 min, reserve RIR 3",
+      "reasonCodes": [
+        "session.program.from_program"
+      ],
+      "exercises": [
+        {
+          "what": "squat/primary: barbell_back_squat 3 × 6–10 reps @ 82.5 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.from_assessment",
+            "session.load.from_e1rm",
+            "session.load.rounded",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "This is the level your check placed you at.",
+            "Load from your one-rep estimate, for the reps and reserve of this set.",
+            "Rounded down to the nearest load your equipment allows (2.5 kg steps).",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "horizontal_push/primary: barbell_bench_press 3 × 6–10 reps @ 65 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.from_assessment",
+            "session.load.from_e1rm",
+            "session.load.rounded",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "This is the level your check placed you at.",
+            "Load from your one-rep estimate, for the reps and reserve of this set.",
+            "Rounded down to the nearest load your equipment allows (2.5 kg steps).",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "horizontal_pull/primary: barbell_row 3 × 6–10 reps @ 57.5 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.from_assessment",
+            "session.load.from_e1rm",
+            "session.load.rounded",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "This is the level your check placed you at.",
+            "Load from your one-rep estimate, for the reps and reserve of this set.",
+            "Rounded down to the nearest load your equipment allows (2.5 kg steps).",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "hinge/secondary: barbell_romanian_deadlift 1 × 8–15 reps @ 67.5 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.from_assessment",
+            "session.load.from_e1rm",
+            "session.rep_range.hypertrophy",
+            "session.rir.target"
+          ],
+          "why": [
+            "This is the level your check placed you at.",
+            "Load from your one-rep estimate, for the reps and reserve of this set.",
+            "8–15 reps, the range of this muscle-focused block.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "vertical_push/accessory: barbell_overhead_press 1 × 8–15 reps @ no set load, rest 90 s",
+          "reasons": [
+            "session.exercise.from_program",
+            "session.load.self_select_light",
+            "session.rep_range.hypertrophy",
+            "session.rir.target"
+          ],
+          "why": [
+            "Chosen for this part of your plan, with your equipment and your answers.",
+            "Choose a light load you could lift about 12 times.",
+            "8–15 reps, the range of this muscle-focused block.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "core/accessory: front_plank 2 × 30 s @ no set load, rest 90 s",
+          "reasons": [
+            "session.exercise.from_assessment",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "This is the level your check placed you at.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 50 % of your body weight.",
+            "Hold for 30 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        }
+      ],
+      "safetyEvents": []
+    },
+    {
+      "date": "2026-09-30 w01.s2 (planned, week 1 accumulation, hypertrophy)",
+      "budget": "37.8 of 45 min, warm-up 8 min, reserve RIR 3",
+      "reasonCodes": [
+        "session.program.from_program"
+      ],
+      "exercises": [
+        {
+          "what": "hinge/primary: dumbbell_romanian_deadlift 2 × 6–10 reps @ no set load, rest 90 s",
+          "reasons": [
+            "session.exercise.stepped_down",
+            "session.load.self_select_light",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "Your level needs equipment you do not have here, so an easier step of the same movement was chosen.",
+            "Choose a light load you could lift about 12 times.",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "vertical_pull/primary: lat_pulldown 3 × 6–10 reps @ 50 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.from_assessment",
+            "session.load.from_e1rm",
+            "session.load.rounded",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "This is the level your check placed you at.",
+            "Load from your one-rep estimate, for the reps and reserve of this set.",
+            "Rounded down to the nearest load your equipment allows (5 kg steps).",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "vertical_push/primary: half_kneeling_dumbbell_press 3 × 6–10 reps @ no set load, rest 90 s",
+          "reasons": [
+            "session.exercise.from_program",
+            "session.load.self_select_light",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "Chosen for this part of your plan, with your equipment and your answers.",
+            "Choose a light load you could lift about 12 times.",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "lunge/secondary: dumbbell_reverse_lunge 2 × 8–15 reps @ no set load, rest 90 s",
+          "reasons": [
+            "session.exercise.from_program",
+            "session.load.self_select_light",
+            "session.rep_range.hypertrophy",
+            "session.rir.target"
+          ],
+          "why": [
+            "Chosen for this part of your plan, with your equipment and your answers.",
+            "Choose a light load you could lift about 12 times.",
+            "8–15 reps, the range of this muscle-focused block.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "horizontal_push/accessory: dumbbell_bench_press 1 × 8–15 reps @ no set load, rest 90 s",
+          "reasons": [
+            "session.exercise.stepped_down",
+            "session.load.self_select_light",
+            "session.rep_range.hypertrophy",
+            "session.rir.target"
+          ],
+          "why": [
+            "Your level needs equipment you do not have here, so an easier step of the same movement was chosen.",
+            "Choose a light load you could lift about 12 times.",
+            "8–15 reps, the range of this muscle-focused block.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "core/accessory: front_plank 2 × 30 s @ no set load, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.hold_held",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 50 % of your body weight.",
+            "Same hold time: 30 s on every set.",
+            "Hold for 30 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        }
+      ],
+      "safetyEvents": []
+    },
+    {
+      "date": "2026-10-03 w01.s3 (shifted, week 1 accumulation, hypertrophy)",
+      "budget": "37 of 45 min, warm-up 8 min, reserve RIR 3",
+      "reasonCodes": [
+        "session.program.from_program",
+        "session.program.shifted"
+      ],
+      "exercises": [
+        {
+          "what": "lunge/primary: bulgarian_split_squat 3 × 6–10 reps @ no set load, rest 90 s",
+          "reasons": [
+            "session.exercise.from_program",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "Chosen for this part of your plan, with your equipment and your answers.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 80 % of your body weight.",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "horizontal_push/primary: barbell_bench_press 4 × 6–10 reps @ 67.5 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+2.5 kg: last time you did 3 × 10 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "vertical_pull/primary: lat_pulldown 2 × 6–10 reps @ 55 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+5 kg: last time you did 3 × 10 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "hinge/secondary: barbell_romanian_deadlift 1 × 8–15 reps @ 72.5 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.rep_range.hypertrophy",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+5 kg: last time you did 1 × 15 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "8–15 reps, the range of this muscle-focused block.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "core/accessory: front_plank 3 × 35 s @ no set load, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.hold_longer",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 50 % of your body weight.",
+            "Hold for 35 s: you held the full time on every set in your last 2 sessions.",
+            "Hold for 35 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        }
+      ],
+      "safetyEvents": []
+    },
+    {
+      "date": "2026-10-05 w02.s1 (planned, week 2 accumulation, hypertrophy)",
+      "budget": "37.7 of 45 min, warm-up 8 min, reserve RIR 3",
+      "reasonCodes": [
+        "session.program.from_program"
+      ],
+      "exercises": [
+        {
+          "what": "squat/primary: barbell_back_squat 3 × 6–10 reps @ 87.5 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+5 kg: last time you did 3 × 10 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "horizontal_push/primary: barbell_bench_press 3 × 6–10 reps @ 70 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+2.5 kg: last time you did 4 × 10 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "horizontal_pull/primary: barbell_row 3 × 6–10 reps @ 60 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+2.5 kg: last time you did 3 × 10 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "hinge/secondary: barbell_romanian_deadlift 1 × 8–15 reps @ 72.5 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.load.s5_capped",
+            "session.rep_range.hypertrophy",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+5 kg: last time you did 1 × 15 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "The load rises at most 10% within a week.",
+            "8–15 reps, the range of this muscle-focused block.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "vertical_push/accessory: barbell_overhead_press 1 × 8–15 reps @ 20 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.load.s5_capped",
+            "session.rep_range.hypertrophy",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+2.5 kg: last time you did 1 × 15 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "The load rises at most 10% within a week.",
+            "8–15 reps, the range of this muscle-focused block.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "core/accessory: front_plank 2 × 35 s @ no set load, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.hold_held",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 50 % of your body weight.",
+            "Same hold time: 35 s on every set.",
+            "Hold for 35 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        }
+      ],
+      "safetyEvents": [
+        {
+          "invariant": "S5",
+          "reasonCode": "safety.s5.load_ceiling",
+          "action": "capped",
+          "engineVersion": "0.2.0"
+        }
+      ]
+    },
+    {
+      "date": "2026-10-07 w02.s2 (planned, week 2 accumulation, hypertrophy)",
+      "budget": "38.1 of 45 min, warm-up 8 min, reserve RIR 3",
+      "reasonCodes": [
+        "session.program.from_program"
+      ],
+      "exercises": [
+        {
+          "what": "hinge/primary: dumbbell_romanian_deadlift 2 × 6–10 reps @ 22 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+2 kg: last time you did 2 × 10 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "vertical_pull/primary: lat_pulldown 3 × 6–10 reps @ 55 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.load.s5_capped",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+5 kg: last time you did 2 × 10 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "The load rises at most 10% within a week.",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "vertical_push/primary: half_kneeling_dumbbell_press 3 × 6–10 reps @ 22 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+2 kg: last time you did 3 × 10 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "lunge/secondary: dumbbell_reverse_lunge 2 × 8–15 reps @ 22 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.rep_range.hypertrophy",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+2 kg: last time you did 2 × 15 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "8–15 reps, the range of this muscle-focused block.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "horizontal_push/accessory: dumbbell_bench_press 1 × 8–15 reps @ 22 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.rep_range.hypertrophy",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+2 kg: last time you did 1 × 15 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "8–15 reps, the range of this muscle-focused block.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "core/accessory: front_plank 2 × 40 s @ no set load, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.hold_longer",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 50 % of your body weight.",
+            "Hold for 40 s: you held the full time on every set in your last 2 sessions.",
+            "Hold for 40 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        }
+      ],
+      "safetyEvents": [
+        {
+          "invariant": "S5",
+          "reasonCode": "safety.s5.load_ceiling",
+          "action": "capped",
+          "engineVersion": "0.2.0"
+        }
+      ]
+    },
+    {
+      "date": "2026-10-10 w02.s3 (shifted, week 2 accumulation, hypertrophy)",
+      "budget": "37.3 of 45 min, warm-up 8 min, reserve RIR 3",
+      "reasonCodes": [
+        "session.program.from_program",
+        "session.program.shifted"
+      ],
+      "exercises": [
+        {
+          "what": "lunge/primary: bulgarian_split_squat 3 × 6–10 reps @ no set load, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.variant_held",
+            "session.rep_range.personal",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 80 % of your body weight.",
+            "Same version: add reps until every set reaches 10.",
+            "6–10 reps, the range you are building on.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "horizontal_push/primary: barbell_bench_press 4 × 6–10 reps @ 72.5 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+2.5 kg: last time you did 3 × 10 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "vertical_pull/primary: lat_pulldown 2 × 6–10 reps @ 60 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.rep_range.hypertrophy_primary",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+5 kg: last time you did 3 × 10 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "6–10 reps for this main exercise.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "hinge/secondary: barbell_romanian_deadlift 1 × 8–15 reps @ 77.5 kg, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.load_increased",
+            "session.rep_range.hypertrophy",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "+5 kg: last time you did 1 × 15 with 3 or more reps to spare. Start again at the bottom of the range.",
+            "8–15 reps, the range of this muscle-focused block.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "core/accessory: front_plank 3 × 40 s @ no set load, rest 90 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.hold_held",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 50 % of your body weight.",
+            "Same hold time: 40 s on every set.",
+            "Hold for 40 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        }
+      ],
+      "safetyEvents": []
+    }
+  ]
+}

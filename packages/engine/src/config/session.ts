@@ -93,6 +93,10 @@ export const SESSION_CONFIG = defineConfig({
   'selection.maxSkill.intermediate': { value: 2, source: ENG, validated: false },
   'selection.maxSkill.advanced': { value: 3, source: ENG, validated: false },
 
+  /** Score penalties for exercises loading an amber joint (M05 caution) when choosing without history. */
+  'selection.amberHighPenalty': { value: 1, source: `${ENG} (A2: how strongly amber joints should steer the choice)`, validated: false },
+  'selection.amberMediumPenalty': { value: 0.5, source: `${ENG} (A2: how strongly amber joints should steer the choice)`, validated: false },
+
   // ---- History the engine reads
   'history.maxSessions': { value: 24, unit: 'sessions', source: ENG, validated: false },
 });

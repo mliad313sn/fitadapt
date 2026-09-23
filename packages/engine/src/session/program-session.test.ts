@@ -248,10 +248,19 @@ describe('Anywhere Switcher: a new place maps each slot to the nearest-stimulus 
     const home = plan(gymInput({ equipment: P1_HOME, equipmentLoads: HOME_LOADS, equipmentProfileId: HOME_ID, history: diary.history() }), MON + 2 * DAY);
     expect(home.reasonCodes).toContain('session.switcher.place_changed');
     for (const e of home.exercises) expect(hasEquipment(SESSION_LIBRARY.graph.exercises.get(e.exerciseId)!, new Set(P1_HOME))).toBe(true);
-    const mapped = home.exercises.filter((e) => e.reasonCodes[0] === 'session.switcher.mapped');
-    expect(mapped.length).toBeGreaterThan(0);
-    // The row keeps its slot: barbell row → a row the home allows.
-    expect(home.exercises.find((e) => e.slot === 'horizontal_pull')!.exerciseId).not.toBe('barbell_row');
+    // The row keeps its slot: barbell row → an easier step of the same movement the home allows.
+    const row = home.exercises.find((e) => e.slot === 'horizontal_pull')!;
+    expect(row.exerciseId).not.toBe('barbell_row');
+    expect(row.reasonCodes[0]).toBe('session.exercise.stepped_down');
+    // An exercise with no easier step here maps to the nearest stimulus (the switcher).
+    const pull = programContext({ slots: [slot('vertical_pull', 'primary', 'hypertrophy', 3)] });
+    const gymPull = plan(gymInput({ programSession: pull }));
+    expect(gymPull.exercises[0]!.exerciseId).toBe('lat_pulldown');
+    const pullDiary = new Diary();
+    pullDiary.add(gymInput({ programSession: pull }), gymPull, atTop(40));
+    const homePull = plan(gymInput({ equipment: P1_HOME, equipmentLoads: HOME_LOADS, equipmentProfileId: HOME_ID, programSession: pull, history: pullDiary.history() }), MON + 2 * DAY);
+    expect(homePull.exercises[0]!.reasonCodes[0]).toBe('session.switcher.mapped');
+    expect(hasEquipment(SESSION_LIBRARY.graph.exercises.get(homePull.exercises[0]!.exerciseId)!, new Set(P1_HOME))).toBe(true);
   });
 
   it('when a place allows nothing for a slot, the slot is dropped and said so; never an exercise needing missing equipment', () => {

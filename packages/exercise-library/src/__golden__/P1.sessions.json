@@ -1,0 +1,571 @@
+{
+  "reflows": [],
+  "sessions": [
+    {
+      "date": "2026-09-28 w01.s1 (planned, week 1 accumulation, general)",
+      "budget": "34.4 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "reasonCodes": [
+        "session.program.from_program",
+        "session.conditioning.steady_finisher"
+      ],
+      "exercises": [
+        {
+          "what": "squat/primary: air_squat 2 × 9–12 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.from_assessment",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.rep_range.from_assessment",
+            "session.rir.target"
+          ],
+          "why": [
+            "This is the level your check placed you at.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 70 % of your body weight.",
+            "9–12 reps, from your starting-point check.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "horizontal_push/primary: incline_push_up_high 2 × 8–12 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.stepped_down",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.rep_range.general",
+            "session.rir.target"
+          ],
+          "why": [
+            "Your level needs equipment you do not have here, so an easier step of the same movement was chosen.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 30 % of your body weight.",
+            "8–12 reps at a steady, comfortable effort.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "horizontal_pull/primary: seated_band_row 2 × 5–8 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.from_assessment",
+            "session.load.band_self_select",
+            "session.rep_range.from_assessment",
+            "session.rir.target"
+          ],
+          "why": [
+            "This is the level your check placed you at.",
+            "Choose a band that lets you do the reps with some to spare.",
+            "5–8 reps, from your starting-point check.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "hinge/secondary: hip_hinge_drill 1 × 5–8 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.from_assessment",
+            "session.load.bodyweight_variant",
+            "session.rep_range.from_assessment",
+            "session.rir.target"
+          ],
+          "why": [
+            "This is the level your check placed you at.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "5–8 reps, from your starting-point check.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "core/accessory: knee_plank 1 × 15 s @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.from_assessment",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "This is the level your check placed you at.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 35 % of your body weight.",
+            "Hold for 15 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        }
+      ],
+      "safetyEvents": []
+    },
+    {
+      "date": "2026-09-30 w01.s2 (planned, week 1 accumulation, general)",
+      "budget": "33.8 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "reasonCodes": [
+        "session.program.from_program",
+        "session.conditioning.steady_finisher"
+      ],
+      "exercises": [
+        {
+          "what": "hinge/primary: hip_hinge_drill 2 × 5–8 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.from_assessment",
+            "session.load.bodyweight_variant",
+            "session.rep_range.from_assessment",
+            "session.rir.target"
+          ],
+          "why": [
+            "This is the level your check placed you at.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "5–8 reps, from your starting-point check.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "vertical_pull/primary: dead_hang 1 × 10 s @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.from_assessment",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "This is the level your check placed you at.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 100 % of your body weight.",
+            "Hold for 10 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        },
+        {
+          "what": "vertical_push/primary: hands_elevated_pike_push_up 2 × 8–12 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.from_program",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.rep_range.general",
+            "session.rir.target"
+          ],
+          "why": [
+            "Chosen for this part of your plan, with your equipment and your answers.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 35 % of your body weight.",
+            "8–12 reps at a steady, comfortable effort.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "lunge/secondary: dumbbell_reverse_lunge 1 × 8–12 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.from_program",
+            "session.load.self_select_light",
+            "session.rep_range.general",
+            "session.rir.target"
+          ],
+          "why": [
+            "Chosen for this part of your plan, with your equipment and your answers.",
+            "Choose a light load you could lift about 12 times.",
+            "8–12 reps at a steady, comfortable effort.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "core/accessory: knee_plank 2 × 15 s @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.hold_held",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 35 % of your body weight.",
+            "Same hold time: 15 s on every set.",
+            "Hold for 15 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        }
+      ],
+      "safetyEvents": []
+    },
+    {
+      "date": "2026-10-02 w01.s3 (planned, week 1 accumulation, general)",
+      "budget": "33.7 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "reasonCodes": [
+        "session.program.from_program",
+        "session.conditioning.steady_finisher"
+      ],
+      "exercises": [
+        {
+          "what": "lunge/primary: reverse_lunge 2 × 8–12 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.from_program",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.rep_range.general",
+            "session.rir.target"
+          ],
+          "why": [
+            "Chosen for this part of your plan, with your equipment and your answers.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 70 % of your body weight.",
+            "8–12 reps at a steady, comfortable effort.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "horizontal_push/primary: incline_push_up_high 3 × 8–12 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.variant_held",
+            "session.rep_range.personal",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 30 % of your body weight.",
+            "Same version: add reps until every set reaches 12.",
+            "8–12 reps, the range you are building on.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "vertical_pull/primary: dead_hang 2 × 10 s @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.hold_held",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 100 % of your body weight.",
+            "Same hold time: 10 s on every set.",
+            "Hold for 10 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        },
+        {
+          "what": "core/accessory: knee_plank 1 × 20 s @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.hold_longer",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 35 % of your body weight.",
+            "Hold for 20 s: you held the full time on every set in your last 2 sessions.",
+            "Hold for 20 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        }
+      ],
+      "safetyEvents": []
+    },
+    {
+      "date": "2026-10-05 w02.s1 (planned, week 2 accumulation, general)",
+      "budget": "34.7 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "reasonCodes": [
+        "session.program.from_program",
+        "session.conditioning.steady_finisher"
+      ],
+      "exercises": [
+        {
+          "what": "squat/primary: air_squat 2 × 9–12 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.variant_held",
+            "session.rep_range.personal",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 70 % of your body weight.",
+            "Same version: add reps until every set reaches 12.",
+            "9–12 reps, the range you are building on.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "horizontal_push/primary: incline_push_up_high 2 × 8–12 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.next_variant_unavailable",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.variant_up",
+            "session.rep_range.personal",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "The next version needs something this place does not have, so this one stays.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 30 % of your body weight.",
+            "You reached 12 reps on every set in your last 2 sessions.",
+            "8–12 reps, the range you are building on.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "horizontal_pull/primary: seated_band_row 2 × 5–8 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.band_self_select",
+            "session.progression.variant_held",
+            "session.rep_range.personal",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Choose a band that lets you do the reps with some to spare.",
+            "Same version: add reps until every set reaches 8.",
+            "5–8 reps, the range you are building on.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "hinge/secondary: kettlebell_deadlift 1 × 8–12 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.next_variant",
+            "session.progression.variant_up",
+            "session.load.self_select_light",
+            "session.rep_range.general",
+            "session.rir.target"
+          ],
+          "why": [
+            "A harder version: you are ready for the next step.",
+            "You reached 8 reps on every set in your last 2 sessions.",
+            "Choose a light load you could lift about 12 times.",
+            "8–12 reps at a steady, comfortable effort.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "core/accessory: knee_plank 1 × 20 s @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.hold_held",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 35 % of your body weight.",
+            "Same hold time: 20 s on every set.",
+            "Hold for 20 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        }
+      ],
+      "safetyEvents": []
+    },
+    {
+      "date": "2026-10-07 w02.s2 (planned, week 2 accumulation, general)",
+      "budget": "34.2 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "reasonCodes": [
+        "session.program.from_program",
+        "session.conditioning.steady_finisher"
+      ],
+      "exercises": [
+        {
+          "what": "hinge/primary: hip_hinge_drill 2 × 5–8 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.progression.variant_up",
+            "session.rep_range.personal",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "You reached 8 reps on every set in your last 2 sessions.",
+            "5–8 reps, the range you are building on.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "vertical_pull/primary: dead_hang 1 × 15 s @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.hold_longer",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 100 % of your body weight.",
+            "Hold for 15 s: you held the full time on every set in your last 2 sessions.",
+            "Hold for 15 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        },
+        {
+          "what": "vertical_push/primary: hands_elevated_pike_push_up 2 × 8–12 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.variant_held",
+            "session.rep_range.personal",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 35 % of your body weight.",
+            "Same version: add reps until every set reaches 12.",
+            "8–12 reps, the range you are building on.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "lunge/secondary: dumbbell_reverse_lunge 1 × 8–12 reps @ 10 kg, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.next_variant_unavailable",
+            "session.progression.equipment_max",
+            "session.rep_range.general",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "The next version needs something this place does not have, so this one stays.",
+            "You reached the top of the range with 10 kg, the heaviest your equipment allows.",
+            "8–12 reps at a steady, comfortable effort.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "core/accessory: knee_plank 2 × 25 s @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.hold_longer",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 35 % of your body weight.",
+            "Hold for 25 s: you held the full time on every set in your last 2 sessions.",
+            "Hold for 25 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        }
+      ],
+      "safetyEvents": []
+    },
+    {
+      "date": "2026-10-09 w02.s3 (planned, week 2 accumulation, general)",
+      "budget": "34 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "reasonCodes": [
+        "session.program.from_program",
+        "session.conditioning.steady_finisher"
+      ],
+      "exercises": [
+        {
+          "what": "lunge/primary: reverse_lunge 2 × 8–12 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.variant_held",
+            "session.rep_range.personal",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 70 % of your body weight.",
+            "Same version: add reps until every set reaches 12.",
+            "8–12 reps, the range you are building on.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "horizontal_push/primary: incline_push_up_high 3 × 8–12 reps @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.progression.next_variant_unavailable",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.variant_up",
+            "session.rep_range.personal",
+            "session.rir.target"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "The next version needs something this place does not have, so this one stays.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 30 % of your body weight.",
+            "You reached 12 reps on every set in your last 2 sessions.",
+            "8–12 reps, the range you are building on.",
+            "Stop each set with about 3 reps to spare."
+          ]
+        },
+        {
+          "what": "vertical_pull/primary: dead_hang 2 × 15 s @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.hold_held",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 100 % of your body weight.",
+            "Same hold time: 15 s on every set.",
+            "Hold for 15 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        },
+        {
+          "what": "core/accessory: knee_plank 1 × 25 s @ no set load, rest 75 s",
+          "reasons": [
+            "session.exercise.continued",
+            "session.load.bodyweight_variant",
+            "session.load.bodyweight_share",
+            "session.progression.hold_held",
+            "session.hold.target",
+            "session.effort.hold"
+          ],
+          "why": [
+            "The same exercise as last time, so your progress carries on.",
+            "Your body weight is the load; the version sets the difficulty.",
+            "In this version you move about 35 % of your body weight.",
+            "Same hold time: 25 s on every set.",
+            "Hold for 25 s.",
+            "Stop while you could still hold on a little longer (effort about 7/10)."
+          ]
+        }
+      ],
+      "safetyEvents": []
+    }
+  ]
+}
