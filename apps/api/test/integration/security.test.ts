@@ -1,9 +1,11 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import type { WrappedPhotoKey } from '@fitadapt/shared';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { EMPTY_BIOMETRICS, PROFILE_RECORD_ID, type CalendarDateValue, type Profile, type WrappedPhotoKey } from '@fitadapt/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import pg from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { photoBackups, syncChanges } from '../../src/db/schema.js';
+import { photoBackups, syncChanges, syncMutations } from '../../src/db/schema.js';
 import { bearer, createHarness, device, signIn, truncateAll, uniqueEmail, type Harness } from './harness.js';
 import { integrationEnv } from './env.js';
 
@@ -201,3 +203,52 @@ const createPair = (u: Session) => h.app.inject({ method: 'POST', url: '/v1/pair
 const wrappedKey = (): WrappedPhotoKey => ({ schemaVersion: 1, kdf: { name: 'scrypt', logN: 15, r: 8, p: 1 }, salt: randomBytes(16).toString('base64'), wrappedKey: Buffer.concat([Buffer.from([1]), randomBytes(12 + 32 + 16)]).toString('base64') });
 const envelope = (bytes = 2048) => Buffer.concat([Buffer.from([1]), randomBytes(bytes)]);
 const putPhoto = (s: Session, id: string, body: Buffer) => h.app.inject({ method: 'PUT', url: `/v1/photos/backup/photos/${id}`, headers: { ...bearer(s.token), 'content-type': 'application/octet-stream' }, payload: body });
+
+const ADULT: CalendarDateValue = { year: 1988, month: 3, day: 14 };
+const profile = (birthDate = ADULT, goal: 'fat_loss' | 'strength' = 'fat_loss'): Profile => ({
+  schemaVersion: 1,
+  goals: { primary: goal, secondary: null },
+  experience: 'beginner',
+  schedule: { daysPerWeek: 3, minutesPerSession: 40, preferredTimes: [], remindersEnabled: false },
+  birthDate,
+  biometrics: EMPTY_BIOMETRICS,
+  limitations: [],
+  excludedExerciseIds: [],
+  motivation: null,
+  activeEquipmentProfileId: null,
+  onboardingCompletedAt: h.clock.now().toISOString(),
+});
+
+describe('API-3: the idempotency ledger keeps no copy of a record', () => {
+  it('a conflict stores no record data; a replay rebuilds it from the stored change, and after a health withdrawal nothing is left', async () => {
+    const s = await session();
+    expect((await consent(s, 'health')).statusCode).toBe(201);
+    expect(await push(s, [insert('profile', profile(), PROFILE_RECORD_ID)])).toEqual(['applied']);
+    // A second device inserts the same record: conflict, answered with the stored profile.
+    const second = insert('profile', profile(ADULT, 'strength'), PROFILE_RECORD_ID);
+    const first = (await pushReq(s, [second])).json() as { results: { status: string; current?: { data: Profile } }[] };
+    expect(first.results[0]).toMatchObject({ status: 'conflict', current: { data: { birthDate: ADULT } } });
+    const ledger = async () => (await h.database.db.select().from(syncMutations).where(eq(syncMutations.userId, s.userId))).map((r) => JSON.stringify(r.result));
+    expect((await ledger()).filter((r) => r.includes('birthDate') || r.includes('"data"'))).toEqual([]);
+    // A replay still gets the record's current state (read again from sync_changes).
+    const replay = (await pushReq(s, [second])).json() as { results: { status: string; current?: { data: Profile } }[] };
+    expect(replay.results[0]).toMatchObject({ status: 'conflict', current: { data: { birthDate: ADULT } } });
+    // Withdrawn: the profile is erased, and the ledger never held a copy.
+    expect((await consent(s, 'health', 'withdrawn')).statusCode).toBe(201);
+    expect((await ledger()).filter((r) => r.includes('birthDate'))).toEqual([]);
+    const after = (await pushReq(s, [second])).json() as { results: { status: string; current?: unknown }[] };
+    expect(after.results[0]).toEqual({ mutationId: second.mutationId, status: 'conflict' });
+    const exported = await h.app.inject({ method: 'GET', url: '/v1/privacy/export', headers: bearer(s.token) });
+    expect(exported.body).not.toContain('birthDate');
+  });
+
+  it('migration 0009 scrubs the record copies stored in the ledger before the fix', async () => {
+    const s = await session();
+    const legacy = { mutationId: randomUUID(), status: 'conflict', current: { revision: 1, collection: 'profile', recordId: PROFILE_RECORD_ID, op: 'upsert', data: { birthDate: ADULT }, originDeviceId: s.deviceId } };
+    await h.database.db.insert(syncMutations).values({ userId: s.userId, mutationId: legacy.mutationId, result: legacy });
+    const migration = readFileSync(fileURLToPath(new URL('../../drizzle/0009_fix_ledger_no_record_copy.sql', import.meta.url)), 'utf8');
+    await h.database.db.execute(sql.raw(migration));
+    const [row] = await h.database.db.select().from(syncMutations).where(eq(syncMutations.mutationId, legacy.mutationId));
+    expect(row!.result).toEqual({ mutationId: legacy.mutationId, status: 'conflict', currentRef: { collection: 'profile', recordId: PROFILE_RECORD_ID } });
+  });
+});
