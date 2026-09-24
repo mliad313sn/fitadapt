@@ -122,8 +122,8 @@ export type DeloadEvent = z.infer<typeof DeloadEventSchema>;
 
 // ----------------------------------------------------------- session modes
 
-/** 'mobility_balance': a standalone mobility and balance session (targeted at 55+) instead of today's training. */
-export const SESSION_MODES = ['training', 'mobility_balance'] as const;
+/** 'mobility_balance': a standalone mobility and balance session (targeted at 55+) instead of today's training; 'cardio' (M03): a cardio or conditioning session. */
+export const SESSION_MODES = ['training', 'mobility_balance', 'cardio'] as const;
 export const SessionModeSchema = z.enum(SESSION_MODES);
 export type SessionMode = z.infer<typeof SessionModeSchema>;
 

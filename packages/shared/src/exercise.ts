@@ -175,6 +175,9 @@ export const EQUIPMENT_IDS = [
   'stationary_bike',
   'rowing_machine',
   'treadmill',
+  // M03: cardio machines for steady-state and intervals.
+  'elliptical',
+  'stair_climber',
 ] as const;
 export const EquipmentIdSchema = z.enum(EQUIPMENT_IDS);
 export type EquipmentId = z.infer<typeof EquipmentIdSchema>;

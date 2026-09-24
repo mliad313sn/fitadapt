@@ -2,9 +2,10 @@ import { z } from 'zod';
 import { CapacityModelSchema, ReasonCodeSchema, SlotTargetSchema } from './assessment.js';
 import { IsoDateTimeSchema, UuidSchema } from './common.js';
 import { EquipmentIdSchema, JointFlagsSchema, JointSchema, MovementPatternSchema, SafetyProfileSchema, SlugSchema } from './exercise.js';
-import { CalendarDateSchema, EquipmentLoadsSchema, ExperienceLevelSchema } from './profile.js';
+import { CalendarDateSchema, EquipmentLoadsSchema, ExperienceLevelSchema, PROFILE_INPUT_BOUNDS } from './profile.js';
 import { ConditioningSchema, IsoDateSchema, MesocycleIntentSchema, MicrocycleKindSchema, ScheduledSessionSchema, SlotRoleSchema } from './program.js';
 import { CoolDownSchema, DeloadEventSchema, PainPhaseSchema, SessionModeSchema, WarmupPlanSchema } from './recovery.js';
+import { CardioPlanSchema, CardioProtocolSchema, CardioRequestSchema, HeartRateInfoSchema } from './cardio.js';
 
 /**
  * M02 — Adaptive training engine and session execution contracts
@@ -58,7 +59,8 @@ export const PlannedExerciseSchema = z.strictObject({
 });
 export type PlannedExercise = z.infer<typeof PlannedExerciseSchema>;
 
-export const SESSION_KINDS = ['first_session', 'program_session', 'mobility_session'] as const;
+/** 'cardio_session' (M03): a standalone cardio or conditioning session (mode 'cardio'). */
+export const SESSION_KINDS = ['first_session', 'program_session', 'mobility_session', 'cardio_session'] as const;
 export const SessionKindSchema = z.enum(SESSION_KINDS);
 export type SessionKind = z.infer<typeof SessionKindSchema>;
 
@@ -105,10 +107,14 @@ export const SessionPlanSchema = z
     exercises: z.array(PlannedExerciseSchema),
     /** M05: easy mobility after the session, only when time is left (null: none; absent before engine 0.3.0). */
     coolDown: CoolDownSchema.nullable().optional(),
+    /** M03: the conditioning block as the device runs it (protocol, movements, zones, timeline); null without conditioning; absent before engine 0.4.0. */
+    cardio: CardioPlanSchema.nullable().optional(),
     reasonCodes: z.array(ReasonCodeSchema).min(1),
   })
   .refine((p) => p.exercises.length > 0 || p.conditioning !== null, { message: 'a plan needs an exercise or a conditioning block' })
-  .refine((p) => p.kind === 'program_session' || p.exercises.length > 0, { message: 'a first or mobility session needs an exercise' });
+  .refine((p) => p.kind === 'program_session' || p.kind === 'cardio_session' || p.exercises.length > 0, { message: 'a first or mobility session needs an exercise' })
+  .refine((p) => p.kind !== 'cardio_session' || (p.conditioning !== null && p.cardio != null), { message: 'a cardio session needs its cardio block' })
+  .refine((p) => p.cardio == null || (p.conditioning !== null && p.cardio.placement === p.conditioning.placement), { message: 'a cardio block belongs to the conditioning block' });
 export type SessionPlan = z.infer<typeof SessionPlanSchema>;
 
 export const SessionSafetyEventSchema = z.strictObject({
@@ -163,6 +169,8 @@ export const SessionHistoryEntrySchema = z.strictObject({
   /** Deload and transition weeks do not count toward progression decisions. */
   countsForProgression: z.boolean(),
   exercises: z.array(HistoryExerciseSchema).max(20),
+  /** M03: seconds of cardio run in this session (from its `cardio_done` log); absent when none was logged. */
+  cardioSeconds: z.number().int().min(0).optional(),
 });
 export type SessionHistoryEntry = z.infer<typeof SessionHistoryEntrySchema>;
 
@@ -220,8 +228,16 @@ export const GenerateSessionInputSchema = z.strictObject({
   readiness: z.enum(READINESS_LEVELS).optional(),
   /** M05: a triggered deload (engine deloadStatus) → volume −40–50 %, no progression. */
   deload: DeloadEventSchema.nullable().optional(),
-  /** M05: 'mobility_balance' → a standalone mobility and balance session instead of today's training. */
+  /** M05: 'mobility_balance' → a standalone mobility and balance session instead of today's training; M03: 'cardio' → a cardio session (with `cardio`). */
   mode: SessionModeSchema.optional(),
+  /** M03: the cardio session the user chose (mode 'cardio'). */
+  cardio: CardioRequestSchema.nullable().optional(),
+  /** M03: heart-rate facts (resting heart rate and where it comes from); absent → effort and talk test only. */
+  heartRate: HeartRateInfoSchema.nullable().optional(),
+  /** M03: height (cm) for the body-mass-index impact default (with bodyweightKg). */
+  heightCm: z.number().min(PROFILE_INPUT_BOUNDS.heightCmMin.value).max(PROFILE_INPUT_BOUNDS.heightCmMax.value).nullable().optional(),
+  /** M03: the user opted up from the low-impact default (never above the SafetyProfile ceiling, never on a red joint). */
+  impactOptIn: z.boolean().optional(),
 });
 export type GenerateSessionInputValue = z.infer<typeof GenerateSessionInputSchema>;
 
@@ -346,6 +362,22 @@ export const ExecutionLogSchema = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('red_flag'), planId: UuidSchema.nullable(), symptom: RedFlagSymptomSchema, at: IsoDateTimeSchema }),
   /** S3: the person confirmed the medical-review statement (M05: self-attestation, the version they confirmed). */
   z.strictObject({ kind: z.literal('medical_review_attested'), at: IsoDateTimeSchema, statementVersion: z.number().int().positive().optional() }),
+  /**
+   * M03: a cardio block was run (to the end or stopped early). The seconds done at moderate and vigorous effort feed
+   * the weekly aerobic ledger (vigorous counts double); `rounds` is the AMRAP rounds the user reported.
+   */
+  z.strictObject({
+    kind: z.literal('cardio_done'),
+    planId: UuidSchema,
+    protocol: CardioProtocolSchema,
+    moderateSeconds: z.number().int().min(0).max(10_800),
+    vigorousSeconds: z.number().int().min(0).max(10_800),
+    completedWork: z.number().int().min(0).max(400),
+    totalWork: z.number().int().min(0).max(400),
+    rounds: z.number().int().min(0).max(200).nullable(),
+    endedEarly: z.boolean(),
+    at: IsoDateTimeSchema,
+  }),
 ]);
 export type ExecutionLog = z.infer<typeof ExecutionLogSchema>;
 

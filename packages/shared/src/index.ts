@@ -9,4 +9,5 @@ export * from './profile.js';
 export * from './assessment.js';
 export * from './program.js';
 export * from './recovery.js';
+export * from './cardio.js';
 export * from './session.js';
