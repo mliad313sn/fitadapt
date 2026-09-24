@@ -57,6 +57,13 @@
       "when": 1790225779542,
       "tag": "0007_m09_pair",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790234309745,
+      "tag": "0008_fix_consent_supersedes",
+      "breakpoints": true
     }
   ]
 }

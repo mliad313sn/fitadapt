@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import { ENGINE_VERSION, PROGRAM_RULES_VERSION, createEngineContext, decideReflow, fixedClock } from '@fitadapt/engine';
 import { generateProgram } from '@fitadapt/exercise-library';
-import { EquipmentProfileSchema, PROFILE_COLLECTIONS, PROGRAM_COLLECTIONS, ProgramRecordSchema, ReflowRecordSchema, type ProgramRecord, type ReflowRecord, type SafetyProfile } from '@fitadapt/shared';
+import { EquipmentProfileSchema, PROFILE_COLLECTIONS, PROGRAM_COLLECTIONS, ProgramRecordSchema, ReflowRecordSchema, orderChain, type ProgramRecord, type ReflowRecord, type SafetyProfile } from '@fitadapt/shared';
 import { and, asc, desc, eq } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { syncChanges } from '../db/schema.js';
@@ -72,13 +72,22 @@ async function storedProgram(db: Database, userId: string, programId: string): P
   return null;
 }
 
-async function storedReflows(db: Database, userId: string, programId: string): Promise<ReflowRecord[]> {
-  const out: ReflowRecord[] = [];
-  for (const row of await latestRows(db, userId, PROGRAM_COLLECTIONS.reflows)) {
+/**
+ * The reflows of a program in the order the device replays them (ADR-023):
+ * the `supersedes` chain, then `decidedAt` for reflows stored before it —
+ * never the push order, which differs when a device was offline.
+ */
+export function orderedReflows(rows: readonly { recordId: string; op: string; data: unknown }[], programId: string): ReflowRecord[] {
+  const list = rows.flatMap((row) => {
+    if (row.op === 'delete') return [];
     const parsed = ReflowRecordSchema.safeParse(row.data);
-    if (parsed.success && parsed.data.programId === programId) out.push(parsed.data);
-  }
-  return out;
+    return parsed.success && parsed.data.programId === programId ? [{ id: row.recordId, data: parsed.data }] : [];
+  });
+  return orderChain(list, (r) => ({ id: r.id, supersedes: r.data.supersedes, at: r.data.decidedAt })).ordered.map((r) => r.data);
+}
+
+async function storedReflows(db: Database, userId: string, programId: string): Promise<ReflowRecord[]> {
+  return orderedReflows(await latestRows(db, userId, PROGRAM_COLLECTIONS.reflows), programId);
 }
 
 export async function validateReflow(db: Database, userId: string, data: unknown): Promise<string | null> {

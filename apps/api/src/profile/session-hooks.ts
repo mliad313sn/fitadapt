@@ -32,7 +32,6 @@ import {
   ProgramRecordSchema,
   RECOVERY_COLLECTIONS,
   ReadinessCheckSchema,
-  ReflowRecordSchema,
   SESSION_COLLECTIONS,
   SetLogSchema,
   WorkoutSessionRecordSchema,
@@ -46,6 +45,7 @@ import type { Database } from '../db/client.js';
 import { syncChanges } from '../db/schema.js';
 import type { LegalService } from '../legal/service.js';
 import type { PgServerTx } from '../sync/pg-store.js';
+import { orderedReflows } from './program-hooks.js';
 
 /**
  * M02 on the server (ADR-016). A started session (collection
@@ -155,9 +155,8 @@ async function checkInputs(db: Database, userId: string, record: WorkoutSessionR
     const programs = parsedRows(await rows(db, userId, PROGRAM_COLLECTIONS.programs), (d) => ProgramRecordSchema.safeParse(d)).map((r) => r.data);
     const program = programs.find((p) => p.program.programId === input.programSession!.programId)?.program;
     if (!program) return 'session.program_mismatch';
-    const reflows = parsedRows(await rows(db, userId, PROGRAM_COLLECTIONS.reflows), (d) => ReflowRecordSchema.safeParse(d))
-      .map((r) => r.data)
-      .filter((r) => r.programId === program.programId);
+    // ADR-023: in the device's replay order (the reflows' chain), not the push order.
+    const reflows = orderedReflows(await rows(db, userId, PROGRAM_COLLECTIONS.reflows), program.programId);
     const day = programDay(program, reflows, input.programSession.session.date);
     const session = day?.sessions.find((s) => s.id === input.programSession!.session.id);
     if (!day || !session || !isDeepStrictEqual(programSessionContext(day, session), input.programSession)) return 'session.program_mismatch';

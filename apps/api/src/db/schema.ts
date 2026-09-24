@@ -136,6 +136,8 @@ export const consentRecords = pgTable(
     recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
     /** M01: when the server received it (recordedAt is the device time for decisions made offline). */
     receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+    /** ADR-023: ids of the decisions (same data type) this one replaces; null on decisions recorded before links existed. */
+    supersedes: jsonb('supersedes').$type<string[]>(),
   },
   (t) => [index('consent_records_user_idx').on(t.userId, t.dataType, t.recordedAt)],
 );

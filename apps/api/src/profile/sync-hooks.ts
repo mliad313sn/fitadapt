@@ -1,7 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import { ASSESSMENT_MIN_STOP_RIR, ENGINE_VERSION, assessmentStopRir } from '@fitadapt/engine';
 import { buildCapacityModel } from '@fitadapt/exercise-library';
-import { evaluateAgeGate, evaluateScreening, notScreenedSafetyProfile, type CalendarDate } from '@fitadapt/safety';
+import { evaluateAgeGate, evaluateScreening, notScreenedSafetyProfile, safetyProfileFromScreenings, type CalendarDate } from '@fitadapt/safety';
 import {
   ASSESSMENT_COLLECTION,
   AssessmentRecordSchema,
@@ -21,7 +21,7 @@ import {
   type SyncMutation,
 } from '@fitadapt/shared';
 import type { MutationListener, MutationValidator } from '@fitadapt/sync';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { syncChanges } from '../db/schema.js';
 import type { LegalService } from '../legal/service.js';
@@ -80,16 +80,26 @@ export interface ProfileSyncDeps {
   db: Database;
 }
 
-/** The SafetyProfile of the user's latest stored screening, re-derived from its answers (fail closed: none → not screened). */
-async function latestSafetyProfile(db: Database, userId: string) {
-  const [row] = await db
-    .select({ data: syncChanges.data })
+/**
+ * The SafetyProfile of the user's stored screenings, re-derived from their
+ * answers with the SAME function as the device (packages/safety,
+ * safetyProfileFromScreenings): the head of the `supersedes` chain, never
+ * the last pushed (ADR-023: a device that was offline pushes an older
+ * screening last); several heads → the strictest combination. None →
+ * not screened (fail closed).
+ */
+export async function latestSafetyProfile(db: Database, userId: string) {
+  const rows = await db
+    .select({ recordId: syncChanges.recordId, op: syncChanges.op, data: syncChanges.data })
     .from(syncChanges)
     .where(and(eq(syncChanges.userId, userId), eq(syncChanges.collection, PROFILE_COLLECTIONS.screenings)))
-    .orderBy(desc(syncChanges.revision))
-    .limit(1);
-  const parsed = ScreeningRecordSchema.safeParse(row?.data);
-  return parsed.success ? evaluateScreening(parsed.data.responses) : notScreenedSafetyProfile();
+    .orderBy(asc(syncChanges.revision));
+  const screenings = rows.flatMap((r) => {
+    if (r.op === 'delete') return [];
+    const parsed = ScreeningRecordSchema.safeParse(r.data);
+    return parsed.success ? [{ id: r.recordId, data: parsed.data }] : [];
+  });
+  return screenings.length === 0 ? notScreenedSafetyProfile() : safetyProfileFromScreenings(screenings);
 }
 
 /**

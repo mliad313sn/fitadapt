@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   CONSENT_POLICIES,
   checkDecision,
+  consentHeads,
   consentState,
   consentStates,
   hasConsent,
@@ -106,6 +107,7 @@ function toConsentRecord(row: typeof consentRecords.$inferSelect): ConsentRecord
     jurisdiction: row.jurisdiction,
     source: row.source,
     recordedAt: iso(row.recordedAt),
+    ...(row.supersedes === null ? {} : { supersedes: row.supersedes }),
   };
 }
 
@@ -179,11 +181,13 @@ export class PrivacyService {
     const now = this.deps.now();
     // M01: a decision made offline keeps its device time; the upload can be retried with the same id.
     const recordedAt = clientTime(update.recordedAt, now, 'privacy.client_time_out_of_range');
-    const { id, recordedAt: _deviceTime, ...fields } = update;
+    const { id, recordedAt: _deviceTime, supersedes: sent, ...fields } = update;
+    // ADR-023: a decision made here (web, API) replaces what the server holds; a device names what it knew.
+    const supersedes = sent ?? (update.source === 'mobile' ? null : consentHeads(await this.consentHistory(userId), update.dataType));
     await this.deps.db.transaction(async (tx) => {
       const inserted = await tx
         .insert(consentRecords)
-        .values({ id: id ?? randomUUID(), userId, ...fields, recordedAt, receivedAt: now })
+        .values({ id: id ?? randomUUID(), userId, ...fields, recordedAt, receivedAt: now, supersedes })
         .onConflictDoNothing({ target: consentRecords.id })
         .returning({ id: consentRecords.id });
       if (inserted.length === 0) return; // already recorded (retried upload)
