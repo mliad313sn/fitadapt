@@ -42,6 +42,19 @@ describe('S5 load ceiling', () => {
     expect(loadCeilingCheck({ loadKg: 500, references: [], nowMs: NOW })).toBeNull();
   });
 
+  it('SAF-8: fails closed on loads and references that are not finite numbers', () => {
+    const references = [{ loadKg: 50, at: at(NOW - DAY) }];
+    for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, -1]) {
+      expect(loadCeilingCheck({ loadKg: bad, references, nowMs: NOW })).toEqual({ invariant: 'S5', reasonCode: 'safety.s5.load_ceiling' });
+      expect(loadCeilingCheck({ loadKg: bad, references: [], nowMs: NOW })).toEqual({ invariant: 'S5', reasonCode: 'safety.s5.load_ceiling' });
+      // An unreadable reference in the window caps at 0 (never dropped); outside the window it is not a reference.
+      expect(s5LoadCeiling([...references, { loadKg: bad, at: at(NOW - DAY) }], NOW)).toBe(0);
+      expect(s5LoadCeiling([...references, { loadKg: bad, at: at(NOW - 8 * DAY) }], NOW)).toBeCloseTo(55);
+    }
+    expect(loadCeilingCheck({ loadKg: 1, references: [{ loadKg: Number.NaN, at: at(NOW) }], nowMs: NOW })).toEqual({ invariant: 'S5', reasonCode: 'safety.s5.load_ceiling' });
+    expect(loadCeilingCheck({ loadKg: 0, references: [{ loadKg: Number.NaN, at: at(NOW) }], nowMs: NOW })).toBeNull();
+  });
+
   it('property: a load at or below the ceiling never exceeds +10 % of any reference in the window', () => {
     fc.assert(
       fc.property(fc.array(fc.record({ loadKg: fc.double({ min: 0.5, max: 400, noNaN: true }), offsetDays: fc.double({ min: -30, max: 30, noNaN: true }) }), { minLength: 1, maxLength: 12 }), (refs) => {
