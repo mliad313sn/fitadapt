@@ -272,6 +272,9 @@ importers:
       better-sqlite3-multiple-ciphers:
         specifier: 13.0.3
         version: 13.0.3
+      fast-check:
+        specifier: 4.10.2
+        version: 4.10.2
       jest:
         specifier: 29.7.0
         version: 29.7.0(@types/node@22.20.4)
