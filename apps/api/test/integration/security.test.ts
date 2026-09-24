@@ -407,7 +407,15 @@ describe('API-12: the photo count quota cannot be raced past', () => {
     const s = await photoReady();
     await withPhotoLimits({ maxPhotosPerUser: 2 }, async () => {
       expect((await putPhoto(s, randomUUID(), envelope())).statusCode).toBe(201);
-      const results = await Promise.all(Array.from({ length: 6 }, () => putPhoto(s, randomUUID(), envelope())));
+      // Hold inserts back (reads still work) so every upload reaches its count before any insert commits.
+      const blocker = await outside();
+      await blocker.query('BEGIN');
+      await blocker.query('LOCK TABLE photo_backups IN SHARE MODE');
+      const inflight = Promise.all(Array.from({ length: 6 }, () => putPhoto(s, randomUUID(), envelope())));
+      await settle(600);
+      await blocker.query('COMMIT');
+      await blocker.end();
+      const results = await inflight;
       expect(results.map((r) => r.statusCode).sort()).toEqual([201, 409, 409, 409, 409, 409]);
       expect(await h.database.db.select().from(photoBackups).where(eq(photoBackups.userId, s.userId))).toHaveLength(2);
     });
