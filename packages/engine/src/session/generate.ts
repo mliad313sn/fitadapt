@@ -4,6 +4,7 @@ import type { EngineContext } from '../context.js';
 import { firstSession, firstSessionRir } from './first-session.js';
 import type { SessionLibrary } from './library.js';
 import { programSession } from './program-session.js';
+import { mobilitySession } from '../recovery/mobility-session.js';
 import type { GenerateSessionInput, GenerateSessionResult } from './types.js';
 
 /**
@@ -18,6 +19,8 @@ import type { GenerateSessionInput, GenerateSessionResult } from './types.js';
  * - S1: no reserve the screening gate accepts → no session (effort cap);
  * - S7 / M17: a date of birth under 16 on the engine clock's date → no session;
  * - S3: intensity locked after a red-flag stop until a medical review is attested → no session.
+ * Then the route: a standalone mobility and balance session (M05, mode
+ * 'mobility_balance'), the M08 program session, or the M07 first session.
  */
 export function generateSession(rawInput: GenerateSessionInput, library: SessionLibrary, ctx: EngineContext): GenerateSessionResult {
   const input = GenerateSessionInputSchema.parse(rawInput) as GenerateSessionInput;
@@ -36,7 +39,8 @@ export function generateSession(rawInput: GenerateSessionInput, library: Session
   if (input.intensityLock?.locked) return unavailable('session.unavailable.s3_intensity_locked');
 
   let result: GenerateSessionResult;
-  if (input.programSession) result = programSession(input, library, ctx);
+  if (input.mode === 'mobility_balance') result = mobilitySession(input, library, ctx);
+  else if (input.programSession) result = programSession(input, library, ctx);
   else if (input.capacity) result = firstSession(input, library, ctx, firstRir);
   else result = unavailable('session.unavailable.no_program');
   return GenerateSessionResultSchema.parse(result) as GenerateSessionResult;

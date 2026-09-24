@@ -114,18 +114,18 @@
     {
       "week": "5 deload (block 1, week 5) ×0.5",
       "sessions": [
-        "mon full_body @gym RPE 6 44 min: squat×3 horizontal_push×3 horizontal_pull×3 hinge×1 vertical_push×1 core×2",
-        "wed full_body @gym RPE 6 44 min: hinge×2 vertical_pull×2 vertical_push×3 lunge×2 horizontal_push×1 core×3",
-        "fri full_body @gym RPE 6 35 min: lunge×2 horizontal_push×3 vertical_pull×2 hinge×1 core×2"
+        "mon full_body @gym RPE 6 35 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 vertical_push×1 core×2",
+        "wed full_body @gym RPE 6 23 min: hinge×1 vertical_pull×1 vertical_push×1 lunge×1 horizontal_push×1 core×1",
+        "fri full_body @gym RPE 6 17 min: lunge×1 horizontal_push×1 vertical_pull×1 core×1"
       ],
       "volume": {
-        "chest": "7 planned (7 direct) / target 6.5, range 10–16",
-        "back": "7 planned (7 direct) / target 6.5, range 10–16",
-        "shoulders": "7.5 planned (4 direct) / target 6.5, range 10–16",
-        "arms": "9 planned (0 direct) / target 6.5, range 10–16",
-        "quads": "7 planned (7 direct) / target 6.5, range 10–16",
-        "glutes_hamstrings": "7.5 planned (4 direct) / target 6.5, range 10–16",
-        "core": "7 planned (7 direct) / target 6.5, range 10–16"
+        "chest": "4 planned (4 direct) / target 6.5, range 10–16",
+        "back": "4 planned (4 direct) / target 6.5, range 10–16",
+        "shoulders": "4 planned (2 direct) / target 6.5, range 10–16",
+        "arms": "5 planned (0 direct) / target 6.5, range 10–16",
+        "quads": "4 planned (4 direct) / target 6.5, range 10–16",
+        "glutes_hamstrings": "4 planned (2 direct) / target 6.5, range 10–16",
+        "core": "4 planned (4 direct) / target 6.5, range 10–16"
       },
       "aerobicMinutes": 0,
       "reasonCodes": [
@@ -223,18 +223,18 @@
     {
       "week": "10 deload (block 2, week 5) ×0.5",
       "sessions": [
-        "mon full_body @gym RPE 6 44 min: squat×3 horizontal_push×3 horizontal_pull×3 hinge×1 vertical_push×1 core×2",
-        "wed full_body @gym RPE 6 44 min: hinge×2 vertical_pull×2 vertical_push×3 lunge×2 horizontal_push×1 core×3",
-        "fri full_body @gym RPE 6 35 min: lunge×2 horizontal_push×3 vertical_pull×2 hinge×1 core×2"
+        "mon full_body @gym RPE 6 35 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 vertical_push×1 core×2",
+        "wed full_body @gym RPE 6 23 min: hinge×1 vertical_pull×1 vertical_push×1 lunge×1 horizontal_push×1 core×1",
+        "fri full_body @gym RPE 6 17 min: lunge×1 horizontal_push×1 vertical_pull×1 core×1"
       ],
       "volume": {
-        "chest": "7 planned (7 direct) / target 6.5, range 10–16",
-        "back": "7 planned (7 direct) / target 6.5, range 10–16",
-        "shoulders": "7.5 planned (4 direct) / target 6.5, range 10–16",
-        "arms": "9 planned (0 direct) / target 6.5, range 10–16",
-        "quads": "7 planned (7 direct) / target 6.5, range 10–16",
-        "glutes_hamstrings": "7.5 planned (4 direct) / target 6.5, range 10–16",
-        "core": "7 planned (7 direct) / target 6.5, range 10–16"
+        "chest": "4 planned (4 direct) / target 6.5, range 10–16",
+        "back": "4 planned (4 direct) / target 6.5, range 10–16",
+        "shoulders": "4 planned (2 direct) / target 6.5, range 10–16",
+        "arms": "5 planned (0 direct) / target 6.5, range 10–16",
+        "quads": "4 planned (4 direct) / target 6.5, range 10–16",
+        "glutes_hamstrings": "4 planned (2 direct) / target 6.5, range 10–16",
+        "core": "4 planned (4 direct) / target 6.5, range 10–16"
       },
       "aerobicMinutes": 0,
       "reasonCodes": [
@@ -332,18 +332,18 @@
     {
       "week": "15 deload (block 3, week 5) ×0.5",
       "sessions": [
-        "mon full_body @gym RPE 6 44 min: squat×3 horizontal_push×3 horizontal_pull×3 hinge×1 vertical_push×1 core×2",
-        "wed full_body @gym RPE 6 44 min: hinge×2 vertical_pull×2 vertical_push×3 lunge×2 horizontal_push×1 core×3",
-        "fri full_body @gym RPE 6 35 min: lunge×2 horizontal_push×3 vertical_pull×2 hinge×1 core×2"
+        "mon full_body @gym RPE 6 35 min: squat×2 horizontal_push×2 horizontal_pull×2 hinge×1 vertical_push×1 core×2",
+        "wed full_body @gym RPE 6 23 min: hinge×1 vertical_pull×1 vertical_push×1 lunge×1 horizontal_push×1 core×1",
+        "fri full_body @gym RPE 6 17 min: lunge×1 horizontal_push×1 vertical_pull×1 core×1"
       ],
       "volume": {
-        "chest": "7 planned (7 direct) / target 6.5, range 10–16",
-        "back": "7 planned (7 direct) / target 6.5, range 10–16",
-        "shoulders": "7.5 planned (4 direct) / target 6.5, range 10–16",
-        "arms": "9 planned (0 direct) / target 6.5, range 10–16",
-        "quads": "7 planned (7 direct) / target 6.5, range 10–16",
-        "glutes_hamstrings": "7.5 planned (4 direct) / target 6.5, range 10–16",
-        "core": "7 planned (7 direct) / target 6.5, range 10–16"
+        "chest": "4 planned (4 direct) / target 6.5, range 10–16",
+        "back": "4 planned (4 direct) / target 6.5, range 10–16",
+        "shoulders": "4 planned (2 direct) / target 6.5, range 10–16",
+        "arms": "5 planned (0 direct) / target 6.5, range 10–16",
+        "quads": "4 planned (4 direct) / target 6.5, range 10–16",
+        "glutes_hamstrings": "4 planned (2 direct) / target 6.5, range 10–16",
+        "core": "4 planned (4 direct) / target 6.5, range 10–16"
       },
       "aerobicMinutes": 0,
       "reasonCodes": [

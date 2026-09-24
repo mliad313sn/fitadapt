@@ -17,6 +17,7 @@ import {
 } from '@fitadapt/engine';
 import type { AssessmentResult, CapacityModel, EquipmentId, Joint, JointFlags, PerformedSet, PlannedExercise, SafetyProfile, SessionPlan } from '@fitadapt/shared';
 import { seedLibrary, type ExerciseLibrary } from './library.js';
+import { WARM_UP_DRILLS } from './seed/warmups.js';
 
 /**
  * M07 and M02 bound to the M06 seed: the engine's assessment, capacity model
@@ -33,6 +34,8 @@ export function sessionLibrary(library: ExerciseLibrary = seedLibrary()): Sessio
     // M02: tags (negatives → slow eccentric, skills) and the %-bodyweight coefficients (config values, validated:false).
     tags: (id) => library.byId.get(id)?.tags ?? [],
     bodyweightLoad: (id) => library.byId.get(id)?.bodyweightLoad?.value ?? null,
+    // M05: warm-up and cool-down drills per pattern (seed content, awaiting A2/A3), only those in this library.
+    warmUpDrills: (pattern) => WARM_UP_DRILLS[pattern].filter((id) => library.byId.has(id)),
   };
 }
 

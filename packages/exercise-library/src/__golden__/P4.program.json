@@ -136,23 +136,22 @@
     {
       "week": "6 deload (block 1, week 6) ×0.5",
       "sessions": [
-        "mon full_body @home RPE 6 29 min: squat×2 horizontal_push×2 horizontal_pull×1 core×1 balance×2",
-        "wed full_body @home RPE 6 29 min: hinge×2 vertical_pull×1 vertical_push×2 core×1 balance×2",
-        "fri full_body @home RPE 6 29 min: lunge×2 horizontal_push×2 vertical_pull×1 core×1 balance×2"
+        "mon full_body @home RPE 6 20 min: squat×1 horizontal_push×1 horizontal_pull×1 core×1 balance×1",
+        "wed full_body @home RPE 6 17 min: hinge×1 vertical_pull×1 vertical_push×1 balance×1",
+        "fri full_body @home RPE 6 14 min: lunge×1 horizontal_push×1 balance×1"
       ],
       "volume": {
-        "chest": "4 planned (4 direct) / target 4, range 8–12",
-        "back": "3 planned (3 direct) / target 4, range 8–12",
-        "shoulders": "4 planned (2 direct) / target 4, range 8–12",
-        "arms": "4.5 planned (0 direct) / target 4, range 8–12",
-        "quads": "4 planned (4 direct) / target 4, range 8–12",
-        "glutes_hamstrings": "4 planned (2 direct) / target 4, range 8–12",
-        "core": "3 planned (3 direct) / target 4, range 8–12"
+        "chest": "2 planned (2 direct) / target 4, range 8–12",
+        "back": "2 planned (2 direct) / target 4, range 8–12",
+        "shoulders": "2 planned (1 direct) / target 4, range 8–12",
+        "arms": "2.5 planned (0 direct) / target 4, range 8–12",
+        "quads": "2 planned (2 direct) / target 4, range 8–12",
+        "glutes_hamstrings": "2 planned (1 direct) / target 4, range 8–12",
+        "core": "1 planned (1 direct) / target 4, range 8–12"
       },
       "aerobicMinutes": 0,
       "reasonCodes": [
-        "program.week.deload",
-        "program.volume.time_limited"
+        "program.week.deload"
       ]
     },
     {
@@ -268,23 +267,22 @@
     {
       "week": "12 deload (block 2, week 6) ×0.5",
       "sessions": [
-        "mon full_body @home RPE 6 29 min: squat×2 horizontal_push×2 horizontal_pull×1 core×1 balance×2",
-        "wed full_body @home RPE 6 29 min: hinge×2 vertical_pull×1 vertical_push×2 core×1 balance×2",
-        "fri full_body @home RPE 6 29 min: lunge×2 horizontal_push×2 vertical_pull×1 core×1 balance×2"
+        "mon full_body @home RPE 6 20 min: squat×1 horizontal_push×1 horizontal_pull×1 core×1 balance×1",
+        "wed full_body @home RPE 6 17 min: hinge×1 vertical_pull×1 vertical_push×1 balance×1",
+        "fri full_body @home RPE 6 14 min: lunge×1 horizontal_push×1 balance×1"
       ],
       "volume": {
-        "chest": "4 planned (4 direct) / target 4, range 8–12",
-        "back": "3 planned (3 direct) / target 4, range 8–12",
-        "shoulders": "4 planned (2 direct) / target 4, range 8–12",
-        "arms": "4.5 planned (0 direct) / target 4, range 8–12",
-        "quads": "4 planned (4 direct) / target 4, range 8–12",
-        "glutes_hamstrings": "4 planned (2 direct) / target 4, range 8–12",
-        "core": "3 planned (3 direct) / target 4, range 8–12"
+        "chest": "2 planned (2 direct) / target 4, range 8–12",
+        "back": "2 planned (2 direct) / target 4, range 8–12",
+        "shoulders": "2 planned (1 direct) / target 4, range 8–12",
+        "arms": "2.5 planned (0 direct) / target 4, range 8–12",
+        "quads": "2 planned (2 direct) / target 4, range 8–12",
+        "glutes_hamstrings": "2 planned (1 direct) / target 4, range 8–12",
+        "core": "1 planned (1 direct) / target 4, range 8–12"
       },
       "aerobicMinutes": 0,
       "reasonCodes": [
-        "program.week.deload",
-        "program.volume.time_limited"
+        "program.week.deload"
       ]
     },
     {
@@ -400,23 +398,22 @@
     {
       "week": "18 deload (block 3, week 6) ×0.5",
       "sessions": [
-        "mon full_body @home RPE 6 29 min: squat×2 horizontal_push×2 horizontal_pull×1 core×1 balance×2",
-        "wed full_body @home RPE 6 29 min: hinge×2 vertical_pull×1 vertical_push×2 core×1 balance×2",
-        "fri full_body @home RPE 6 29 min: lunge×2 horizontal_push×2 vertical_pull×1 core×1 balance×2"
+        "mon full_body @home RPE 6 20 min: squat×1 horizontal_push×1 horizontal_pull×1 core×1 balance×1",
+        "wed full_body @home RPE 6 17 min: hinge×1 vertical_pull×1 vertical_push×1 balance×1",
+        "fri full_body @home RPE 6 14 min: lunge×1 horizontal_push×1 balance×1"
       ],
       "volume": {
-        "chest": "4 planned (4 direct) / target 4, range 8–12",
-        "back": "3 planned (3 direct) / target 4, range 8–12",
-        "shoulders": "4 planned (2 direct) / target 4, range 8–12",
-        "arms": "4.5 planned (0 direct) / target 4, range 8–12",
-        "quads": "4 planned (4 direct) / target 4, range 8–12",
-        "glutes_hamstrings": "4 planned (2 direct) / target 4, range 8–12",
-        "core": "3 planned (3 direct) / target 4, range 8–12"
+        "chest": "2 planned (2 direct) / target 4, range 8–12",
+        "back": "2 planned (2 direct) / target 4, range 8–12",
+        "shoulders": "2 planned (1 direct) / target 4, range 8–12",
+        "arms": "2.5 planned (0 direct) / target 4, range 8–12",
+        "quads": "2 planned (2 direct) / target 4, range 8–12",
+        "glutes_hamstrings": "2 planned (1 direct) / target 4, range 8–12",
+        "core": "1 planned (1 direct) / target 4, range 8–12"
       },
       "aerobicMinutes": 0,
       "reasonCodes": [
-        "program.week.deload",
-        "program.volume.time_limited"
+        "program.week.deload"
       ]
     }
   ],

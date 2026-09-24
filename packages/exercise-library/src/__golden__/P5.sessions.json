@@ -3,9 +3,20 @@
   "sessions": [
     {
       "date": "2026-09-28 w01.s1 (planned, week 1 accumulation, hypertrophy)",
-      "budget": "54.5 of 75 min, warm-up 8 min, reserve RIR 3",
+      "budget": "57.5 of 75 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 182 s",
+        "ramp-up before barbell_bench_press @ 92 kg: 40 % → 36.5 kg × 8, 60 % → 55 kg × 5, 80 % → 73.5 kg × 3 (138 s)",
+        "mobility: open_book_rotation 32 s for horizontal_push, horizontal_pull, vertical_push, vertical_pull",
+        "mobility: dead_bug 32 s for core",
+        "mobility: band_external_rotation 32 s for horizontal_push, vertical_push",
+        "mobility: band_pass_through 32 s for horizontal_push, vertical_push",
+        "mobility: band_pull_apart 32 s for horizontal_pull",
+        "cool-down 3 min: open_book_rotation, cat_camel, band_pass_through"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -96,9 +107,19 @@
     },
     {
       "date": "2026-09-29 w01.s2 (planned, week 1 accumulation, hypertrophy)",
-      "budget": "40.8 of 75 min, warm-up 8 min, reserve RIR 3",
+      "budget": "44.8 of 75 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 182 s",
+        "ramp-up before barbell_back_squat @ 133.5 kg: 40 % → 53 kg × 8, 60 % → 80 kg × 5, 80 % → 106.5 kg × 3 (138 s)",
+        "mobility: knee_to_wall_ankle_rock 40 s for squat, lunge",
+        "mobility: cat_camel 40 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 40 s for squat, lunge",
+        "mobility: lunge_with_rotation 40 s for squat, lunge",
+        "cool-down 4 min: knee_to_wall_ankle_rock, cat_camel, half_kneeling_hip_flexor_stretch, lunge_with_rotation"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -174,9 +195,20 @@
     },
     {
       "date": "2026-10-01 w01.s3 (planned, week 1 accumulation, hypertrophy)",
-      "budget": "50.5 of 75 min, warm-up 8 min, reserve RIR 3",
+      "budget": "53.5 of 75 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 182 s",
+        "ramp-up before barbell_bench_press @ 94.5 kg: 40 % → 37.5 kg × 8, 60 % → 56.5 kg × 5, 80 % → 75.5 kg × 3 (138 s)",
+        "mobility: open_book_rotation 32 s for horizontal_push, horizontal_pull, vertical_push, vertical_pull",
+        "mobility: dead_bug 32 s for core",
+        "mobility: band_external_rotation 32 s for horizontal_push, vertical_push",
+        "mobility: band_pass_through 32 s for horizontal_push, vertical_push",
+        "mobility: band_pull_apart 32 s for horizontal_pull",
+        "cool-down 3 min: open_book_rotation, cat_camel, band_pass_through"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -263,9 +295,19 @@
     },
     {
       "date": "2026-10-02 w01.s4 (planned, week 1 accumulation, hypertrophy)",
-      "budget": "37 of 75 min, warm-up 8 min, reserve RIR 3",
+      "budget": "41 of 75 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 182 s",
+        "ramp-up before barbell_back_squat @ 140.5 kg: 40 % → 56 kg × 8, 60 % → 84 kg × 5, 80 % → 112 kg × 3 (138 s)",
+        "mobility: knee_to_wall_ankle_rock 40 s for squat, lunge",
+        "mobility: cat_camel 40 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 40 s for squat, lunge",
+        "mobility: lunge_with_rotation 40 s for squat, lunge",
+        "cool-down 4 min: knee_to_wall_ankle_rock, cat_camel, half_kneeling_hip_flexor_stretch, lunge_with_rotation"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -337,9 +379,20 @@
     },
     {
       "date": "2026-10-05 w02.s1 (planned, week 2 accumulation, hypertrophy)",
-      "budget": "57.2 of 75 min, warm-up 8 min, reserve RIR 3",
+      "budget": "60.2 of 75 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 182 s",
+        "ramp-up before barbell_bench_press @ 97 kg: 40 % → 38.5 kg × 8, 60 % → 58 kg × 5, 80 % → 77.5 kg × 3 (138 s)",
+        "mobility: open_book_rotation 32 s for horizontal_push, horizontal_pull, vertical_push, vertical_pull",
+        "mobility: dead_bug 32 s for core",
+        "mobility: band_external_rotation 32 s for horizontal_push, vertical_push",
+        "mobility: band_pass_through 32 s for horizontal_push, vertical_push",
+        "mobility: band_pull_apart 32 s for horizontal_pull",
+        "cool-down 3 min: open_book_rotation, cat_camel, band_pass_through"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -429,15 +482,25 @@
           "invariant": "S5",
           "reasonCode": "safety.s5.load_ceiling",
           "action": "capped",
-          "engineVersion": "0.2.0"
+          "engineVersion": "0.3.0"
         }
       ]
     },
     {
       "date": "2026-10-06 w02.s2 (planned, week 2 accumulation, hypertrophy)",
-      "budget": "43.5 of 75 min, warm-up 8 min, reserve RIR 3",
+      "budget": "47.5 of 75 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 182 s",
+        "ramp-up before barbell_back_squat @ 146.5 kg: 40 % → 58.5 kg × 8, 60 % → 87.5 kg × 5, 80 % → 117 kg × 3 (138 s)",
+        "mobility: knee_to_wall_ankle_rock 40 s for squat, lunge",
+        "mobility: cat_camel 40 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 40 s for squat, lunge",
+        "mobility: lunge_with_rotation 40 s for squat, lunge",
+        "cool-down 4 min: knee_to_wall_ankle_rock, cat_camel, half_kneeling_hip_flexor_stretch, lunge_with_rotation"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -516,15 +579,26 @@
           "invariant": "S5",
           "reasonCode": "safety.s5.load_ceiling",
           "action": "capped",
-          "engineVersion": "0.2.0"
+          "engineVersion": "0.3.0"
         }
       ]
     },
     {
       "date": "2026-10-08 w02.s3 (planned, week 2 accumulation, hypertrophy)",
-      "budget": "55.5 of 75 min, warm-up 8 min, reserve RIR 3",
+      "budget": "58.5 of 75 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 182 s",
+        "ramp-up before barbell_bench_press @ 99.5 kg: 40 % → 39.5 kg × 8, 60 % → 59.5 kg × 5, 80 % → 79.5 kg × 3 (138 s)",
+        "mobility: open_book_rotation 32 s for horizontal_push, horizontal_pull, vertical_push, vertical_pull",
+        "mobility: dead_bug 32 s for core",
+        "mobility: band_external_rotation 32 s for horizontal_push, vertical_push",
+        "mobility: band_pass_through 32 s for horizontal_push, vertical_push",
+        "mobility: band_pull_apart 32 s for horizontal_pull",
+        "cool-down 3 min: open_book_rotation, cat_camel, band_pass_through"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -611,9 +685,19 @@
     },
     {
       "date": "2026-10-09 w02.s4 (planned, week 2 accumulation, hypertrophy)",
-      "budget": "39.5 of 75 min, warm-up 8 min, reserve RIR 3",
+      "budget": "43.5 of 75 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 182 s",
+        "ramp-up before barbell_back_squat @ 154 kg: 40 % → 61.5 kg × 8, 60 % → 92 kg × 5, 80 % → 123 kg × 3 (138 s)",
+        "mobility: knee_to_wall_ankle_rock 40 s for squat, lunge",
+        "mobility: cat_camel 40 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 40 s for squat, lunge",
+        "mobility: lunge_with_rotation 40 s for squat, lunge",
+        "cool-down 4 min: knee_to_wall_ankle_rock, cat_camel, half_kneeling_hip_flexor_stretch, lunge_with_rotation"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {

@@ -17,7 +17,7 @@ describe('engine coefficients live in config with source and validated (goal con
       expect(unvalidatedKeys(config)).toEqual(Object.keys(config).sort());
     }
     expect(count).toBeGreaterThan(150);
-    expect(Object.keys(ENGINE_CONFIGS).sort()).toEqual(['assessment', 'firstSession', 'increments', 'program', 'session', 'substitution']);
+    expect(Object.keys(ENGINE_CONFIGS).sort()).toEqual(['assessment', 'firstSession', 'increments', 'program', 'recovery', 'session', 'substitution']);
   });
 
   it('M02 values that come from the spec cite it; the rest say they are engineering defaults', () => {

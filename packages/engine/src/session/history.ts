@@ -44,7 +44,9 @@ export function buildSessionHistory(sessions: readonly WorkoutSessionRecord[], s
       exercises.push(exerciseEntry(ex, own.filter((l) => l.exerciseIndex === i && l.exerciseId === ex.exerciseId)));
       for (const swap of swaps) exercises.push(exerciseEntry(swap.replacement, own.filter((l) => l.exerciseIndex === i && l.exerciseId === swap.replacement.exerciseId)));
     });
-    const counts = (plan.kind === 'first_session' || plan.program?.microcycleKind === 'accumulation') && ended?.kind !== 'red_flag';
+    // M05: a triggered-deload session does not count toward progression either (like M08 deload weeks).
+    const triggeredDeload = plan.reasonCodes.some((c) => c.startsWith('session.deload.triggered.'));
+    const counts = (plan.kind === 'first_session' || plan.program?.microcycleKind === 'accumulation') && ended?.kind !== 'red_flag' && !triggeredDeload;
     return { planId: plan.planId, prescribedAt: plan.generatedAt, startedAt: record.startedAt, countsForProgression: counts, exercises: exercises.slice(0, 20) };
   });
 }

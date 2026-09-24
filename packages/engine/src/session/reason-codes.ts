@@ -1,4 +1,5 @@
 import { JOINTS, MOVEMENT_PATTERNS } from '@fitadapt/shared';
+import { M05_REASON_PARAMS } from '../recovery/reason-codes.js';
 
 /**
  * Every reason code the M02 session generator, progression and execution
@@ -93,7 +94,7 @@ export const M02_REASON_PARAMS: Readonly<Record<string, readonly string[]>> = Ob
 
 export const M02_REASON_CODES: readonly string[] = Object.freeze(Object.keys(M02_REASON_PARAMS));
 
-/** Parameters a code's sentence needs (M07 and M02 codes; unknown codes need none). */
+/** Parameters a code's sentence needs (M07, M02 and M05 codes; unknown codes need none). */
 export function reasonParamsFor(code: string): readonly string[] {
-  return M02_REASON_PARAMS[code] ?? [];
+  return M02_REASON_PARAMS[code] ?? M05_REASON_PARAMS[code] ?? [];
 }

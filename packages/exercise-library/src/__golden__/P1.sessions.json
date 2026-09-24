@@ -3,10 +3,20 @@
   "sessions": [
     {
       "date": "2026-09-28 w01.s1 (planned, week 1 accumulation, general)",
-      "budget": "34.4 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "budget": "36.4 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 60 s for horizontal_push, horizontal_pull",
+        "mobility: dead_bug 60 s for core",
+        "mobility: band_external_rotation 60 s for horizontal_push",
+        "mobility: band_pass_through 60 s for horizontal_push",
+        "mobility: band_pull_apart 60 s for horizontal_pull",
+        "cool-down 2 min: open_book_rotation, band_pass_through"
+      ],
       "reasonCodes": [
         "session.program.from_program",
-        "session.conditioning.steady_finisher"
+        "session.conditioning.steady_finisher",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -95,10 +105,20 @@
     },
     {
       "date": "2026-09-30 w01.s2 (planned, week 1 accumulation, general)",
-      "budget": "33.8 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "budget": "35.8 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 60 s for vertical_pull, vertical_push",
+        "mobility: supported_standing_march 60 s for lunge",
+        "mobility: dead_bug 60 s for core",
+        "mobility: band_face_pull 60 s for vertical_pull",
+        "mobility: floor_w_raise 60 s for vertical_pull",
+        "cool-down 2 min: open_book_rotation, band_pass_through"
+      ],
       "reasonCodes": [
         "session.program.from_program",
-        "session.conditioning.steady_finisher"
+        "session.conditioning.steady_finisher",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -189,10 +209,20 @@
     },
     {
       "date": "2026-10-02 w01.s3 (planned, week 1 accumulation, general)",
-      "budget": "33.7 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "budget": "35.7 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 60 s for horizontal_push, vertical_pull",
+        "mobility: supported_standing_march 60 s for lunge",
+        "mobility: dead_bug 60 s for core",
+        "mobility: band_external_rotation 60 s for horizontal_push",
+        "mobility: band_pass_through 60 s for horizontal_push",
+        "cool-down 2 min: open_book_rotation, band_pass_through"
+      ],
       "reasonCodes": [
         "session.program.from_program",
-        "session.conditioning.steady_finisher"
+        "session.conditioning.steady_finisher",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -274,10 +304,20 @@
     },
     {
       "date": "2026-10-05 w02.s1 (planned, week 2 accumulation, general)",
-      "budget": "34.7 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "budget": "36.7 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 60 s for horizontal_push, horizontal_pull",
+        "mobility: hip_hinge_drill 60 s for hinge",
+        "mobility: dead_bug 60 s for core",
+        "mobility: band_external_rotation 60 s for horizontal_push",
+        "mobility: band_pass_through 60 s for horizontal_push",
+        "cool-down 2 min: open_book_rotation, band_pass_through"
+      ],
       "reasonCodes": [
         "session.program.from_program",
-        "session.conditioning.steady_finisher"
+        "session.conditioning.steady_finisher",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -378,10 +418,21 @@
     },
     {
       "date": "2026-10-07 w02.s2 (planned, week 2 accumulation, general)",
-      "budget": "34.2 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "budget": "36.2 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 181 s",
+        "ramp-up before dumbbell_reverse_lunge @ 10 kg: 40 % → 0 kg × 8 (54 s)",
+        "mobility: open_book_rotation 49 s for vertical_pull, vertical_push",
+        "mobility: supported_standing_march 49 s for lunge",
+        "mobility: dead_bug 49 s for core",
+        "mobility: band_face_pull 49 s for vertical_pull",
+        "mobility: floor_w_raise 49 s for vertical_pull",
+        "cool-down 2 min: open_book_rotation, band_pass_through"
+      ],
       "reasonCodes": [
         "session.program.from_program",
-        "session.conditioning.steady_finisher"
+        "session.conditioning.steady_finisher",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -480,10 +531,20 @@
     },
     {
       "date": "2026-10-09 w02.s3 (planned, week 2 accumulation, general)",
-      "budget": "34 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "budget": "36 of 40 min, warm-up 8 min, steady finisher 10 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 60 s for horizontal_push, vertical_pull",
+        "mobility: supported_standing_march 60 s for lunge",
+        "mobility: dead_bug 60 s for core",
+        "mobility: band_external_rotation 60 s for horizontal_push",
+        "mobility: band_pass_through 60 s for horizontal_push",
+        "cool-down 2 min: open_book_rotation, band_pass_through"
+      ],
       "reasonCodes": [
         "session.program.from_program",
-        "session.conditioning.steady_finisher"
+        "session.conditioning.steady_finisher",
+        "cooldown.after_session"
       ],
       "exercises": [
         {

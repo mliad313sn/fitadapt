@@ -106,6 +106,16 @@ function simulate(persona: Persona): Simulated {
 
 const target = (s: SessionPlan['exercises'][number]['sets'][number]) => (s.target.kind === 'reps' ? `${s.target.min}–${s.target.max} reps` : `${s.target.seconds} s`);
 
+/** M05: the warm-up (general, ramp-up, mobility drills with the patterns they prepare) and the cool-down, readable. */
+function warmUpLines(plan: SessionPlan): string[] {
+  const w = plan.warmUp.content!;
+  const lines = [`general: ${w.general.exerciseId ?? 'any easy movement'} ${w.general.seconds} s`];
+  if (w.rampUp) lines.push(`ramp-up before ${w.rampUp.exerciseId} @ ${w.rampUp.workingLoadKg} kg: ${w.rampUp.sets.map((s) => `${s.percent} % → ${s.loadKg} kg × ${s.reps}`).join(', ')} (${w.rampUp.seconds} s)`);
+  for (const d of w.mobility) lines.push(`mobility: ${d.exerciseId} ${d.seconds} s for ${d.forPatterns.join(', ')}`);
+  if (plan.coolDown) lines.push(`cool-down ${plan.coolDown.minutes} min: ${plan.coolDown.drills.map((d) => d.exerciseId).join(', ')}`);
+  return lines;
+}
+
 /** A readable projection of a persona's sessions, for review. */
 function golden({ plans, reflows }: Simulated) {
   return {
@@ -113,6 +123,8 @@ function golden({ plans, reflows }: Simulated) {
     sessions: plans.map(({ date, state, plan, safetyEvents }) => ({
       date: `${date} ${plan.program!.sessionId} (${state}, week ${plan.program!.week} ${plan.program!.microcycleKind}, ${plan.program!.mesocycleIntent})`,
       budget: `${plan.estimatedMinutes} of ${plan.minutesAvailable} min, warm-up ${plan.warmUp.minutes} min${plan.conditioning ? `, ${plan.conditioning.kind} ${plan.conditioning.placement} ${plan.conditioning.minutes} min` : ''}, reserve RIR ${plan.targetRir}`,
+      // M05: what the warm-up and the cool-down are.
+      warmUp: warmUpLines(plan),
       reasonCodes: plan.reasonCodes,
       exercises: plan.exercises.map((e) => {
         const s = e.sets[0]!;

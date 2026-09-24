@@ -3,9 +3,19 @@
   "sessions": [
     {
       "date": "2026-09-28 w01.s1 (planned, week 1 accumulation, skill)",
-      "budget": "47.1 of 60 min, warm-up 8 min, reserve RIR 3",
+      "budget": "49.1 of 60 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 60 s for vertical_pull, vertical_push, horizontal_push",
+        "mobility: dead_bug 60 s for core",
+        "mobility: floor_w_raise 60 s for vertical_pull",
+        "mobility: prone_floor_pulldown 60 s for vertical_pull",
+        "mobility: bird_dog 60 s for core",
+        "cool-down 2 min: open_book_rotation, cat_camel"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -81,9 +91,19 @@
     },
     {
       "date": "2026-09-29 w01.s2 (planned, week 1 accumulation, skill)",
-      "budget": "34.3 of 60 min, warm-up 8 min, reserve RIR 3",
+      "budget": "38.3 of 60 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: knee_to_wall_ankle_rock 60 s for squat, lunge",
+        "mobility: cat_camel 60 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 60 s for squat, lunge",
+        "mobility: lunge_with_rotation 60 s for squat, lunge",
+        "mobility: bird_dog 60 s for hinge, core",
+        "cool-down 4 min: knee_to_wall_ankle_rock, cat_camel, half_kneeling_hip_flexor_stretch, lunge_with_rotation"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -157,9 +177,19 @@
     },
     {
       "date": "2026-09-30 w01.s3 (planned, week 1 accumulation, skill)",
-      "budget": "39.8 of 60 min, warm-up 8 min, reserve RIR 3",
+      "budget": "41.8 of 60 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 60 s for horizontal_push, horizontal_pull, vertical_push, vertical_pull",
+        "mobility: dead_bug 60 s for core",
+        "mobility: prone_y_t_raise 60 s for horizontal_pull",
+        "mobility: floor_w_raise 60 s for vertical_pull",
+        "mobility: prone_floor_pulldown 60 s for vertical_pull",
+        "cool-down 2 min: open_book_rotation, cat_camel"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -254,9 +284,19 @@
     },
     {
       "date": "2026-10-02 w01.s4 (planned, week 1 accumulation, skill)",
-      "budget": "31.3 of 60 min, warm-up 8 min, reserve RIR 3",
+      "budget": "35.3 of 60 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: knee_to_wall_ankle_rock 60 s for squat, lunge",
+        "mobility: cat_camel 60 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 60 s for squat, lunge",
+        "mobility: lunge_with_rotation 60 s for squat, lunge",
+        "mobility: bird_dog 60 s for hinge, core",
+        "cool-down 4 min: knee_to_wall_ankle_rock, cat_camel, half_kneeling_hip_flexor_stretch, lunge_with_rotation"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -338,9 +378,19 @@
     },
     {
       "date": "2026-10-03 w01.s5 (planned, week 1 accumulation, skill)",
-      "budget": "40.1 of 60 min, warm-up 8 min, reserve RIR 3",
+      "budget": "42.1 of 60 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 60 s for vertical_pull, vertical_push, horizontal_push",
+        "mobility: dead_bug 60 s for core",
+        "mobility: floor_w_raise 60 s for vertical_pull",
+        "mobility: prone_floor_pulldown 60 s for vertical_pull",
+        "mobility: bird_dog 60 s for core",
+        "cool-down 2 min: open_book_rotation, cat_camel"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -424,9 +474,19 @@
     },
     {
       "date": "2026-10-05 w02.s1 (planned, week 2 accumulation, skill)",
-      "budget": "49.7 of 60 min, warm-up 8 min, reserve RIR 3",
+      "budget": "51.7 of 60 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 60 s for vertical_pull, vertical_push, horizontal_push",
+        "mobility: dead_bug 60 s for core",
+        "mobility: floor_w_raise 60 s for vertical_pull",
+        "mobility: prone_floor_pulldown 60 s for vertical_pull",
+        "mobility: bird_dog 60 s for core",
+        "cool-down 2 min: open_book_rotation, cat_camel"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -510,9 +570,19 @@
     },
     {
       "date": "2026-10-06 w02.s2 (planned, week 2 accumulation, skill)",
-      "budget": "36.4 of 60 min, warm-up 8 min, reserve RIR 3",
+      "budget": "40.4 of 60 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: knee_to_wall_ankle_rock 60 s for squat, lunge",
+        "mobility: cat_camel 60 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 60 s for squat, lunge",
+        "mobility: lunge_with_rotation 60 s for squat, lunge",
+        "mobility: bird_dog 60 s for hinge, core",
+        "cool-down 4 min: knee_to_wall_ankle_rock, cat_camel, half_kneeling_hip_flexor_stretch, lunge_with_rotation"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -598,9 +668,19 @@
     },
     {
       "date": "2026-10-07 w02.s3 (planned, week 2 accumulation, skill)",
-      "budget": "41.4 of 60 min, warm-up 8 min, reserve RIR 3",
+      "budget": "43.4 of 60 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 60 s for horizontal_push, horizontal_pull, vertical_push, vertical_pull",
+        "mobility: dead_bug 60 s for core",
+        "mobility: prone_y_t_raise 60 s for horizontal_pull",
+        "mobility: floor_w_raise 60 s for vertical_pull",
+        "mobility: prone_floor_pulldown 60 s for vertical_pull",
+        "cool-down 2 min: open_book_rotation, cat_camel"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -703,9 +783,19 @@
     },
     {
       "date": "2026-10-09 w02.s4 (planned, week 2 accumulation, skill)",
-      "budget": "33.1 of 60 min, warm-up 8 min, reserve RIR 3",
+      "budget": "37.1 of 60 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: knee_to_wall_ankle_rock 60 s for squat, lunge",
+        "mobility: cat_camel 60 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 60 s for squat, lunge",
+        "mobility: lunge_with_rotation 60 s for squat, lunge",
+        "mobility: bird_dog 60 s for hinge, core",
+        "cool-down 4 min: knee_to_wall_ankle_rock, cat_camel, half_kneeling_hip_flexor_stretch, lunge_with_rotation"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -791,9 +881,19 @@
     },
     {
       "date": "2026-10-10 w02.s5 (planned, week 2 accumulation, skill)",
-      "budget": "45 of 60 min, warm-up 8 min, reserve RIR 3",
+      "budget": "47 of 60 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 60 s for vertical_pull, vertical_push, horizontal_push",
+        "mobility: dead_bug 60 s for core",
+        "mobility: floor_w_raise 60 s for vertical_pull",
+        "mobility: prone_floor_pulldown 60 s for vertical_pull",
+        "mobility: bird_dog 60 s for core",
+        "cool-down 2 min: open_book_rotation, cat_camel"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {

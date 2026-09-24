@@ -10,5 +10,6 @@ export * from './release.js';
 export { SEED_EXERCISES } from './seed/exercises.js';
 export { LADDERS, M02_LADDERS, type Ladder } from './seed/ladders.js';
 export { BW_SOURCE, SEED_CONTENT_SOURCE } from './seed/define.js';
+export { WARM_UP_DRILLS } from './seed/warmups.js';
 export * from './assessment.js';
 export * from './program.js';

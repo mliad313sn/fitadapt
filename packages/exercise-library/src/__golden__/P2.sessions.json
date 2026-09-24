@@ -3,9 +3,19 @@
   "sessions": [
     {
       "date": "2026-09-28 w01.s1 (planned, week 1 accumulation, skill)",
-      "budget": "33.6 of 45 min, warm-up 8 min, reserve RIR 3",
+      "budget": "38.6 of 45 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 60 s for horizontal_push, horizontal_pull",
+        "mobility: cat_camel 60 s for hinge, core",
+        "mobility: knee_to_wall_ankle_rock 60 s for squat",
+        "mobility: bird_dog 60 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 60 s for squat",
+        "cool-down 5 min: open_book_rotation, cat_camel, knee_to_wall_ankle_rock, half_kneeling_hip_flexor_stretch, lunge_with_rotation"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -94,9 +104,19 @@
     },
     {
       "date": "2026-09-30 w01.s2 (planned, week 1 accumulation, skill)",
-      "budget": "40.5 of 45 min, warm-up 8 min, reserve RIR 3",
+      "budget": "43.5 of 45 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 60 s for vertical_pull, vertical_push, horizontal_push",
+        "mobility: dead_bug 60 s for core",
+        "mobility: band_pass_through 60 s for vertical_push, horizontal_push",
+        "mobility: band_external_rotation 60 s for vertical_push, horizontal_push",
+        "mobility: band_face_pull 60 s for vertical_pull",
+        "cool-down 3 min: open_book_rotation, cat_camel, band_pass_through"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -172,9 +192,20 @@
     },
     {
       "date": "2026-10-02 w01.s3 (planned, week 1 accumulation, skill)",
-      "budget": "32.7 of 45 min, warm-up 8 min, reserve RIR 3",
+      "budget": "37.7 of 45 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 50 s for vertical_pull, vertical_push, horizontal_push",
+        "mobility: cat_camel 50 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 50 s for lunge",
+        "mobility: bird_dog 50 s for hinge, core",
+        "mobility: band_pass_through 50 s for vertical_push, horizontal_push",
+        "mobility: band_external_rotation 50 s for vertical_push, horizontal_push",
+        "cool-down 5 min: open_book_rotation, cat_camel, half_kneeling_hip_flexor_stretch, band_pass_through, knee_to_wall_ankle_rock"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -286,9 +317,19 @@
     },
     {
       "date": "2026-10-05 w02.s1 (planned, week 2 accumulation, skill)",
-      "budget": "34 of 45 min, warm-up 8 min, reserve RIR 3",
+      "budget": "39 of 45 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 60 s for horizontal_push, horizontal_pull",
+        "mobility: cat_camel 60 s for hinge, core",
+        "mobility: knee_to_wall_ankle_rock 60 s for squat",
+        "mobility: bird_dog 60 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 60 s for squat",
+        "cool-down 5 min: open_book_rotation, cat_camel, knee_to_wall_ankle_rock, half_kneeling_hip_flexor_stretch, lunge_with_rotation"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -387,9 +428,19 @@
     },
     {
       "date": "2026-10-07 w02.s2 (planned, week 2 accumulation, skill)",
-      "budget": "40.8 of 45 min, warm-up 8 min, reserve RIR 3",
+      "budget": "43.8 of 45 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 180 s",
+        "mobility: open_book_rotation 60 s for vertical_pull, vertical_push, horizontal_push",
+        "mobility: dead_bug 60 s for core",
+        "mobility: band_pass_through 60 s for vertical_push, horizontal_push",
+        "mobility: band_external_rotation 60 s for vertical_push, horizontal_push",
+        "mobility: band_face_pull 60 s for vertical_pull",
+        "cool-down 3 min: open_book_rotation, cat_camel, band_pass_through"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -473,9 +524,20 @@
     },
     {
       "date": "2026-10-09 w02.s3 (planned, week 2 accumulation, skill)",
-      "budget": "32.9 of 45 min, warm-up 8 min, reserve RIR 3",
+      "budget": "37.9 of 45 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 182 s",
+        "ramp-up before dumbbell_reverse_lunge @ 8 kg: 40 % → 2 kg × 8, 60 % → 4 kg × 5, 80 % → 6 kg × 3 (138 s)",
+        "mobility: open_book_rotation 32 s for vertical_pull, vertical_push, horizontal_push",
+        "mobility: cat_camel 32 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 32 s for lunge",
+        "mobility: bird_dog 32 s for hinge, core",
+        "mobility: band_pass_through 32 s for vertical_push, horizontal_push",
+        "cool-down 5 min: open_book_rotation, cat_camel, half_kneeling_hip_flexor_stretch, band_pass_through, knee_to_wall_ankle_rock"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -594,7 +656,7 @@
           "invariant": "S5",
           "reasonCode": "safety.s5.load_ceiling",
           "action": "capped",
-          "engineVersion": "0.2.0"
+          "engineVersion": "0.3.0"
         }
       ]
     }

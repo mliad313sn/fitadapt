@@ -38,6 +38,8 @@ import { achievableAtMost, implementFor, stepAbove } from './increments.js';
 import { ladderOf, tagsOf, type SessionLibrary } from './library.js';
 import { evaluateProgression } from './progression.js';
 import { fitToTime, planSeconds, type WorkExercise } from './timebox.js';
+import { applyTriggeredDeload } from '../recovery/deload.js';
+import { amberHints, buildCoolDown, buildWarmUp, type WarmupContext } from '../recovery/warmup.js';
 import type { GenerateSessionInput, GenerateSessionResult, SessionSafetyEvent } from './types.js';
 
 /**
@@ -516,11 +518,15 @@ export function programSession(input: GenerateSessionInput, library: SessionLibr
   const events: SessionSafetyEvent[] = [];
   if (rir.s1Capped) events.push({ invariant: 'S1', reasonCode: 'safety.s1.rpe_above_cap', action: 'capped', engineVersion: ENGINE_VERSION });
   const kind = program.microcycle.kind;
+  // M05 triggered deload: in a week that is not already a deload week, fewer sets and no progression.
+  const triggered = input.deload && kind !== 'deload' ? input.deload : null;
   const rirReason = rir.s1Capped ? 'session.rir.s1_capped' : reduced ? 'session.rir.readiness_reduced' : kind === 'deload' ? 'session.rir.deload' : 'session.rir.target';
-  const c = makeCtx(input, library, nowMs, rir.rir, rirReason, kind === 'accumulation');
+  const c = makeCtx(input, library, nowMs, rir.rir, rirReason, kind === 'accumulation' && !triggered);
 
   const planReasons: string[] = ['session.program.from_program'];
   if (kind === 'deload') planReasons.push('session.program.deload_week');
+  if (input.deload && kind === 'deload') planReasons.push('session.deload.in_deload_week');
+  if (triggered) planReasons.push(`session.deload.triggered.${triggered.trigger}`, 'session.deload.volume_reduced');
   if (kind === 'transition') planReasons.push('session.program.transition_week');
   if (session.state === 'shifted') planReasons.push('session.program.shifted');
   if (session.mergedFrom.length > 0) planReasons.push('session.program.merged');
@@ -554,12 +560,19 @@ export function programSession(input: GenerateSessionInput, library: SessionLibr
   }
   if (conditioning) planReasons.push(`session.conditioning.${conditioning.kind}_${conditioning.placement}`);
 
-  const fit = fitToTime(work, sessionValue('warmUp.minutes'), conditioning, input.minutesAvailable);
+  const fit = fitToTime(triggered ? applyTriggeredDeload(work) : work, sessionValue('warmUp.minutes'), conditioning, input.minutesAvailable);
   if (!fit) return { status: 'unavailable', reasonCodes: [...new Set([...planReasons, 'session.unavailable.no_time'])] };
   if (fit.reasonCodes.length > 0) planReasons.push('session.time.trimmed', ...fit.reasonCodes);
   if (fit.exercises.length === 0 && fit.conditioning === null) return { status: 'unavailable', reasonCodes: [...new Set([...planReasons, 'session.unavailable.no_exercise'])] };
 
   // Safety events for exercises that were dropped by time-boxing still happened (the engine decided them): keep them all, once each.
+  // M05: what the warm-up is (general, ramp-up before the first heavy lift, mobility for today's patterns), amber-joint variant hints, and a cool-down if time is left.
+  const warm: WarmupContext = { library, equipment: c.equipment, loads: c.loads, legacyStep: c.legacyStep, jointFlags: c.jointFlags, profile };
+  const exercises = amberHints(warm, fit.exercises);
+  const warmUp = { minutes: fit.warmUpMinutes, minimumMinutes: sessionValue('warmUp.minimumMinutes'), content: buildWarmUp(warm, exercises, fit.warmUpMinutes) };
+  const coolDown = buildCoolDown(warm, exercises, input.minutesAvailable * 60 - planSeconds({ warmUp, conditioning: fit.conditioning, exercises }));
+  if (coolDown) planReasons.push('cooldown.after_session');
+
   const s = stamp(ctx);
   const draft = {
     planId: uuidFrom(ctx.rng),
@@ -574,9 +587,10 @@ export function programSession(input: GenerateSessionInput, library: SessionLibr
     targetRir: c.targetRir,
     minutesAvailable: input.minutesAvailable,
     estimatedMinutes: 0,
-    warmUp: { minutes: fit.warmUpMinutes, minimumMinutes: sessionValue('warmUp.minimumMinutes') },
+    warmUp,
     conditioning: fit.conditioning,
-    exercises: fit.exercises,
+    exercises,
+    coolDown,
     reasonCodes: [...new Set(planReasons)],
   };
   const seconds = planSeconds(draft);

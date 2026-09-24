@@ -199,12 +199,18 @@ export function fitToTime(input: readonly WorkExercise[], warmUpMinutes: number,
 
 /**
  * The duration of a program-session plan, recomputed from the plan alone
- * (warm-up, each exercise's setup, every set's work and rest, conditioning):
+ * (warm-up, each exercise's setup, every set's work and rest, conditioning,
+ * the M05 cool-down):
  * the same model fitToTime uses, so anyone (tests, the server) can check
  * that a plan fits its minutes.
  */
-export function planSeconds(plan: { readonly warmUp: { readonly minutes: number }; readonly conditioning: Conditioning | null; readonly exercises: readonly PlannedExercise[] }): number {
-  let total = plan.warmUp.minutes * 60 + (plan.conditioning ? plan.conditioning.minutes * 60 : 0);
+export function planSeconds(plan: {
+  readonly warmUp: { readonly minutes: number };
+  readonly conditioning: Conditioning | null;
+  readonly exercises: readonly PlannedExercise[];
+  readonly coolDown?: { readonly minutes: number } | null;
+}): number {
+  let total = plan.warmUp.minutes * 60 + (plan.conditioning ? plan.conditioning.minutes * 60 : 0) + (plan.coolDown ? plan.coolDown.minutes * 60 : 0);
   for (const e of plan.exercises) {
     total += sessionValue('time.setupSecondsPerExercise');
     for (const s of e.sets) total += (s.target.kind === 'hold' ? s.target.seconds : s.target.max * sessionValue('time.secondsPerRep')) + s.restSeconds;

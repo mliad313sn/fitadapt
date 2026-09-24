@@ -7,3 +7,4 @@ export * from './assessment/index.js';
 export * from './session/index.js';
 export * from './config/index.js';
 export * from './program/index.js';
+export * from './recovery/index.js';

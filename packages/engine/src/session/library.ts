@@ -1,4 +1,4 @@
-import type { ExerciseTag, LoadType } from '@fitadapt/shared';
+import type { ExerciseTag, LoadType, MovementPattern } from '@fitadapt/shared';
 import type { AssessmentLadder, CapacityLibrary } from '../assessment/capacity.js';
 import type { ExerciseGraph } from '../substitution.js';
 
@@ -15,6 +15,8 @@ export interface SessionLibrary extends CapacityLibrary {
   readonly tags?: (exerciseId: string) => readonly ExerciseTag[];
   /** %-bodyweight coefficient of a bodyweight variant (M06 config value, validated:false). Absent → unknown. */
   readonly bodyweightLoad?: (exerciseId: string) => number | null;
+  /** M05: warm-up / cool-down drills that prepare a movement pattern (M06 content, best first). Absent → the pattern's warm_up/mobility exercises. */
+  readonly warmUpDrills?: (pattern: MovementPattern) => readonly string[];
 }
 
 export const tagsOf = (library: SessionLibrary, id: string): readonly ExerciseTag[] => library.tags?.(id) ?? [];

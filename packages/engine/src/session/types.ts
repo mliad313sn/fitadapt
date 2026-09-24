@@ -1,6 +1,7 @@
 import type {
   CalendarDateValue,
   CapacityModel,
+  DeloadEvent,
   EquipmentId,
   EquipmentLoads,
   ExperienceLevel,
@@ -48,6 +49,10 @@ export interface GenerateSessionInput {
   /** S3 lock (packages/safety intensityLockStatus). */
   readonly intensityLock?: IntensityLock;
   readonly readiness?: 'normal' | 'reduced';
+  /** M05 triggered deload (recovery deloadStatus) → volume −40–50 %, no progression. */
+  readonly deload?: DeloadEvent | null;
+  /** M05: 'mobility_balance' → a standalone mobility and balance session. */
+  readonly mode?: 'training' | 'mobility_balance';
 }
 
 export interface SessionSafetyEvent {

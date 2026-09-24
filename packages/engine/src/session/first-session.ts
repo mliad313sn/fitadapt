@@ -19,6 +19,7 @@ import { achievableAtMost, implementFor } from './increments.js';
 import type { SessionLibrary } from './library.js';
 import { loadReferencesFor } from './program-session.js';
 import type { GenerateSessionInput, GenerateSessionResult, SessionSafetyEvent } from './types.js';
+import { buildWarmUp } from '../recovery/warmup.js';
 
 export type { SessionLibrary } from './library.js';
 export type { GenerateSessionInput, GenerateSessionResult, RecentLoad, SessionSafetyEvent } from './types.js';
@@ -193,7 +194,16 @@ export function firstSession(input: GenerateSessionInput, library: SessionLibrar
     targetRir,
     minutesAvailable: input.minutesAvailable,
     estimatedMinutes: minutesOf(exercises),
-    warmUp: { minutes: firstSessionValue('warmUpMinutes'), minimumMinutes: firstSessionValue('warmUpMinutes') },
+    warmUp: {
+      minutes: firstSessionValue('warmUpMinutes'),
+      minimumMinutes: firstSessionValue('warmUpMinutes'),
+      // M05: what the warm-up is (general, ramp-up before the first loaded exercise, mobility for today's patterns).
+      content: buildWarmUp(
+        { library, equipment: new Set(input.equipment), loads: input.equipmentLoads ?? null, legacyStep: input.loadIncrementKg ?? assessmentValue('defaultLoadIncrementKg'), jointFlags: input.jointFlags ?? {}, profile: input.safetyProfile },
+        exercises,
+        firstSessionValue('warmUpMinutes'),
+      ),
+    },
     conditioning: null,
     exercises,
     reasonCodes: planReasons,

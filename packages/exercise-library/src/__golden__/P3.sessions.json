@@ -6,9 +6,20 @@
   "sessions": [
     {
       "date": "2026-09-28 w01.s1 (planned, week 1 accumulation, hypertrophy)",
-      "budget": "37.5 of 45 min, warm-up 8 min, reserve RIR 3",
+      "budget": "42.5 of 45 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 182 s",
+        "ramp-up before barbell_back_squat @ 82.5 kg: 40 % → 32.5 kg × 8, 60 % → 47.5 kg × 5, 80 % → 65 kg × 3 (138 s)",
+        "mobility: open_book_rotation 32 s for horizontal_push, horizontal_pull, vertical_push",
+        "mobility: cat_camel 32 s for hinge, core",
+        "mobility: knee_to_wall_ankle_rock 32 s for squat",
+        "mobility: band_external_rotation 32 s for horizontal_push, vertical_push",
+        "mobility: band_pass_through 32 s for horizontal_push, vertical_push",
+        "cool-down 5 min: open_book_rotation, cat_camel, knee_to_wall_ankle_rock, band_pass_through, half_kneeling_hip_flexor_stretch"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -114,9 +125,20 @@
     },
     {
       "date": "2026-09-30 w01.s2 (planned, week 1 accumulation, hypertrophy)",
-      "budget": "37.8 of 45 min, warm-up 8 min, reserve RIR 3",
+      "budget": "42.8 of 45 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 182 s",
+        "ramp-up before lat_pulldown @ 50 kg: 40 % → 20 kg × 8, 60 % → 30 kg × 5, 80 % → 40 kg × 3 (138 s)",
+        "mobility: open_book_rotation 32 s for vertical_pull, vertical_push, horizontal_push",
+        "mobility: cat_camel 32 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 32 s for lunge",
+        "mobility: bird_dog 32 s for hinge, core",
+        "mobility: band_pass_through 32 s for vertical_push, horizontal_push",
+        "cool-down 5 min: open_book_rotation, cat_camel, half_kneeling_hip_flexor_stretch, band_pass_through, knee_to_wall_ankle_rock"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -220,10 +242,21 @@
     },
     {
       "date": "2026-10-03 w01.s3 (shifted, week 1 accumulation, hypertrophy)",
-      "budget": "37 of 45 min, warm-up 8 min, reserve RIR 3",
+      "budget": "42 of 45 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 182 s",
+        "ramp-up before barbell_bench_press @ 67.5 kg: 40 % → 25 kg × 8, 60 % → 40 kg × 5, 80 % → 52.5 kg × 3 (138 s)",
+        "mobility: open_book_rotation 32 s for horizontal_push, vertical_pull",
+        "mobility: cat_camel 32 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 32 s for lunge",
+        "mobility: bird_dog 32 s for hinge, core",
+        "mobility: knee_to_wall_ankle_rock 32 s for lunge",
+        "cool-down 5 min: open_book_rotation, cat_camel, half_kneeling_hip_flexor_stretch, knee_to_wall_ankle_rock, lunge_with_rotation"
+      ],
       "reasonCodes": [
         "session.program.from_program",
-        "session.program.shifted"
+        "session.program.shifted",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -312,9 +345,20 @@
     },
     {
       "date": "2026-10-05 w02.s1 (planned, week 2 accumulation, hypertrophy)",
-      "budget": "37.7 of 45 min, warm-up 8 min, reserve RIR 3",
+      "budget": "42.7 of 45 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 182 s",
+        "ramp-up before barbell_back_squat @ 87.5 kg: 40 % → 35 kg × 8, 60 % → 52.5 kg × 5, 80 % → 70 kg × 3 (138 s)",
+        "mobility: open_book_rotation 32 s for horizontal_push, horizontal_pull, vertical_push",
+        "mobility: cat_camel 32 s for hinge, core",
+        "mobility: knee_to_wall_ankle_rock 32 s for squat",
+        "mobility: band_external_rotation 32 s for horizontal_push, vertical_push",
+        "mobility: band_pass_through 32 s for horizontal_push, vertical_push",
+        "cool-down 5 min: open_book_rotation, cat_camel, knee_to_wall_ankle_rock, band_pass_through, half_kneeling_hip_flexor_stretch"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -421,15 +465,26 @@
           "invariant": "S5",
           "reasonCode": "safety.s5.load_ceiling",
           "action": "capped",
-          "engineVersion": "0.2.0"
+          "engineVersion": "0.3.0"
         }
       ]
     },
     {
       "date": "2026-10-07 w02.s2 (planned, week 2 accumulation, hypertrophy)",
-      "budget": "38.1 of 45 min, warm-up 8 min, reserve RIR 3",
+      "budget": "43.1 of 45 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 182 s",
+        "ramp-up before dumbbell_romanian_deadlift @ 22 kg: 40 % → 8 kg × 8, 60 % → 12 kg × 5, 80 % → 16 kg × 3 (138 s)",
+        "mobility: open_book_rotation 32 s for vertical_pull, vertical_push, horizontal_push",
+        "mobility: cat_camel 32 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 32 s for lunge",
+        "mobility: bird_dog 32 s for hinge, core",
+        "mobility: band_pass_through 32 s for vertical_push, horizontal_push",
+        "cool-down 5 min: open_book_rotation, cat_camel, half_kneeling_hip_flexor_stretch, band_pass_through, knee_to_wall_ankle_rock"
+      ],
       "reasonCodes": [
-        "session.program.from_program"
+        "session.program.from_program",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
@@ -534,16 +589,27 @@
           "invariant": "S5",
           "reasonCode": "safety.s5.load_ceiling",
           "action": "capped",
-          "engineVersion": "0.2.0"
+          "engineVersion": "0.3.0"
         }
       ]
     },
     {
       "date": "2026-10-10 w02.s3 (shifted, week 2 accumulation, hypertrophy)",
-      "budget": "37.3 of 45 min, warm-up 8 min, reserve RIR 3",
+      "budget": "42.3 of 45 min, warm-up 8 min, reserve RIR 3",
+      "warmUp": [
+        "general: marching_in_place 182 s",
+        "ramp-up before barbell_bench_press @ 72.5 kg: 40 % → 27.5 kg × 8, 60 % → 42.5 kg × 5, 80 % → 57.5 kg × 3 (138 s)",
+        "mobility: open_book_rotation 32 s for horizontal_push, vertical_pull",
+        "mobility: cat_camel 32 s for hinge, core",
+        "mobility: half_kneeling_hip_flexor_stretch 32 s for lunge",
+        "mobility: bird_dog 32 s for hinge, core",
+        "mobility: knee_to_wall_ankle_rock 32 s for lunge",
+        "cool-down 5 min: open_book_rotation, cat_camel, half_kneeling_hip_flexor_stretch, knee_to_wall_ankle_rock, lunge_with_rotation"
+      ],
       "reasonCodes": [
         "session.program.from_program",
-        "session.program.shifted"
+        "session.program.shifted",
+        "cooldown.after_session"
       ],
       "exercises": [
         {
