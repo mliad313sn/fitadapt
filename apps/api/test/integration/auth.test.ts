@@ -221,6 +221,11 @@ describe('access control and stubs', () => {
       '/v1/legal/notices',
       '/v1/legal/status',
       '/v1/me',
+      // M04: the end-to-end-encrypted progress-photo backup.
+      '/v1/photos/backup',
+      '/v1/photos/backup/key',
+      '/v1/photos/backup/photos',
+      '/v1/photos/backup/photos/{photoId}',
       '/v1/privacy/consents',
       '/v1/privacy/deletion',
       '/v1/privacy/export',
