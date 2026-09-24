@@ -34,6 +34,7 @@ import { expoPhotoFiles, PhotoVault } from '../src/progress/photo-vault';
 import { createProgressStore } from '../src/progress/progress-store';
 import { secureDeviceKeyStore } from '../src/storage/device-keys';
 import { StorageUnavailableScreen } from '../src/screens/StorageUnavailableScreen';
+import { DatabaseOpenError } from '../src/storage/encrypted-db';
 import { createPairStore } from '../src/pair/pair-store';
 
 /**
@@ -95,7 +96,9 @@ export default function RootLayout() {
     try {
       return { db: openExpoDatabase() };
     } catch (error) {
-      reportError(new Error(`local database unavailable: ${error instanceof Error ? error.name : 'unknown'}`), { area: 'storage' });
+      // MOB-04: the SQLite result name (e.g. SQLITE_BUSY) says why; never data. The file is kept for the next start.
+      const code = error instanceof DatabaseOpenError ? ` (${error.code})` : '';
+      reportError(new Error(`local database unavailable: ${error instanceof Error ? error.name : 'unknown'}${code}`), { area: 'storage' });
       return { failed: true };
     }
   }, []);

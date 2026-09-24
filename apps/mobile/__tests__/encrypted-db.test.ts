@@ -5,7 +5,7 @@ import { randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DEVICE_KEY_NAMES, MemoryDeviceKeyStore, fromHex, getOrCreateKey, secureDeviceKeyStore, toHex } from '../src/storage/device-keys';
-import { DatabaseEncryptionUnavailableError, ENCRYPTED_DATABASE_NAME, LEGACY_PLAINTEXT_DATABASE_NAME, openEncryptedDatabase } from '../src/storage/encrypted-db';
+import { DatabaseEncryptionUnavailableError, DatabaseOpenError, ENCRYPTED_DATABASE_NAME, LEGACY_PLAINTEXT_DATABASE_NAME, openEncryptedDatabase } from '../src/storage/encrypted-db';
 import { Database, expoSqliteDouble } from './sqlcipher-double';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
@@ -147,6 +147,76 @@ describe('the local database is encrypted at rest (SQLCipher 4)', () => {
     expect(openEncryptedDatabase({ driver: next, keys: new MemoryDeviceKeyStore(), randomBytes: rand, onReset: () => undefined }).migratedTables).toEqual([]);
     next.closeAll();
     expect(existsSync(legacyPath)).toBe(false);
+  });
+
+  describe('MOB-04: only a key that does not open the file resets it', () => {
+    /** A driver whose connections throw `error` on the first schema read of the first `failures` opens (scratchpad mobtests/opendb.test.ts). */
+    function flakyDriver(error: () => Error, failures = 1, where: 'read' | 'open' = 'read') {
+      const deleted: string[] = [];
+      let opens = 0;
+      const statements: string[] = [];
+      const driver = {
+        directory: '/data',
+        openDatabaseSync: () => {
+          opens += 1;
+          const failing = opens <= failures;
+          if (failing && where === 'open') throw error();
+          return {
+            execSync: (s: string) => void statements.push(s),
+            getFirstSync: <T,>(s: string): T | null => {
+              if (s.startsWith('PRAGMA cipher_version')) return { cipher_version: '4.7.0 community' } as T;
+              if (failing && s.startsWith('SELECT count(*) AS n FROM sqlite_master')) throw error();
+              return null;
+            },
+            closeSync: () => undefined,
+          };
+        },
+        deleteDatabaseSync: (n: string) => void deleted.push(n),
+      };
+      return { driver, deleted, statements, opens: () => opens };
+    }
+
+    it.each([
+      ['database is locked (code 5 SQLITE_BUSY)', 'SQLITE_BUSY'],
+      ['disk I/O error (code 10 SQLITE_IOERR)', 'SQLITE_IOERR'],
+      ['database table is locked (SQLITE_LOCKED)', 'SQLITE_LOCKED'],
+      ['something else went wrong', 'unknown'],
+    ])('%s: the file and its outbox are kept, nothing is reported as a key mismatch, the open fails closed', (message, code) => {
+      const f = flakyDriver(() => new Error(message));
+      const resets: string[] = [];
+      let thrown: unknown;
+      try {
+        openEncryptedDatabase({ driver: f.driver, keys: new MemoryDeviceKeyStore(), randomBytes: rand, legacyName: null, onReset: (r) => resets.push(r) });
+      } catch (error) {
+        thrown = error;
+      }
+      expect(thrown).toBeInstanceOf(DatabaseOpenError);
+      expect((thrown as DatabaseOpenError).code).toBe(code);
+      expect(f.deleted).toEqual([]);
+      expect(resets).toEqual([]);
+    });
+
+    it('an error while opening the file (SQLITE_CANTOPEN) keeps it too', () => {
+      const f = flakyDriver(() => Object.assign(new Error('unable to open database file'), { code: 'SQLITE_CANTOPEN' }), 1, 'open');
+      expect(() => openEncryptedDatabase({ driver: f.driver, keys: new MemoryDeviceKeyStore(), randomBytes: rand, legacyName: null })).toThrow(DatabaseOpenError);
+      expect(f.deleted).toEqual([]);
+    });
+
+    it('"not a database" is retried once with cipher_migrate: a file that then opens is kept', () => {
+      const f = flakyDriver(() => new Error('file is not a database'), 1);
+      const opened = openEncryptedDatabase({ driver: f.driver, keys: new MemoryDeviceKeyStore(), randomBytes: rand, legacyName: null, onReset: () => undefined });
+      expect(opened.cipher).toBe('4.7.0 community');
+      expect(f.deleted).toEqual([]);
+      expect(f.statements).toContain('PRAGMA cipher_migrate;');
+    });
+
+    it('"not a database" after cipher_migrate as well: only then is the file replaced, and reported as a key mismatch', () => {
+      const f = flakyDriver(() => Object.assign(new Error('SQLITE_NOTADB'), { code: 26 }), 2);
+      const resets: string[] = [];
+      openEncryptedDatabase({ driver: f.driver, keys: new MemoryDeviceKeyStore(), randomBytes: rand, legacyName: null, onReset: (r) => resets.push(r) });
+      expect(f.deleted).toEqual([ENCRYPTED_DATABASE_NAME]);
+      expect(resets).toEqual(['key_mismatch']);
+    });
   });
 
   it('a failed migration rolls back and keeps the plaintext file for the next attempt', () => {
