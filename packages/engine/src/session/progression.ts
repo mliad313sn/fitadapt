@@ -9,7 +9,7 @@ import {
   type ProgressionInput,
   type SlotTarget,
 } from '@fitadapt/shared';
-import { assessmentValue } from '../assessment/config.js';
+import { rpeForRir } from '../assessment/config.js';
 import { epleyE1RM, loadForReps } from '../assessment/e1rm.js';
 import { sessionValue } from '../config/session.js';
 import { achievableAtLeast, achievableAtMost } from './increments.js';
@@ -38,7 +38,7 @@ import { achievableAtLeast, achievableAtMost } from './increments.js';
 const LOWER: readonly MovementPattern[] = ['squat', 'hinge', 'lunge', 'carry'];
 
 const done = (performed: readonly PerformedSet[]) => performed.filter((s) => s.status === 'done');
-const rpeOf = (rir: number) => assessmentValue('rpeAtZeroRir') - rir;
+const rpeOf = rpeForRir;
 
 function sameTarget(a: SlotTarget, b: SlotTarget): boolean {
   if (a.kind === 'hold') return b.kind === 'hold' && a.seconds === b.seconds;

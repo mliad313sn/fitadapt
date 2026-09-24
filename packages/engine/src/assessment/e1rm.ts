@@ -7,13 +7,16 @@ import { assessmentValue } from './config.js';
  *
  * validated: false — the formula and its 12-rep limit are cited from the
  * project specs (Epley 1985; M02 "valid ≤ 12 reps"), not checked against the
- * source (ASSESSMENT_CONFIG, seats A3/A5). Only 1–12 performed reps are
- * accepted; outside that range the caller must not estimate (returns null).
+ * source (ASSESSMENT_CONFIG, seats A3/A5). The limit applies to the reps the
+ * formula is fed — performed reps + RIR (A3/A5 pre-review #2): 1–12 effective
+ * reps are accepted; outside that range the caller must not estimate (null),
+ * so a high-rep set with a large reserve never inflates the e1RM.
  */
 export function epleyE1RM(loadKg: number, reps: number, rir = 0): number | null {
   if (!(loadKg > 0) || !Number.isFinite(loadKg)) return null;
-  if (!Number.isInteger(reps) || reps < 1 || reps > assessmentValue('epleyMaxReps')) return null;
+  if (!Number.isInteger(reps) || reps < 1) return null;
   if (!Number.isInteger(rir) || rir < 0) return null;
+  if (reps + rir > assessmentValue('epleyMaxReps')) return null;
   return loadKg * (1 + (reps + rir) / assessmentValue('epleyRepDivisor'));
 }
 

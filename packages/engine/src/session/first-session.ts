@@ -8,7 +8,7 @@ import {
   type SafetyProfile,
   type SlotTarget,
 } from '@fitadapt/shared';
-import { assessmentValue, firstSessionValue } from '../assessment/config.js';
+import { assessmentValue, firstSessionValue, rpeForRir } from '../assessment/config.js';
 import { loadForReps, roundDownToIncrement } from '../assessment/e1rm.js';
 import { SESSION_RULES_VERSION } from '../config/session.js';
 import { stamp, type EngineContext } from '../context.js';
@@ -38,7 +38,7 @@ const MAX_TARGET_RIR = 5;
 /** First-session reserve: the configured RIR, raised until S1 (screeningGateCheck) accepts the matching RPE. */
 export function firstSessionRir(profile: SafetyProfile): number | null {
   for (let rir = firstSessionValue('targetRir'); rir <= MAX_TARGET_RIR; rir++) {
-    if (screeningGateCheck({ profile, request: { rpe: assessmentValue('rpeAtZeroRir') - rir, hiit: false, maximalTest: false } }) === null) return rir;
+    if (screeningGateCheck({ profile, request: { rpe: rpeForRir(rir), hiit: false, maximalTest: false } }) === null) return rir;
   }
   return null;
 }

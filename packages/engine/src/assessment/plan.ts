@@ -3,7 +3,7 @@ import type { AssessmentSkipReason, AssessmentTestKind, CalendarDateValue, Inten
 import { ageGateDate } from '../local-date.js';
 import { ENGINE_VERSION } from '../version.js';
 import { blockingReasons, type EquipmentSet, type GraphExercise } from '../substitution.js';
-import { assessmentValue } from './config.js';
+import { assessmentValue, rpeForRir } from './config.js';
 import type { AssessmentProtocol, AssessmentTestDefinition } from './protocols.js';
 
 /**
@@ -83,7 +83,7 @@ export type AssessmentPlan =
     }
   | { readonly status: 'unavailable'; readonly reasonCode: AssessmentUnavailableReason };
 
-const rpeFor = (rir: number) => assessmentValue('rpeAtZeroRir') - rir;
+const rpeFor = rpeForRir;
 const value = (key: AssessmentTestDefinition['capReps']) => (key ? assessmentValue(key) : null);
 
 /**

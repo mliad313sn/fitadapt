@@ -1,9 +1,12 @@
+import { S1_RPE_AT_ZERO_RIR } from '@fitadapt/safety';
 import { SCREENING_QUESTION_IDS, SafetyProfileSchema, type AssessmentResult, type AssessmentTestResult, type SafetyProfile } from '@fitadapt/shared';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { FIXTURE_EXERCISES, FIXTURE_LIBRARY, FULL_GYM, P1_HOME, profileFrom } from '../__fixtures__/library.js';
 import { fixedClock } from '../clock.js';
 import { ENGINE_VERSION } from '../version.js';
+import { firstSessionRir } from '../session/first-session.js';
+import { rpeForRir } from './config.js';
 import {
   ASSESSMENT_CONFIG,
   ASSESSMENT_MIN_STOP_RIR,
@@ -90,11 +93,25 @@ describe('protocols (goal condition 1)', () => {
     expect(ASSESSMENT_CONFIG.epleyRepDivisor.source).toMatch(/not checked against the source/);
     expect(ASSESSMENT_CONFIG.rpeAtZeroRir.source).toMatch(/not checked against the source/);
     expect(ASSESSMENT_CONFIG.chairStandWindowSeconds.source).toMatch(/not checked against the source/);
+    // A1/A2 M07-41: the 55+ protocol age is a product choice (the paper's population was 60+).
+    expect(ASSESSMENT_CONFIG.olderAdultProtocolAge.source).toMatch(/product choice/);
+  });
+
+  it('CS-8: the RIR→RPE anchor is the S1 invariant: the configured coefficient can only raise it, so the S1 reserve never loosens', () => {
+    expect(S1_RPE_AT_ZERO_RIR).toBe(10);
+    expect(ASSESSMENT_CONFIG.rpeAtZeroRir.value).toBeGreaterThanOrEqual(S1_RPE_AT_ZERO_RIR);
+    for (let rir = 0; rir <= 10; rir++) expect(rpeForRir(rir)).toBeGreaterThanOrEqual(S1_RPE_AT_ZERO_RIR - rir);
+    // An unresolved flag caps effort at RPE 7: every reserve the engine picks for it is at least 3 (first session and tests).
+    for (const yes of [['chest_discomfort'], ['medication_affecting_effort'], ['heart_or_blood_pressure']] as const) {
+      const flagged = profileFrom([...yes]);
+      expect(firstSessionRir(flagged)).toBeGreaterThanOrEqual(3);
+      expect(assessmentStopRir(flagged)).toBeGreaterThanOrEqual(3);
+    }
   });
 });
 
 describe('e1RM by RIR-adjusted Epley (goal condition 2)', () => {
-  it('is w × (1 + (reps + RIR) / 30) for every rep count from 1 to 12', () => {
+  it('is w × (1 + (reps + RIR) / 30) for every effective rep count (reps + RIR) from 1 to 12', () => {
     const table: [number, number, number, number][] = [
       [100, 1, 0, 103.333],
       [100, 1, 2, 110],
@@ -103,21 +120,26 @@ describe('e1RM by RIR-adjusted Epley (goal condition 2)', () => {
       [60, 10, 2, 84],
       [140, 8, 2, 186.667],
       [20, 12, 0, 28],
-      [80, 12, 2, 117.333],
+      [80, 10, 2, 112],
     ];
     for (const [w, reps, rir, expected] of table) expect(epleyE1RM(w, reps, rir)).toBeCloseTo(expected, 3);
     for (let reps = 1; reps <= 12; reps++) {
-      for (let rir = 0; rir <= 4; rir++) expect(epleyE1RM(100, reps, rir)).toBeCloseTo(100 * (1 + (reps + rir) / 30), 9);
+      for (let rir = 0; rir <= 4; rir++) {
+        // A3/A5 pre-review #2: the limit is on the reps the formula is fed (reps + RIR), never above 12.
+        if (reps + rir <= 12) expect(epleyE1RM(100, reps, rir)).toBeCloseTo(100 * (1 + (reps + rir) / 30), 9);
+        else expect(epleyE1RM(100, reps, rir)).toBeNull();
+      }
     }
   });
 
   it('property: grows with reps and RIR, is above the load, and inverts with loadForReps', () => {
     fc.assert(
       fc.property(fc.double({ min: 1, max: 400, noNaN: true }), fc.integer({ min: 1, max: 12 }), fc.integer({ min: 0, max: 4 }), (w, reps, rir) => {
+        fc.pre(reps + rir <= 12);
         const e = epleyE1RM(w, reps, rir)!;
         expect(e).toBeGreaterThan(w);
-        if (reps < 12) expect(epleyE1RM(w, reps + 1, rir)!).toBeGreaterThan(e);
-        expect(epleyE1RM(w, reps, rir + 1)!).toBeGreaterThan(e);
+        if (reps + rir < 12) expect(epleyE1RM(w, reps + 1, rir)!).toBeGreaterThan(e);
+        if (reps + rir < 12) expect(epleyE1RM(w, reps, rir + 1)!).toBeGreaterThan(e);
         expect(loadForReps(e, reps, rir)).toBeCloseTo(w, 6);
       }),
       { numRuns: 1000 },
@@ -127,6 +149,10 @@ describe('e1RM by RIR-adjusted Epley (goal condition 2)', () => {
   it('refuses to estimate outside 1–12 reps, without a positive load or with an invalid RIR', () => {
     expect(epleyE1RM(100, 0)).toBeNull();
     expect(epleyE1RM(100, 13)).toBeNull();
+    // Effective reps above 12 (reps + RIR): no estimate (it would inflate the e1RM and the first loads).
+    expect(epleyE1RM(100, 12, 1)).toBeNull();
+    expect(epleyE1RM(100, 10, 3)).toBeNull();
+    expect(epleyE1RM(100, 7, 5)).toBeCloseTo(140, 9);
     expect(epleyE1RM(100, 2.5)).toBeNull();
     expect(epleyE1RM(0, 5)).toBeNull();
     expect(epleyE1RM(Number.POSITIVE_INFINITY, 5)).toBeNull();
@@ -238,7 +264,9 @@ describe('mapping tables: result → ladder rung and starting load (goal conditi
     // 100 kg × 10 at RIR 2: e1RM 140; load for 8 at RIR 2 = 140 / (1 + 10/30) = 105; × 0.9 = 94.5 → 92.5.
     expect(map(GYM_PROTOCOL, 'press_load', done('press_load', 'barbell_bench_press', { loadKg: 100, reps: 10, rir: 2 })).slot).toMatchObject({ e1rmKg: 140, loadKg: 92.5 });
     // No RIR reported: the instructed reserve is used.
-    expect(map(GYM_PROTOCOL, 'press_load', done('press_load', 'barbell_bench_press', { loadKg: 100, reps: 10 }), 3).slot.e1rmKg).toBe(143.3);
+    expect(map(GYM_PROTOCOL, 'press_load', done('press_load', 'barbell_bench_press', { loadKg: 100, reps: 9 }), 3).slot.e1rmKg).toBe(140);
+    // 10 reps with the instructed reserve 3 is 13 effective reps: no Epley estimate, the tested load is the reference.
+    expect(map(GYM_PROTOCOL, 'press_load', done('press_load', 'barbell_bench_press', { loadKg: 100, reps: 10 }), 3).slot).toMatchObject({ e1rmKg: null });
     // More than 12 reps: no Epley estimate, the tested load is the reference.
     const pulldown = map(GYM_PROTOCOL, 'pulldown_load', done('pulldown_load', 'lat_pulldown', { loadKg: 40, reps: 20, rir: 2 }));
     expect(pulldown.slot).toMatchObject({ e1rmKg: null, loadKg: 35 });

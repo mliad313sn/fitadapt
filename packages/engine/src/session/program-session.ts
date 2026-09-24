@@ -25,7 +25,7 @@ import {
   type SlotRole,
   type SlotTarget,
 } from '@fitadapt/shared';
-import { assessmentValue } from '../assessment/config.js';
+import { assessmentValue, rpeForRir } from '../assessment/config.js';
 import { loadForReps } from '../assessment/e1rm.js';
 import { sessionValue, type SessionConfigKey } from '../config/session.js';
 import { stamp, type EngineContext } from '../context.js';
@@ -97,10 +97,10 @@ const isLoadedType = (t: string | undefined) => t === 'external' || t === 'machi
 
 /** Session reserve from the program's target RPE, raised until S1 (screeningGateCheck) accepts it; null when no reserve up to rir.max is allowed. */
 export function sessionRir(profile: SafetyProfile, targetRpe: number | null, extra: number): { rir: number; s1Capped: boolean } | null {
-  const fromRpe = targetRpe === null ? sessionValue('rir.default') : Math.ceil(assessmentValue('rpeAtZeroRir') - targetRpe - 1e-9);
+  const fromRpe = targetRpe === null ? sessionValue('rir.default') : Math.ceil(rpeForRir(0) - targetRpe - 1e-9);
   const start = Math.min(MAX_TARGET_RIR, Math.max(0, fromRpe) + extra);
   for (let rir = start; rir <= sessionValue('rir.max'); rir++) {
-    if (screeningGateCheck({ profile, request: { rpe: assessmentValue('rpeAtZeroRir') - rir, hiit: false, maximalTest: false } }) === null) return { rir, s1Capped: rir > start };
+    if (screeningGateCheck({ profile, request: { rpe: rpeForRir(rir), hiit: false, maximalTest: false } }) === null) return { rir, s1Capped: rir > start };
   }
   return null;
 }
@@ -353,7 +353,7 @@ function prescribe(ctx: Ctx, cand: Candidate, slot: ProgramSlot, prev: HistoryEx
   if (finalTarget.kind === 'hold') params.seconds = finalTarget.seconds;
   // Holds have no reps to spare: the reserve is an effort level (RPE = 10 − RIR on the same scale).
   const effortReason = finalTarget.kind === 'hold' && ctx.rirReason !== 'session.rir.s1_capped' ? 'session.effort.hold' : ctx.rirReason;
-  if (effortReason === 'session.effort.hold') params.rpe = assessmentValue('rpeAtZeroRir') - ctx.targetRir;
+  if (effortReason === 'session.effort.hold') params.rpe = rpeForRir(ctx.targetRir);
   const setReasons = [cand.reasonCode, ...cand.note, ...loadReasons, rangeReason, effortReason, ...(tempo ? ['session.tempo.eccentric'] : [])];
   const planned: PlannedSet[] = Array.from({ length: sets }, (_, i) => ({
     index: i + 1,
@@ -584,7 +584,7 @@ export function programSession(input: GenerateSessionInput, library: SessionLibr
 
   // Conditioning goes to M03; S1 is re-checked (intervals only when HIIT is allowed).
   let conditioning: Conditioning | null = session.conditioning;
-  if (conditioning?.kind === 'intervals' && screeningGateCheck({ profile, request: { rpe: assessmentValue('rpeAtZeroRir') - c.targetRir, hiit: true, maximalTest: false } }) !== null) {
+  if (conditioning?.kind === 'intervals' && screeningGateCheck({ profile, request: { rpe: rpeForRir(c.targetRir), hiit: true, maximalTest: false } }) !== null) {
     conditioning = { ...conditioning, kind: 'steady' };
     planReasons.push('session.conditioning.intervals_not_allowed');
     events.push({ invariant: 'S1', reasonCode: 'safety.s1.hiit_not_allowed', action: 'capped', engineVersion: ENGINE_VERSION });
