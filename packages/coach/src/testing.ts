@@ -3,6 +3,8 @@ import type { CoachModel, ModelRequest, ModelResponse, ModelToolCall } from './m
 import { OUT_OF_SCOPE_MARKER } from './orchestrator.js';
 import type { CoachContext } from '@fitadapt/shared';
 
+export { GYM, MONDAY, NOW, gymContext, safetyProfile, testEnv, tryProgram, programRecord, type ContextOptions } from './fixtures.js';
+
 /**
  * Deterministic models for tests and the CI evals (no network, no key).
  * Their words are test fixtures, never shown in the app.

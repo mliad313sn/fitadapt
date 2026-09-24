@@ -33,14 +33,20 @@ const BARE_SCORE = /^(10|[0-9])( \/10| \/ 10|\/10|\/ 10| out of 10| sur 10|)[.!]
 const TIME_WORDS = [/\b(shorter|short on time|less time|quick(er)? session|not much time|pressed for time|in a hurry|only have)\b/, /\b(plus court|plus courte|moins de temps|pas beaucoup de temps|peu de temps|seance courte|raccourci|presse|pressee)\b/];
 const MINUTES = /\b(\d{1,3}) ?(min|mins|minutes|mn|minute)\b/;
 const HOURS = /\b(an|one|1|une) (hour|heure)\b/;
-const LIGHTER = [/\b(lighter|easier|easy day|go easy|take it easy|tired|exhausted|deload|low energy|drained|wiped out|not feeling (it|great|good))\b/, /\b(plus leger|plus legere|plus facile|allege|alleger|fatigue|fatiguee|crevee?|epuisee?|pas en forme|doucement|tranquille|decharge)\b/];
-const SWAP = [/\b(swap|replace|switch|substitute|instead of|alternative|change the|change my|another exercise|different exercise|skip the)\b/, /\b(remplace|remplacer|echange|echanger|changer l|changer d|a la place|autre exercice|alternative)\b/];
+const LIGHTER = [/\b(lighter|easier|easy day|go easy|take it easy|tired|exhausted|low energy|drained|wiped out|not feeling (it|great|good))\b/, /\b(plus leger|plus legere|plus facile|allege|alleger|fatigue|fatiguee|crevee?|epuisee?|pas en forme|doucement|tranquille)\b/];
+const SWAP = [/\b(swap|replace|switch|substitute|instead of|alternative|change the|change my|another exercise|different exercise|skip the)\b/, /\b(remplace|remplacer|echange|echanger|change le|change la|change l|changer le|changer la|changer l|changer d|a la place|autre exercice|alternative)\b/];
 const EQUIPMENT = [/\b(no (bench|rack|bar|barbell|machine|cable|dumbbells?|pull-? ?up bar)|(bench|rack|machine|station) (is )?(taken|busy|occupied|broken)|don'?t have)\b/, /\b(pas de (banc|rack|barre|machine|poulie|halteres?)|(banc|rack|machine) (est )?(pris|occupee?|cassee?)|je n'ai pas)\b/];
 const RESCHEDULE = [/\b(can'?t|cannot|won'?t be able to|unable to|not able to) (train|make it|do (it|this|that|today|the session|my session)|work ?out|come)\b/, /\b(move|reschedule|push back|postpone) (my |the |todays |today's )?(session|workout|training)\b/, /\b(another day|skip today|not today)\b/, /\b(je ne peux pas|je peux pas|impossible de) (m'entrainer|faire (la|ma) seance|venir|aujourd'hui)\b/, /\b(deplacer|reporter|decaler) (la |ma )?(seance|entrainement)\b/, /\b(pas aujourd'hui|un autre jour|pas possible aujourd'hui)\b/];
 const EXPLAIN = [/\b(why|explain|reason|how come|what does .{1,30} mean)\b/, /\b(pourquoi|explique|expliquer|raison|que veut dire)\b/];
 const PLAN_WORDS = [/\b(plan|session|workout|today|sets?|reps?|load|weight|kg|exercise|program|rest)\b/, /\b(plan|seance|aujourd'hui|series?|repetitions?|charge|poids|kg|exercice|programme|repos)\b/];
+const EXPLAIN_VERB = [/\b(explain|explique|expliquer|expliquez)\b/];
+const DEFINITIONAL = [/^(what is|what's|whats|what are|what does|how does|define|what do you mean by)\b/, /^(c'est quoi|qu'est-ce qu|que veut dire|comment fonctionne|comment marche|a quoi sert|a quoi servent|que signifie)/];
+/** Words too common to name an exercise by themselves ("avant" is in "avant-bras"). */
+const COMMON_WORDS = new Set(['avant', 'apres', 'pendant', 'pourquoi', 'seance', 'exercice', 'exercise', 'session', 'workout', 'today', 'first', 'second', 'third', 'fourth', 'fifth', 'premier', 'deuxieme', 'troisieme', 'dernier', 'derniere', 'please', 'instead', 'place', 'other', 'autre', 'avec', 'without', 'sans', 'light', 'leger', 'legere', 'heavy', 'lourd', 'lourde', 'explain', 'explique']);
+/** The user's own plan or session (explain today's plan), not a general "why" about a rule. */
+const OWN_PLAN = [/\b(my|today|todays|this|these|tonight)\b/, /\b(mon|ma|mes|aujourd'hui|ce|cette|ces|ce soir)\b/];
 const GREETING = /^(hi|hello|hey|good (morning|evening|afternoon)|bonjour|salut|bonsoir|coucou)\b[\s!.,]*$/;
-const THANKS = /^(thanks|thank you|thx|cheers|merci|merci beaucoup|super merci|top merci)\b[\s!.,]*$/;
+const THANKS = /^(thanks|thank you|thx|cheers|thanks a lot|thank you so much|thanks so much|many thanks|merci|merci beaucoup|merci bien|super merci|top merci)\b[\s!.,]*$/;
 const ORDINALS: readonly (readonly [RegExp, number])[] = [
   [/\b(first|1st|premier|premiere|exercise 1|exercice 1)\b/, 0],
   [/\b(second|2nd|deuxieme|second|exercise 2|exercice 2)\b/, 1],
@@ -69,7 +75,7 @@ function exerciseIndexIn(text: string, raw: string, context: CoachContext): { in
   if (inPlan !== undefined) return { index: inPlan, preferred };
   for (const [re, index] of ORDINALS) if (re.test(text)) return { index: index < 0 ? plan.exercises.length - 1 : Math.min(index, plan.exercises.length - 1), preferred };
   // A name in the user's locale that partly matches (e.g. "squat" for "goblet squat"): the first plan exercise whose name contains a word of 5+ letters of the message.
-  const tokens = text.split(/[^a-z0-9]+/).filter((w) => w.length >= 5);
+  const tokens = text.split(/[^a-z0-9]+/).filter((w) => w.length >= 5 && !COMMON_WORDS.has(w));
   const partial = plan.exercises.findIndex((e) => tokens.some((w) => nameOf(e.exerciseId, 'en').includes(w) || nameOf(e.exerciseId, 'fr').includes(w)));
   return partial >= 0 ? { index: partial, preferred } : null;
 }
@@ -82,6 +88,8 @@ function exerciseIndexIn(text: string, raw: string, context: CoachContext): { in
 export function parseIntents(message: string, context: CoachContext, previous: string | null = null): Intent[] {
   const text = fold(message);
   if (GREETING.test(text)) return [{ kind: 'greeting' }];
+  // "What is a deload week?" asks for knowledge, not for a lighter session.
+  const definitional = anyMatch(text, DEFINITIONAL);
   if (THANKS.test(text)) return [{ kind: 'thanks' }];
   const out: Intent[] = [];
 
@@ -96,6 +104,8 @@ export function parseIntents(message: string, context: CoachContext, previous: s
     const pj = jointIn(fold(previous));
     if (pj && anyMatch(fold(previous), PAIN_WORDS)) out.push({ kind: 'tool', tool: 'logPain', input: { joint: pj, score: Number(BARE_SCORE.exec(text)![1]) } });
   }
+
+  if (definitional) return out;
 
   // Swap an exercise of today's plan.
   if (anyMatch(text, SWAP)) {
@@ -120,7 +130,7 @@ export function parseIntents(message: string, context: CoachContext, previous: s
 
   if (out.length === 0 && anyMatch(text, EXPLAIN)) {
     const target = exerciseIndexIn(text, message, context);
-    if (target || anyMatch(text, PLAN_WORDS)) out.push({ kind: 'tool', tool: 'explainPrescription', input: target ? { exerciseIndex: target.index } : {} });
+    if (target || (anyMatch(text, PLAN_WORDS) && (anyMatch(text, OWN_PLAN) || anyMatch(text, EXPLAIN_VERB)))) out.push({ kind: 'tool', tool: 'explainPrescription', input: target ? { exerciseIndex: target.index } : {} });
   }
   return out;
 }

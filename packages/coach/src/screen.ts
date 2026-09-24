@@ -40,6 +40,9 @@ const RED_FLAGS: readonly (readonly [RedFlagSymptom, readonly RegExp[]])[] = [
       /(pain|pains|pressure|tightness|squeezing|ache|aching|discomfort|burning) (in|on|across|around) (my |the )?chest/,
       /\b(my )?chest (is|feels|felt|was|got|gets|went) (tight|heavy|painful|sore|weird|strange|pressure)/,
       /\btight chest/,
+      /\b(sitting|weight|pressing|elephant) on my chest/,
+      /\b(arm|shoulder)\b.{0,30}\bjaw\b/,
+      /\bjaw (pain|ache|aches|hurts)\b.{0,30}\b(arm|chest)\b/,
       /heart attack/,
       /\bangina\b/,
       /(douleur|douleurs|pression|serrement|oppression|brulure|poids) (a|dans|sur|au niveau de) (la |ma )?poitrine/,
@@ -57,6 +60,9 @@ const RED_FLAGS: readonly (readonly [RedFlagSymptom, readonly RegExp[]])[] = [
       /pass(ed|ing)? out/,
       /black(ed|ing)? out/,
       /lost consciousness/,
+      /\b(everything|vision|my vision|sight|my sight) went (grey|gray|black|dark|blurry|white)/,
+      /\b(nearly|almost) (fell over|fell down|collapsed)\b/,
+      /\bcollapsed\b/,
       /\bdizz/,
       /light-? ?headed/,
       /\bsyncope/,
@@ -79,6 +85,7 @@ const RED_FLAGS: readonly (readonly [RedFlagSymptom, readonly RegExp[]])[] = [
       /struggl(e|ing) to breathe/,
       /hard to breathe/,
       /trouble breathing/,
+      /\bgasping (for air|for breath)/,
       /short(ness)? of breath/,
       /(unusual|extreme|abnormal|very|really|so)(ly)? (breathless|out of breath)/,
       /(du mal|difficile|difficulte|difficultes) a respirer/,
@@ -87,12 +94,14 @@ const RED_FLAGS: readonly (readonly [RedFlagSymptom, readonly RegExp[]])[] = [
       /souffle coupe/,
       /essouffle(e|ment)? (anormal|inhabituel|extreme)/,
       /(tres|trop|anormalement) essouffle/,
+      /essouffle(e|s)? (de facon|de maniere) (anormale|inhabituelle)/,
     ],
   ],
   [
     'palpitations',
     [
       /palpitation/,
+      /\bheart\b.{0,25}\b(flutter|fluttering|pounding|racing|skipping)\b/,
       /heart (is )?(racing|pounding|fluttering|skipping|beating (fast|irregular|weird))/,
       /irregular (heart|heartbeat|pulse)/,
       /heartbeat (is )?(irregular|racing|weird)/,
@@ -108,7 +117,10 @@ const RED_FLAGS: readonly (readonly [RedFlagSymptom, readonly RegExp[]])[] = [
       /\bnumb(ness)?\b/,
       /\bgone numb/,
       /tingling (in|down) my (arm|face|hand|leg)/,
+      /tingling (in|down|up) (my )?(left |right )?(arm|face|hand|leg|jaw)/,
       /sudden(ly)? (weak|weakness)/,
+      /\b(face|arm|leg|hand|side)\b.{0,25}\b(feels |went |goes |is |gone )?(weak|numb|droop)/,
+      /\b(weak|numb) on one side/,
       /can'?t (move|feel) my (arm|leg|face|hand)/,
       /(face|mouth) (is )?droop/,
       /slurred/,
@@ -122,13 +134,14 @@ const RED_FLAGS: readonly (readonly [RedFlagSymptom, readonly RegExp[]])[] = [
   ],
 ];
 
-const CRISIS = [/kill myself/, /suicid/, /end my life/, /hurt myself/, /self-? ?harm/, /want to die/, /me tuer/, /en finir avec (la vie|ma vie)/, /me faire du mal/, /envie de mourir/, /mettre fin a mes jours/];
+const CRISIS = [/\b(don'?t|do not) want to (be alive|live|exist)/, /ne veux plus vivre/, /kill myself/, /suicid/, /end my life/, /hurt myself/, /self-? ?harm/, /want to die/, /me tuer/, /en finir avec (la vie|ma vie)/, /me faire du mal/, /envie de mourir/, /mettre fin a mes jours/];
 
 const PREGNANCY = [/pregnan/, /expecting a baby/, /gave birth/, /post-? ?partum/, /breastfeed/, /enceinte/, /grossesse/, /accouch/, /allait/];
 
 /** S7: under 16 (any request), or 16–17 with a weight-loss request (S4: deficit features off under 18); a child's training. */
 const UNDER_16 = [
   /\b(i'?m|i am|im) ([5-9]|1[0-5])( years?| yrs?| yo\b| y\/o| and\b|,|\.|$)/,
+  /\b(i'?m|i am|im) ([5-9]|1[0-5]) (can|and|but|so|want|would|need|will|should|how|what|is|am|years)\b/,
   /\b([5-9]|1[0-5]) ?-?(years?|yrs?)[- ]old\b/,
   /\bj'?ai ([5-9]|1[0-5]) ans\b/,
   /\b(under|below) 16\b/,
@@ -148,6 +161,8 @@ const EXTREME_DIET = [
   /stop eating/,
   /not eat(ing)? (for|anything)/,
   /(skip|skipping) (all )?(my )?meals/,
+  /\bmeals? (can|could|should|do) i skip/,
+  /\bskip (a |all |my |the )?(meal|meals|breakfast|lunch|dinner)\b/,
   /\b(water )?fast(ing)? for \d+ days/,
   /\bwater fast/,
   /\bstarv/,
@@ -160,7 +175,7 @@ const EXTREME_DIET = [
   /as (fast|quickly) as possible/,
   /arreter de manger/,
   /ne (plus|pas) manger/,
-  /jeun(e|er|ant)? (pendant )?\d+ jours/,
+  /\bjeun(e|er|ant)? (de |pendant |sur )?\d+ jours/,
   /sauter (tous )?(les|mes) repas/,
   /\baffam/,
   /regime (drastique|express|extreme|miracle)/,
@@ -172,8 +187,10 @@ const EXTREME_DIET = [
 
 const IMPERSONATION = [
   /(pretend|act|behave|roleplay|role-play|role play|answer|respond|speak|talk|reply)( to me)? (to be |like |as )(a |an |my )?(real )?(doctor|physician|physio|physiotherapist|physical therapist|dietitian|dietician|nutritionist|nurse|therapist|surgeon|cardiologist|human|person|medical professional|health professional)/,
-  /you are (now )?(a |an |my )(doctor|physician|physio|physiotherapist|dietitian|nutritionist|nurse|human|real person)/,
+  /you are (now )?(a |an |my )(registered |licensed |certified |qualified |real )?(doctor|physician|physio|physiotherapist|dietitian|nutritionist|nurse|human|real person)/,
   /\bas (a|my) (doctor|physician|physio|physiotherapist|dietitian|nutritionist|nurse)\b/,
+  /\b(be|become|act like) (my|a|an) (doctor|physician|physio|physiotherapist|dietitian|nutritionist|nurse|therapist)\b/,
+  /\b(talk|speak|answer|reply) (to me )?like (a |an |my )?(real )?(doctor|physician|physio|physiotherapist|dietitian|nutritionist|nurse)/,
   /(fais|fait|faites|joue|jouez|reponds|repondez|parle|parlez) (semblant d'etre|comme si tu etais|comme si vous etiez|le role d'?(un|une|de)|comme (un|une|mon|ma))/,
   /(tu es|vous etes|t'es) (maintenant )?(un |une |mon |ma )?(medecin|docteur|kine|kinesitherapeute|physiotherapeute|dieteticien|dieteticienne|nutritionniste|infirmier|infirmiere|humain|humaine)\b/,
   /en tant que (medecin|docteur|kine|kinesitherapeute|dieteticien|nutritionniste|infirmier)/,
@@ -182,6 +199,7 @@ const IMPERSONATION = [
 const JAILBREAK = [
   /ignore (all |any |your |the |previous |prior |above |earlier )*(instructions|rules|prompt|prompts|guidelines|restrictions)/,
   /disregard (your|the|all|any|previous) /,
+  /\bforget (all |your |the |previous |these |my )*(rules|instructions|prompt|guidelines|restrictions)/,
   /system prompt/,
   /developer mode/,
   /jailbreak/,
@@ -204,12 +222,14 @@ const BYPASS = [
   /(increase|raise|add|bump|double|push|up) (the |my )?[a-z]+ (by |to )?\d+ ?(kg|kgs|kilos?|lbs?|pounds|%|percent)\b/,
   /(ajoute|ajouter|ajoutez|augmente|augmenter|augmentez|monte|monter|montez) (la |le |les |ma |mon |mes )?(de |a )?\d+ ?(kg|kilos?|%|pour ?cent)/,
   /(ajoute|ajouter|ajoutez|augmente|augmenter|augmentez|monte|monter|montez) (la |le |les |ma |mon |mes )?[a-z]+ (de |a )?\d+ ?(kg|kilos?|%|pour ?cent)/,
-  /(remove|lift|turn off|disable|switch off|bypass|override|ignore) (the |my |your |all |these )?(safety |load )?(limit|limits|cap|caps|lock|locks|ceiling|safety|restrictions|rules)/,
+  /(remove|lift|turn off|disable|switch off|bypass|override|ignore) (the |my |your |all |these )?(safety |load |pain |intensity )?(limit|limits|cap|caps|lock|locks|ceiling|safety|restrictions|rules)/,
   /skip (the )?(medical review|attestation|review)/,
   /unlock (my )?(intensity|training|sessions?|workouts?)/,
   /ignore (the |my )?(pain|lock|red flag|warning)/,
   /(train|push|work|power) through (the |my |this |it)?(pain|hurt)/,
   /\bmax(ing)? out\b/,
+  /\b(double|triple) (the |my )?(load|loads|weight|weights|kg)\b/,
+  /\b(double|triple) (the |my )?[a-z]+ (load|loads|weight|weights|kg)\b/,
   /(one|1) ?-?rep ?max/,
   /test my max/,
   /\bto failure\b/,
@@ -238,11 +258,13 @@ const DIAGNOSIS = [
   /do i have (a |an )?(injury|tear|tendin|condition|disease|problem|hernia|arthritis|sprain|fracture|torn)/,
   /is (it|this|that) (a |an )?(tear|torn|sprain|fracture|tendin|hernia|arthritis|injury|broken|serious|dangerous)/,
   /\bdiagnos/,
+  /is (it|this|that) (a |an )?[a-z]+ (tear|fracture|sprain|strain|hernia|injury|tendinitis|tendinopathy)/,
   /what (injury|condition|disease|problem) (do i|is it|could it)/,
   /could (it|this) be (a |an )?(tear|torn|sprain|fracture|tendin|hernia|arthritis|injury|broken|serious)/,
   /am i injured/,
   /should i see a (doctor|physio|physiotherapist)/,
   /qu'?est-ce que j'ai/,
+  /est-ce que j'ai (une |un )?(lesion|tendinite|entorse|dechirure|fracture|hernie|arthrose|blessure|inflammation)/,
   /est-ce (que c'est )?(une |un )?(dechirure|entorse|fracture|tendinite|hernie|lesion|arthrose|blessure|grave)/,
   /c'est (grave|une tendinite|une entorse|une dechirure|une fracture|une hernie)/,
   /(ai-je|j'ai peut-etre) (une |un )?(blessure|tendinite|entorse|dechirure|fracture|hernie|lesion|arthrose)/,
@@ -274,10 +296,11 @@ export function screenMessage(message: string): ScreenResult {
   if (anyMatch(text, PREGNANCY)) return { category: 'pregnancy' };
   if (anyMatch(text, UNDER_16) || (anyMatch(text, AGE_16_17) && anyMatch(text, WEIGHT_LOSS))) return { category: 'minor' };
   if (anyMatch(text, EXTREME_DIET) || veryLowIntake(text) || tooFastLoss(text)) return { category: 'extreme_diet' };
+  // A question ("are you human?") before a command ("you are now a doctor").
+  if (anyMatch(text, HUMAN_CHECK)) return { category: 'human_check' };
   if (anyMatch(text, IMPERSONATION)) return { category: 'impersonation_request' };
   if (anyMatch(text, JAILBREAK)) return { category: 'jailbreak' };
   if (anyMatch(text, BYPASS)) return { category: 'bypass_request' };
-  if (anyMatch(text, HUMAN_CHECK)) return { category: 'human_check' };
   if (anyMatch(text, DIAGNOSIS)) return { category: 'diagnosis_request' };
   if (anyMatch(text, MEDICATION)) return { category: 'medication_request' };
   return { category: 'ok' };
@@ -299,11 +322,12 @@ function veryLowIntake(text: string): boolean {
 
 /** "lose 10 kg in 2 weeks" / "perdre 8 kilos en 10 jours": faster than the S4 1 %/week ceiling for any adult weight the app supports. */
 function tooFastLoss(text: string): boolean {
-  const m = /(lose|losing|drop|perdre|perds|maigrir de) (\d{1,3}) ?(kg|kilos?|lbs?|pounds|livres)\b.{0,20}?\b(in|within|en|dans) (\d{1,3}) ?(days?|weeks?|months?|jours?|semaines?|mois)\b/.exec(text);
+  const m = /(lose|losing|drop|perdre|perds|maigrir de) (\d{1,3}) ?(kg|kilos?|lbs?|pounds|livres)\b.{0,20}?\b(in|within|en|dans) (\d{1,3}|a|one|une|un) ?(days?|weeks?|months?|jours?|semaines?|mois)\b/.exec(text);
   if (!m) return false;
   const amountKg = /lb|pound|livre/.test(m[3]!) ? Number(m[2]) * KG_PER_LB : Number(m[2]);
   const unit = m[6]!;
-  const weeks = /day|jour/.test(unit) ? Number(m[5]) / 7 : /month|mois/.test(unit) ? (Number(m[5]) * 30) / 7 : Number(m[5]);
+  const count = /^\d+$/.test(m[5]!) ? Number(m[5]) : 1;
+  const weeks = /day|jour/.test(unit) ? count / 7 : /month|mois/.test(unit) ? (count * 30) / 7 : count;
   if (weeks <= 0) return true;
   return amountKg / weeks > SCREEN_FAST_LOSS_KG_PER_WEEK;
 }

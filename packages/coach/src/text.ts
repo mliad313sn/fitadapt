@@ -5,6 +5,9 @@
  */
 export function fold(text: string): string {
   return text
+    .replace(/\u0153/g, 'oe')
+    .replace(/\u0152/g, 'OE')
+    .replace(/\u00e6/g, 'ae')
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
     .toLowerCase()

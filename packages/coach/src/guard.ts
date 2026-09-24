@@ -65,6 +65,7 @@ const IMPERSONATION = [
 const DIAGNOSIS = [
   /\b(you|it|this|that) (probably |likely |might |may |could |seem to |must )?(have|has|are suffering from|is suffering from|got|be) (a |an )?(tendin[a-z]*|sprain|strain|tear|torn [a-z]+|fracture|hernia|arthritis|bursitis|meniscus|acl|rotator cuff|sciatica|herniated disc|slipped disc|a condition|an injury|a disease|an infection|inflammation|shin splints|plantar fasciitis|impingement)\b/,
   /\b(sounds|looks|seems) like (a |an |you have |you've got )?(tendin[a-z]*|sprain|strain|tear|torn [a-z]+|fracture|hernia|arthritis|bursitis|meniscus|acl|rotator cuff|sciatica|herniated disc|slipped disc|a condition|an injury|a disease|an infection|inflammation|shin splints|plantar fasciitis|impingement)\b/,
+  /\b(sounds|looks|seems) like (a |an |you have |you've got )?[a-z]+ (tendin[a-z]*|sprain|strain|tear|torn [a-z]+|fracture|hernia|arthritis|bursitis|meniscus|acl|rotator cuff|sciatica|herniated disc|slipped disc|a condition|an injury|a disease|an infection|inflammation|shin splints|plantar fasciitis|impingement)\b/,
   /\b(vous avez|tu as|c'est|il s'agit d') (probablement |sans doute |surement |peut-etre |certainement )?(une |un |d'une |d'un )?(tendinite|entorse|elongation|dechirure|fracture|hernie|arthrose|bursite|menisque|lesion|sciatique|inflammation|infection|periostite|aponevrosite|conflit)\b/,
   /\b(ca|cela) (ressemble|fait penser) a (une |un )?(tendinite|entorse|elongation|dechirure|fracture|hernie|arthrose|bursite|menisque|lesion|sciatique|inflammation|infection|periostite|aponevrosite|conflit)\b/,
 ];
@@ -123,7 +124,8 @@ export function guardModelText(raw: string, options: GuardOptions): GuardResult 
   if (anyMatch(folded, UNSAFE)) return { ok: false, reason: 'coach.guard.unsafe_encouragement' };
   if (anyMatch(folded, MEDICATION)) return { ok: false, reason: 'coach.guard.medication' };
   if (anyMatch(folded, PROMISES)) return { ok: false, reason: 'coach.guard.results_promise' };
-  if (guiltPhrases(text, 'en').length > 0 || guiltPhrases(text, 'fr').length > 0 || judgementalBodyTerms(text, 'en').length > 0 || judgementalBodyTerms(text, 'fr').length > 0) {
+  // The denylists of the reply's language (a French list on English text flags "rated" as "raté").
+  if (guiltPhrases(text, options.locale).length > 0 || judgementalBodyTerms(text, options.locale).length > 0) {
     return { ok: false, reason: 'coach.guard.body_or_guilt' };
   }
   for (const m of folded.matchAll(NUMBER_UNIT)) {

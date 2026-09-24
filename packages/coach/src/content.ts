@@ -65,7 +65,7 @@ export const COACH_CONTENT: readonly KnowledgeEntry[] = Object.freeze([
   entry('warning_signs', pending('A1'), ['warning signs', 'warning sign', 'red flags', 'red flag', 'when to stop', 'stop exercising', 'emergency'], ['signes d alerte', 'signe d alerte', 'quand arreter', 'arreter l exercice', 'urgence']),
   entry('screening', pending('A1'), ['health questions', 'screening', 'questionnaire', 'clearance', 'effort cap', 'why rpe 7', 'why is my effort limited', 'health answers'], ['questions de sante', 'questionnaire', 'depistage', 'limite d effort', 'reponses sante', 'autorisation']),
   entry('readiness', pending('A3', 'A5'), ['readiness', 'readiness check', 'how i feel today', 'daily check', 'check-in', 'check in'], ['point forme', 'forme du jour', 'comment je me sens', 'bilan du jour']),
-  entry('missed_session', pending('A3', 'A6'), ['missed session', 'miss a session', 'missed a workout', 'skip a session', 'can not train', 'reflow', 'move a session'], ['seance manquee', 'rater une seance', 'manquer une seance', 'deplacer une seance', 'sauter une seance']),
+  entry('missed_session', pending('A3', 'A6'), ['missed session', 'miss a session', 'missed a workout', 'skip a session', 'can not train', 'reflow', 'move a session'], ['seance manquee', 'rater une seance', 'rate une seance', 'si je rate', 'manquer une seance', 'manque une seance', 'deplacer une seance', 'sauter une seance']),
   entry('short_on_time', pending('A3'), ['short on time', 'not much time', 'time-boxing', 'shorter session', 'less time', 'quick session'], ['peu de temps', 'pas beaucoup de temps', 'seance courte', 'seance plus courte', 'moins de temps']),
   entry('equipment_switch', pending('A3'), ['equipment', 'different gym', 'travel', 'hotel', 'no equipment', 'another place', 'change place', 'at home'], ['materiel', 'autre salle', 'voyage', 'hotel', 'sans materiel', 'autre lieu', 'changer de lieu', 'a la maison']),
   entry('protein_range', pending('A4', 'B4'), ['protein', 'proteins', 'how much protein'], ['proteine', 'proteines', 'combien de proteines']),
@@ -112,6 +112,8 @@ function exerciseText(id: string, locale: Locale): string {
 export function exercisesNamed(question: string): string[] {
   const text = fold(question);
   const hits: { id: string; len: number }[] = [];
+  const tokens = new Set(words(question));
+  const partial: { id: string; score: number }[] = [];
   for (const id of EXERCISE_TEXT_IDS) {
     for (const locale of ['en', 'fr'] as const) {
       const name = fold((catalogues[locale] as Readonly<Record<string, string>>)[`exercise.${id}.name`] ?? '');
@@ -119,9 +121,14 @@ export function exercisesNamed(question: string): string[] {
         hits.push({ id, len: name.length });
         break;
       }
+      // A shortened name ("bench press", "développé couché", "front plank"): most of its long words are in the question.
+      const long = words(name).filter((w) => w.length >= 4);
+      const found = long.filter((w) => tokens.has(w)).length;
+      if (long.length >= 2 && found >= 2 && found / long.length >= 0.6) partial.push({ id, score: found / long.length + found });
     }
   }
-  return hits.sort((a, b) => b.len - a.len || a.id.localeCompare(b.id)).map((h) => h.id);
+  if (hits.length > 0) return hits.sort((a, b) => b.len - a.len || a.id.localeCompare(b.id)).map((h) => h.id);
+  return partial.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id)).map((p) => p.id);
 }
 
 /**
@@ -136,7 +143,8 @@ export function retrieve(question: string, locale: Locale): Retrieved[] {
   for (const e of COACH_CONTENT) {
     const kws = new Set([...e.keywords.en, ...e.keywords.fr]);
     let score = 0;
-    for (const kw of kws) if (phrase(text, raw, kw)) score += 1;
+    // A phrase that matches counts as many times as it has words ("health questions" beats "effort").
+    for (const kw of kws) if (phrase(text, raw, kw)) score += Math.max(1, words(kw).length);
     if (score >= coachValue('retrievalMinScore')) scored.push({ id: e.id, score, text: `${cat[e.title]}: ${cat[e.body]}` });
   }
   const exercises = exercisesNamed(question).slice(0, 2).map((id) => ({ id: `exercise.${id}` as CoachContentId, score: 10, text: exerciseText(id, locale) }));
