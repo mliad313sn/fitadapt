@@ -94,7 +94,7 @@ export const authRoutes =
     app.get(
       '/v1/me',
       {
-        preHandler: authenticate(auth),
+        onRequest: authenticate(auth),
         schema: {
           tags: ['auth'],
           summary: 'The signed-in user.',

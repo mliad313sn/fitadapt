@@ -162,7 +162,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(syncRoutes(auth, sync));
   await app.register(privacyRoutes(auth, privacy));
   await app.register(legalRoutes(auth, legal));
-  await app.register(photoRoutes(auth, new PhotoBackupService({ db: deps.db, privacy, now })));
+  await app.register(photoRoutes(auth, new PhotoBackupService({ db: deps.db, privacy, now, rateLimiter })));
   await app.register(analyticsRoutes(auth, privacy, deps.analyticsSink ?? new NoopAnalyticsSink()));
   // M09: multi-device Fair Pair (REST to create/join, WebSocket for the session itself; ADR-001, ADR-021).
   await app.register(pairRoutes(auth, pair));

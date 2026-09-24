@@ -37,7 +37,8 @@ export const legalRoutes =
   async (app) => {
     const errors = { 400: ErrorResponseSchema, 401: ErrorResponseSchema, 429: ErrorResponseSchema };
     const security = [{ bearerAuth: [] }];
-    const preHandler = authenticate(auth);
+    // API-7: authenticate in onRequest, before the body is read or parsed.
+    const onRequest = authenticate(auth);
 
     app.get(
       '/v1/legal/documents/:documentId',
@@ -59,7 +60,7 @@ export const legalRoutes =
     app.get(
       '/v1/legal/status',
       {
-        preHandler,
+        onRequest,
         schema: {
           tags: ['legal'],
           summary: 'Acceptance state per document and the first-workout gate (L2) for a jurisdiction.',
@@ -77,7 +78,7 @@ export const legalRoutes =
     app.post(
       '/v1/legal/acceptances',
       {
-        preHandler,
+        onRequest,
         schema: {
           tags: ['legal'],
           summary: 'Record an acceptance (append-only). Version must be in force or upcoming; contentHash must match the text shown.',
@@ -101,7 +102,7 @@ export const legalRoutes =
     app.post(
       '/v1/legal/notices',
       {
-        preHandler,
+        onRequest,
         schema: {
           tags: ['legal'],
           summary: 'Record that a point-of-risk notice was shown or acknowledged (L3).',

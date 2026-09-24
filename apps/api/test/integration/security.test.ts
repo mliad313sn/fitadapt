@@ -349,3 +349,67 @@ describe('API-10: per-user limits on appends to never-purged tables', () => {
     expect((await createPair(host)).statusCode).toBe(429);
   });
 });
+
+/** Runs `fn` with photo limits lowered (restored after), so a test does not have to upload gigabytes. */
+async function withPhotoLimits(values: Partial<Record<'maxBytesPerUser' | 'uploadsPerUserPerWindow' | 'maxPhotosPerUser', number>>, fn: () => Promise<void>) {
+  const { photosConfig } = await import('../../src/config/photos.config.js');
+  const saved = Object.fromEntries(Object.keys(values).map((k) => [k, photosConfig[k as keyof typeof values].value]));
+  for (const [k, v] of Object.entries(values)) photosConfig[k as keyof typeof values].value = v;
+  try {
+    await fn();
+  } finally {
+    for (const [k, v] of Object.entries(saved)) photosConfig[k as keyof typeof values].value = v;
+  }
+}
+async function photoReady() {
+  const s = await session();
+  expect((await consent(s, 'photos')).statusCode).toBe(201);
+  expect((await h.app.inject({ method: 'PUT', url: '/v1/photos/backup/key', headers: bearer(s.token), payload: wrappedKey() })).statusCode).toBe(204);
+  return s;
+}
+
+describe('API-7: photo uploads are authenticated before their body is read; storage and rate are bounded', () => {
+  it('a large body without a token answers 401 (not 413: the body is never parsed)', async () => {
+    const payload = Buffer.alloc(16 * 1024 * 1024, 1);
+    const res = await h.app.inject({ method: 'PUT', url: `/v1/photos/backup/photos/${randomUUID()}`, headers: { 'content-type': 'application/octet-stream' }, payload });
+    expect(res.statusCode).toBe(401);
+    // Every authenticated plugin checks the token first: a malformed sync body without a token is 401 too.
+    expect((await h.app.inject({ method: 'POST', url: '/v1/sync/push', payload: { junk: true } })).statusCode).toBe(401);
+  });
+
+  it('an account cannot store more than its byte quota; replacing a photo counts only the new envelope', async () => {
+    const s = await photoReady();
+    await withPhotoLimits({ maxBytesPerUser: 5000 }, async () => {
+      const id = randomUUID();
+      expect((await putPhoto(s, id, envelope(2000))).statusCode).toBe(201);
+      expect((await putPhoto(s, randomUUID(), envelope(2000))).statusCode).toBe(201);
+      const full = await putPhoto(s, randomUUID(), envelope(2000));
+      expect(full.statusCode).toBe(409);
+      expect(full.json()).toEqual({ error: { code: 'photos.storage_full' } });
+      // Replacing the first photo with one of the same size fits.
+      expect((await putPhoto(s, id, envelope(2000))).statusCode).toBe(201);
+    });
+  });
+
+  it('uploads per account are rate-limited', async () => {
+    const s = await photoReady();
+    await withPhotoLimits({ uploadsPerUserPerWindow: 3 }, async () => {
+      for (let i = 0; i < 3; i++) expect((await putPhoto(s, randomUUID(), envelope())).statusCode).toBe(201);
+      const limited = await putPhoto(s, randomUUID(), envelope());
+      expect(limited.statusCode).toBe(429);
+      expect(limited.json()).toEqual({ error: { code: 'photos.rate_limited' } });
+    });
+  });
+});
+
+describe('API-12: the photo count quota cannot be raced past', () => {
+  it('parallel uploads of new photos never exceed the per-account limit', async () => {
+    const s = await photoReady();
+    await withPhotoLimits({ maxPhotosPerUser: 2 }, async () => {
+      expect((await putPhoto(s, randomUUID(), envelope())).statusCode).toBe(201);
+      const results = await Promise.all(Array.from({ length: 6 }, () => putPhoto(s, randomUUID(), envelope())));
+      expect(results.map((r) => r.statusCode).sort()).toEqual([201, 409, 409, 409, 409, 409]);
+      expect(await h.database.db.select().from(photoBackups).where(eq(photoBackups.userId, s.userId))).toHaveLength(2);
+    });
+  });
+});

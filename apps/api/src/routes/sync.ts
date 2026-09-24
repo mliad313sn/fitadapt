@@ -16,7 +16,7 @@ export const syncRoutes =
     app.post(
       '/v1/sync/push',
       {
-        preHandler: authenticate(auth),
+        onRequest: authenticate(auth),
         schema: {
           tags: ['sync'],
           summary: 'Apply outbox mutations; each mutationId is applied at most once.',
@@ -35,7 +35,7 @@ export const syncRoutes =
     app.post(
       '/v1/sync/pull',
       {
-        preHandler: authenticate(auth),
+        onRequest: authenticate(auth),
         schema: {
           tags: ['sync'],
           summary: 'Changes after a revision cursor, in revision order.',

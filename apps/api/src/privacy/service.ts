@@ -340,7 +340,7 @@ export class PrivacyService {
     });
     // Rate-limit counters are keyed hashes with a short TTL; clear them anyway.
     await this.deps.rateLimiter.clear(['otp-request-email', 'otp-verify-email'], emailHash);
-    await this.deps.rateLimiter.clear(['privacy-export', 'analytics', 'privacy-consent', 'legal-acceptance', 'legal-notice', 'relay-create', 'relay-join-user'], this.subjectRef(userId));
+    await this.deps.rateLimiter.clear(['privacy-export', 'analytics', 'privacy-consent', 'legal-acceptance', 'legal-notice', 'relay-create', 'relay-join-user', 'photo-upload'], this.subjectRef(userId));
     return { requestId, status: 'backup_purge_pending', primaryDeletedAt: iso(now), backupPurgeDueAt: iso(due), emailHash };
   }
 
