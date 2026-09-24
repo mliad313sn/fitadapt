@@ -44,6 +44,7 @@ export interface HarnessOptions {
   consentPolicies?: AppDeps['consentPolicies'];
   withdrawalHandlers?: AppDeps['withdrawalHandlers'];
   legalRegistry?: AppDeps['legalRegistry'];
+  trustProxyHops?: AppDeps['trustProxyHops'];
 }
 
 export async function createHarness(options: HarnessOptions = {}): Promise<Harness> {

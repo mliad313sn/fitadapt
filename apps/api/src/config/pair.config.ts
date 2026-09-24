@@ -29,6 +29,18 @@ export const pairConfig = defineConfig({
   pairRateLimitWindowSeconds: { value: 900, unit: 's', source: REVIEW, validated: false },
   /** A new join code that collides with a stored one is drawn again, this many times at most (API-12). */
   joinCodeDrawAttempts: { value: 5, unit: 'draws', source: REVIEW, validated: false },
+  // API-6 / API-9: WebSocket limits.
+  /** An open socket re-checks its sign-in session (revoked, expired) at least this often. */
+  sessionRecheckIntervalMs: { value: 30_000, unit: 'ms', source: REVIEW, validated: false },
+  /** Connections still waiting for their hello, per process. */
+  maxPendingHellos: { value: 200, unit: 'connections', source: REVIEW, validated: false },
+  /** Connections still waiting for their hello, per client address. */
+  maxPendingHellosPerIp: { value: 10, unit: 'connections per address', source: REVIEW, validated: false },
+  /** Messages a socket may have waiting to be handled; above it the socket is closed (4429). */
+  maxQueuedMessagesPerSocket: { value: 32, unit: 'messages', source: REVIEW, validated: false },
+  /** Messages a socket may send per rate window; above it the socket is closed (4429). */
+  messagesPerSocketPerWindow: { value: 60, unit: 'messages per window', source: REVIEW, validated: false },
+  socketRateWindowMs: { value: 10_000, unit: 'ms', source: REVIEW, validated: false },
 });
 
 export type PairConfigKey = keyof typeof pairConfig;

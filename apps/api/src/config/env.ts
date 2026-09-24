@@ -10,6 +10,13 @@ const EnvSchema = z.object({
   AUTH_JWT_SECRET: z.string().min(32),
   AUTH_TOKEN_PEPPER: z.string().min(32),
   SENTRY_DSN: z.url().optional().or(z.literal('').transform(() => undefined)),
+  /**
+   * API-8: how many reverse proxies (the M19 edge) sit in front of the API. 0: none, the socket address is the
+   * client (X-Forwarded-For ignored). n: the client is the address n hops back in X-Forwarded-For, so per-address
+   * rate limits (sign-in codes, pair join, WebSocket hellos) are per client, not per proxy. Set it to the exact
+   * number of trusted hops: one more lets a client spoof its address (ADR-025).
+   */
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
 }).superRefine((env, ctx) => {
   // The .env.example values are public. A production process started with
   // them would sign tokens anyone can forge, so it must refuse to start.

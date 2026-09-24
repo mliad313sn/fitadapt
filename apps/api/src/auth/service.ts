@@ -41,7 +41,22 @@ function toUser(row: typeof users.$inferSelect): User {
  * family (ADR-003).
  */
 export class AuthService {
+  private readonly revokedListeners = new Set<(sessionId: string) => void>();
+
   constructor(private readonly deps: AuthServiceDeps) {}
+
+  /**
+   * API-6: called after a session is revoked (logout, refresh-token reuse), so long-lived channels
+   * (the pair WebSocket) close at once on this instance; other instances re-check on a timer.
+   */
+  onSessionRevoked(listener: (sessionId: string) => void): () => void {
+    this.revokedListeners.add(listener);
+    return () => this.revokedListeners.delete(listener);
+  }
+
+  private revoked(sessionId: string) {
+    for (const listener of this.revokedListeners) listener(sessionId);
+  }
 
   private hash(...parts: string[]): string {
     return keyedHash(this.deps.pepper, ...parts);
@@ -145,14 +160,18 @@ export class AuthService {
           .update(authSessions)
           .set({ revokedAt: now, revokedReason: 'refresh_token_reuse' })
           .where(eq(authSessions.id, row.session.id));
-        return { error: 'reused' as const };
+        return { error: 'reused' as const, sessionId: row.session.id };
       }
       if (row.token.expiresAt <= now) return { error: 'invalid' as const };
       await tx.update(refreshTokens).set({ usedAt: now }).where(eq(refreshTokens.id, row.token.id));
       return { tokens: await this.issueTokens(tx, row.session.userId, row.session.id, row.session.deviceId, now) };
     });
     if ('error' in outcome) {
-      throw outcome.error === 'reused' ? authErrors.refreshTokenReused() : authErrors.invalidRefreshToken();
+      if (outcome.error === 'reused') {
+        this.revoked(outcome.sessionId);
+        throw authErrors.refreshTokenReused();
+      }
+      throw authErrors.invalidRefreshToken();
     }
     return outcome.tokens;
   }
@@ -170,6 +189,7 @@ export class AuthService {
       .update(authSessions)
       .set({ revokedAt: now, revokedReason: 'logout' })
       .where(and(eq(authSessions.id, row.sessionId), isNull(authSessions.revokedAt)));
+    this.revoked(row.sessionId);
   }
 
   async signInWithProvider(request: FederatedSignIn): Promise<AuthResponse> {

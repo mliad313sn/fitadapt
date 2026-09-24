@@ -29,6 +29,7 @@ const app = await buildApp({
   pepper: env.AUTH_TOKEN_PEPPER,
   logLevel: env.LOG_LEVEL,
   errorReporter: reporter,
+  trustProxyHops: env.TRUST_PROXY_HOPS,
 });
 
 // Retention schedule: backup-purge completion and expiry of old records (M17).

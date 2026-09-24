@@ -377,3 +377,102 @@ describe('two devices, one pair session over the WebSocket (goal condition 5)', 
     cb.close();
   }, 30_000);
 });
+
+/** A ready participant signed in with a refresh token (to log out). */
+async function readyWithRefresh() {
+  const dev = device();
+  const auth = await signIn(h, uniqueEmail(), dev);
+  const u = { token: auth.tokens.accessToken, userId: auth.user.id, deviceId: dev.id };
+  expect((await consent(u, 'health')).statusCode).toBe(201);
+  await acceptL2(u);
+  expect((await consent(u, 'partner_sharing')).statusCode).toBe(201);
+  return { u, refresh: auth.tokens.refreshToken };
+}
+const rawSocket = async () => {
+  const ws = new WebSocket(wsUrl);
+  await new Promise<void>((resolve, reject) => {
+    ws.once('open', () => resolve());
+    ws.once('error', reject);
+  });
+  return ws;
+};
+
+describe('API-6: the pair WebSocket ends with the sign-in session', () => {
+  it('logout closes an open socket at once (4401) and nothing more is relayed', async () => {
+    const { u, refresh } = await readyWithRefresh();
+    const created = (await create(u)).json() as { pairSessionId: string };
+    const c = new Client(u, created.pairSessionId);
+    await c.open();
+    c.hello();
+    await c.until(isWelcome);
+    expect((await h.app.inject({ method: 'POST', url: '/v1/auth/logout', payload: { refreshToken: refresh } })).statusCode).toBe(204);
+    expect(await c.closed()).toBe(4401);
+    expect(await h.database.db.select().from(pairEvents)).toEqual([]);
+  });
+
+  it('an expired access token closes the socket on its next message (4401), before the event is stored', async () => {
+    const u = await ready();
+    const created = (await create(u)).json() as { pairSessionId: string };
+    const c = new Client(u, created.pairSessionId);
+    await c.open();
+    c.hello();
+    await c.until(isWelcome);
+    h.clock.advance(16 * 60); // past the 15-minute access token
+    c.send({ type: 'turn', exerciseIndex: 0, setIndex: 0, status: 'done', performance: null });
+    expect(await c.closed()).toBe(4401);
+    expect(await h.database.db.select().from(pairEvents)).toEqual([]);
+  });
+
+  it('a session revoked elsewhere (another instance) closes the socket on its next message (4401)', async () => {
+    const u = await ready();
+    const created = (await create(u)).json() as { pairSessionId: string };
+    const c = new Client(u, created.pairSessionId);
+    await c.open();
+    c.hello();
+    await c.until(isWelcome);
+    // Revoked directly in the database: no in-process notification reaches this socket.
+    await h.database.db.execute(sql`UPDATE auth_sessions SET revoked_at = now(), revoked_reason = 'logout' WHERE user_id = ${u.userId}`);
+    c.send({ type: 'turn', exerciseIndex: 0, setIndex: 0, status: 'done', performance: null });
+    expect(await c.closed()).toBe(4401);
+    expect(await h.database.db.select().from(pairEvents)).toEqual([]);
+  });
+});
+
+describe('API-9: WebSocket resources are bounded', () => {
+  it('a socket that floods messages without waiting is closed (4429); the room is freed when its sockets close', async () => {
+    const a = await ready();
+    const b = await ready();
+    const created = (await create(a)).json() as { pairSessionId: string; joinCode: string };
+    expect((await join(b, created.joinCode)).statusCode).toBe(200);
+    const ca = new Client(a, created.pairSessionId);
+    const cb = new Client(b, created.pairSessionId);
+    await ca.open();
+    ca.hello();
+    await ca.until(isWelcome);
+    await cb.open();
+    cb.hello();
+    await cb.until(isWelcome);
+    expect(h.app.pairSockets.rooms()).toBe(1);
+    for (let i = 0; i < 1000; i++) ca.send({ type: 'turn', exerciseIndex: 0, setIndex: 0, status: 'done', performance: null });
+    expect(await ca.closed()).toBe(4429);
+    const { pairConfig } = await import('../../src/config/pair.config.js');
+    expect((await h.database.db.select().from(pairEvents)).length).toBeLessThanOrEqual(pairConfig.messagesPerSocketPerWindow.value);
+    cb.close();
+    await cb.closed();
+    for (let i = 0; i < 50 && h.app.pairSockets.rooms() > 0; i++) await new Promise((r) => setTimeout(r, 20));
+    expect(h.app.pairSockets.rooms()).toBe(0);
+  });
+
+  it('connections waiting for their hello are capped per address; a hello frees the slot', async () => {
+    const { pairConfig } = await import('../../src/config/pair.config.js');
+    const waiting = [];
+    for (let i = 0; i < pairConfig.maxPendingHellosPerIp.value; i++) waiting.push(await rawSocket());
+    expect(h.app.pairSockets.pending()).toBe(pairConfig.maxPendingHellosPerIp.value);
+    await expect(rawSocket()).rejects.toThrow(/429/);
+    for (const ws of waiting) ws.close();
+    for (let i = 0; i < 50 && h.app.pairSockets.pending() > 0; i++) await new Promise((r) => setTimeout(r, 20));
+    expect(h.app.pairSockets.pending()).toBe(0);
+    const again = await rawSocket();
+    again.close();
+  });
+});

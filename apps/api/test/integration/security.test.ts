@@ -421,3 +421,42 @@ describe('API-12: the photo count quota cannot be raced past', () => {
     });
   });
 });
+
+describe('sync push body limit (with FIX-E: the device keeps a push at 512 KiB or less)', () => {
+  it('a push body over the configured limit answers 413; one under it is processed', async () => {
+    const { syncConfig } = await import('../../src/config/sync.config.js');
+    const s = await session();
+    const big = { units: 'metric', displayName: 'x'.repeat(10) };
+    const many = Array.from({ length: 500 }, () => insert('preferences', big));
+    const padded = { deviceId: s.deviceId, mutations: many, pad: 'p'.repeat(syncConfig.pushBodyLimitBytes.value) };
+    expect((await h.app.inject({ method: 'POST', url: '/v1/sync/push', headers: bearer(s.token), payload: padded })).statusCode).toBe(413);
+    expect((await pushReq(s, [insert('preferences', big)])).statusCode).toBe(200);
+  });
+});
+
+describe('API-8: behind the edge proxy, per-address limits are per client', () => {
+  const requestCode = (app: Harness['app'], forwardedFor?: string) =>
+    app.inject({ method: 'POST', url: '/v1/auth/otp/request', payload: { email: uniqueEmail(), locale: 'en' }, headers: forwardedFor ? { 'x-forwarded-for': forwardedFor } : {} });
+
+  it('with one trusted hop, clients behind the proxy get their own sign-in bucket; the client cannot choose it', async () => {
+    const { authConfig } = await import('../../src/config/auth.config.js');
+    const limit = authConfig.otpRequestsPerIpPerWindow.value;
+    const proxied = await createHarness({ trustProxyHops: 1 });
+    try {
+      // More sign-ins than one bucket allows, from different clients through the proxy (127.0.0.1): none is refused.
+      for (let i = 0; i < limit + 5; i++) expect((await requestCode(proxied.app, `198.51.100.${i + 1}`)).statusCode).toBe(202);
+      // One client is limited on its own; a spoofed left-most entry does not give it a new bucket.
+      for (let i = 0; i < limit; i++) expect((await requestCode(proxied.app, `10.0.0.${i}, 203.0.113.50`)).statusCode).toBe(202);
+      expect((await requestCode(proxied.app, '10.9.9.9, 203.0.113.50')).statusCode).toBe(429);
+    } finally {
+      await proxied.close();
+    }
+  });
+
+  it('with no trusted hop (the default), X-Forwarded-For is ignored', async () => {
+    const { authConfig } = await import('../../src/config/auth.config.js');
+    const limit = authConfig.otpRequestsPerIpPerWindow.value;
+    for (let i = 0; i < limit; i++) expect((await requestCode(h.app, `198.51.100.${i + 1}`)).statusCode).toBe(202);
+    expect((await requestCode(h.app, '198.51.100.250')).statusCode).toBe(429);
+  });
+});

@@ -2,13 +2,14 @@ import { ErrorResponseSchema, PullRequestSchema, PullResponseSchema, PushRequest
 import type { SyncServer } from '@fitadapt/sync';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { ApiError } from '../auth/errors.js';
+import { syncValue } from '../config/sync.config.js';
 import type { AuthService } from '../auth/service.js';
 import { authenticate, requireAuth } from '../plugins/authenticate.js';
 
 export const syncRoutes =
   (auth: AuthService, sync: SyncServer): FastifyPluginAsyncZod =>
   async (app) => {
-    const errors = { 400: ErrorResponseSchema, 401: ErrorResponseSchema, 403: ErrorResponseSchema };
+    const errors = { 400: ErrorResponseSchema, 401: ErrorResponseSchema, 403: ErrorResponseSchema, 413: ErrorResponseSchema };
     const sameDevice = (tokenDevice: string, bodyDevice: string) => {
       if (tokenDevice !== bodyDevice) throw new ApiError(403, 'sync.device_mismatch');
     };
@@ -17,6 +18,8 @@ export const syncRoutes =
       '/v1/sync/push',
       {
         onRequest: authenticate(auth),
+        // Explicit, from config (the device keeps a push at half of it).
+        bodyLimit: syncValue('pushBodyLimitBytes'),
         schema: {
           tags: ['sync'],
           summary: 'Apply outbox mutations; each mutationId is applied at most once.',
