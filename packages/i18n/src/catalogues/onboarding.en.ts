@@ -128,6 +128,9 @@ export const onboardingEn = {
   'onboarding.result.pregnancy': 'During pregnancy and after giving birth, talk with your midwife, doctor or another health professional before exercising. In the meantime the app offers only a low-intensity exercise library and does not build programmes for you.',
   'onboarding.result.why': 'Why',
   'onboarding.result.clearanceLater': 'Once a professional has cleared you, update your health answers from the home screen.',
+  'onboarding.result.hold.title': 'Training is on hold for now',
+  'onboarding.result.hold.body': 'You reported a symptom, or a professional asked you to limit activity. Please see a doctor before you start exercising. Until a professional agrees you can exercise, the app does not offer sessions, assessments or programmes.',
+  'onboarding.result.hold.urgent': 'If you have chest pain or pressure, feel faint or feel very unwell right now, do not wait:',
 
   // Terms and privacy step
   'onboarding.terms.title': 'Terms and privacy',
@@ -146,6 +149,7 @@ export const onboardingEn = {
   'firstWorkout.available': '{count, plural, =0 {No exercise available here yet} one {# exercise available here} other {# exercises available here}}',
   'firstWorkout.builderPending': 'Your session is built from your goals and the equipment of this place. The session builder is not part of this version yet.',
   'firstWorkout.lowIntensity': 'Only the low-intensity exercise library is offered for now.',
+  'firstWorkout.hold': 'Training is on hold until a health professional has checked you and agrees you can exercise. Then update your health answers from the home screen.',
   'firstWorkout.noticeAcknowledged': 'Notice read',
   'firstWorkout.home': 'Back to home',
 
@@ -186,6 +190,10 @@ export const onboardingEn = {
   'reason.safety_profile.s7.under_minimum_age': 'The app is only available from age 16.',
   'reason.safety_profile.s1.clearance_attested': 'You confirmed that a professional cleared you to exercise.',
   'reason.safety_profile.s1.unresolved_flag': 'Until a professional clears you, effort stays moderate, without high-intensity intervals or maximal tests.',
+  'reason.safety_profile.s1.training_hold': 'Because of what you reported, sessions, assessments and programmes are on hold until a professional has checked you and agrees you can exercise.',
+  'reason.safety_profile.restriction.medication_affecting_heart_rate': 'You said you take a medicine that may change your heart rate, so effort is guided by how hard it feels and the talk test, not by heart-rate zones.',
+  'reason.safety_profile.s4.eating_disorder': 'You said you have or had an eating disorder, so calorie-deficit features stay off.',
+  'reason.safety.s1.training_hold': 'Training is on hold until a professional has checked you and agrees you can exercise.',
   'reason.safety_profile.limitation.reported': 'You asked to go easy on some body areas.',
   'reason.safety_profile.not_screened.incomplete': 'Not every health question has an answer.',
   'reason.safety_profile.not_screened.invalid': 'The health answers could not be read.',

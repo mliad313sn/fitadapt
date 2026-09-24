@@ -29,6 +29,7 @@ export const nutritionEn = {
   'engine.reason.nutrition.supportive.chosen': 'You chose simple habits without numbers.',
   'engine.reason.nutrition.supportive.minor': 'Under 18, the app does not set calorie targets. It shows simple habits instead.',
   'engine.reason.nutrition.supportive.advised_against': 'You told us a professional advised you not to restrict calories, so the app shows habits without numbers.',
+  'engine.reason.nutrition.supportive.eating_disorder': 'You told us you have or had an eating disorder, so the app shows habits without calorie numbers. If eating, food or weight worries you, a doctor or a specialist eating-disorder service can help, at any time.',
   'engine.reason.nutrition.supportive.not_screened': 'Calorie targets need a completed health check first, so the app shows simple habits.',
   'engine.reason.nutrition.supportive.special_population': 'During pregnancy or after a recent birth the app does not set calorie targets. A health professional can advise you.',
   'engine.reason.nutrition.needs_measurements': 'Add your height and current weight to see energy and protein estimates.',

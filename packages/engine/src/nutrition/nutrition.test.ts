@@ -156,6 +156,8 @@ describe('S4: deficit features disabled → supportive mode without numbers', ()
   it.each([
     ['17 years old', p1({ birthDate: { year: 2009, month: 1, day: 1 }, safetyProfile: screened([], { year: 2009, month: 1, day: 1 }) }), 'nutrition.supportive.minor'],
     ['advised against calorie restriction', p1({ safetyProfile: screened(['advised_against_calorie_restriction']) }), 'nutrition.supportive.advised_against'],
+    // FIX-B (A4 M10-20): a self-reported current or past eating disorder → supportive mode with its own signposting copy.
+    ['self-reported eating disorder', p1({ safetyProfile: screened(['eating_disorder']) }), 'nutrition.supportive.eating_disorder'],
     ['not screened', p1({ safetyProfile: notScreenedSafetyProfile() }), 'nutrition.supportive.not_screened'],
     ['pregnancy or recent birth', p1({ safetyProfile: screened(['pregnancy_or_recent_birth']) }), 'nutrition.supportive.special_population'],
   ])('%s: no energy number, no protein number, no planned loss; habits shown', (_n, input, reason) => {

@@ -1,7 +1,7 @@
 import { firstWorkoutGate, type LegalDocumentId } from '@fitadapt/legal';
 import type { ReassessmentStatus } from '@fitadapt/engine';
 import type { CapacityModel, IntensityLock, JointFlags, ProgramRecord, ReadinessCheck, ReflowRecord, SafetyProfile, SessionHistoryEntry } from '@fitadapt/shared';
-import type { RescreenStatus } from '@fitadapt/safety';
+import { trainingHoldFlags, type RescreenStatus } from '@fitadapt/safety';
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import type { SessionStatus, SessionStore } from '../auth/session-store';
@@ -139,6 +139,13 @@ export interface FirstWorkoutAccess {
   readonly onboardingComplete: boolean;
   /** L2 documents still to accept or consent to, in display order. */
   readonly missingLegal: readonly LegalDocumentId[];
+  /**
+   * FIX-B (CS-1): a symptom flag (or a professional's advice to limit activity) is unresolved: training is on hold
+   * until the clearance is attested. The first-workout screen (with the hold explained) and nutrition stay reachable.
+   */
+  readonly trainingHold: boolean;
+  /** Sessions, assessments, the calendar and Fair Pair: `allowed` and no training hold. */
+  readonly training: boolean;
 }
 
 /**
@@ -155,5 +162,7 @@ export function useFirstWorkoutAccess(): FirstWorkoutAccess {
   const safety = useSafetyProfile();
   const gate = firstWorkoutGate(acceptances, consents, { jurisdiction, now: clock.now(), registry: currentLegalRegistry() });
   const onboardingComplete = completed !== null;
-  return { allowed: onboardingComplete && gate.allowed && safety.screeningOutcome !== 'blocked', onboardingComplete, missingLegal: gate.missing };
+  const allowed = onboardingComplete && gate.allowed && safety.screeningOutcome !== 'blocked';
+  const trainingHold = trainingHoldFlags(safety).length > 0;
+  return { allowed, onboardingComplete, missingLegal: gate.missing, trainingHold, training: allowed && !trainingHold };
 }

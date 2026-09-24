@@ -34,6 +34,7 @@ export const M10_REASON_PARAMS: Readonly<Record<string, readonly string[]>> = Ob
     'nutrition.supportive.chosen',
     'nutrition.supportive.minor',
     'nutrition.supportive.advised_against',
+    'nutrition.supportive.eating_disorder',
     'nutrition.supportive.not_screened',
     'nutrition.supportive.special_population',
     'nutrition.needs_measurements',

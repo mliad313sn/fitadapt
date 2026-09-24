@@ -1,4 +1,4 @@
-import { screeningGateCheck } from '@fitadapt/safety';
+import { screeningGateCheck, trainingHoldFlags } from '@fitadapt/safety';
 import {
   JOINTS,
   MOVEMENT_PATTERNS,
@@ -215,6 +215,8 @@ describe('generateSession never breaks the safety caps, the clock or the equipme
       fc.property(inputArb, fc.integer({ min: -40, max: 40 }), fc.integer(), (input, clockShift, seed) => {
         const ctx = createEngineContext({ clock: fixedClock(NOW + clockShift * DAY), seed });
         const r = generateSession(input, SESSION_LIBRARY, ctx);
+        // FIX-B (CS-1): a symptom flag without clearance holds all training — never a plan, whatever else the input says.
+        if (trainingHoldFlags(input.safetyProfile).length > 0) expect(r.status).toBe('unavailable');
         if (r.status === 'unavailable') {
           expect(r.reasonCodes.length).toBeGreaterThan(0);
           return;
@@ -222,7 +224,8 @@ describe('generateSession never breaks the safety caps, the clock or the equipme
         plans += 1;
         checkPlan(r.plan, input);
       }),
-      { numRuns: 15_000 },
+      // FIX-B: held profiles never produce a plan, so more runs keep ≥ 10,000 checked plans.
+      { numRuns: 24_000 },
     );
     // Refusals (no time, S1 effort cap, nothing possible) are part of the input space; at least 10,000 plans are checked.
     expect(plans).toBeGreaterThanOrEqual(10_000);

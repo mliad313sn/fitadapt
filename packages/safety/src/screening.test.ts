@@ -13,7 +13,13 @@ import {
   notScreenedSafetyProfile,
   rescreenStatus,
   screeningGateCheck,
+  strictestSafetyProfile,
+  trainingHoldCheck,
+  trainingHoldFlags,
   unvalidatedScreeningRules,
+  deficitFeatures,
+  holdsUntilClearance,
+  TRAINING_HOLD_REASON,
   type CalendarDate,
 } from './index.js';
 
@@ -35,7 +41,7 @@ function responses(overrides: Partial<ScreeningResponses> & { yes?: ScreeningQue
 }
 
 /** The fields that matter per branch; every row is also schema-valid. */
-type Expect = Partial<Pick<SafetyProfile, 'screeningOutcome' | 'maxRPE' | 'allowHIIT' | 'allowMaxTests' | 'impactCeiling' | 'avoidTags' | 'unresolvedFlags' | 'deficitNutritionAllowed' | 'specialPopulation' | 'automaticProgrammingAllowed' | 'lowIntensityLibraryOnly' | 'professionalGuidance' | 'limitedJoints'>> & { reasons?: string[] };
+type Expect = Partial<Pick<SafetyProfile, 'screeningOutcome' | 'maxRPE' | 'allowHIIT' | 'allowMaxTests' | 'impactCeiling' | 'avoidTags' | 'unresolvedFlags' | 'deficitNutritionAllowed' | 'specialPopulation' | 'automaticProgrammingAllowed' | 'lowIntensityLibraryOnly' | 'professionalGuidance' | 'limitedJoints' | 'heartRateZonesAllowed'>> & { reasons?: string[] };
 
 const S1_CAPPED = { maxRPE: S1_MAX_RPE_WHILE_UNRESOLVED, allowHIIT: false, allowMaxTests: false } as const;
 
@@ -43,6 +49,9 @@ const S1_CAPPED = { maxRPE: S1_MAX_RPE_WHILE_UNRESOLVED, allowHIIT: false, allow
 const inTagOrder = (tags: readonly ContraindicationTag[]) => CONTRAINDICATION_TAGS.filter((t) => tags.includes(t));
 
 const clearanceFlags = SCREENING_QUESTION_IDS.filter((q) => SCREENING_RULES[q].kind === 'clearance_flag');
+/** FIX-B (CS-1): symptom flags and "advised to limit activity" hold all training until clearance (stricter than S1). */
+const HOLDING_FLAGS: readonly ScreeningQuestionId[] = ['chest_discomfort', 'fainting_or_dizziness', 'unusual_breathlessness', 'advised_to_limit_activity'];
+const cappedFlags = clearanceFlags.filter((q) => !HOLDING_FLAGS.includes(q));
 
 const table: Array<{ name: string; input: ScreeningResponses; expect: Expect }> = [
   {
@@ -65,7 +74,7 @@ const table: Array<{ name: string; input: ScreeningResponses; expect: Expect }> 
     },
   },
   // Every single "yes", one row each.
-  ...clearanceFlags.map((q) => ({
+  ...cappedFlags.map((q) => ({
     name: `single yes: ${q} → consult a professional, S1 caps until clearance`,
     input: responses({ yes: [q] }),
     expect: {
@@ -79,6 +88,41 @@ const table: Array<{ name: string; input: ScreeningResponses; expect: Expect }> 
       reasons: [SCREENING_RULES[q].reasonCode, 'safety_profile.s1.unresolved_flag'],
     },
   })),
+  // FIX-B (CS-1): stricter than the S1 caps — no automatic programming, session or assessment until clearance.
+  ...HOLDING_FLAGS.map((q) => ({
+    name: `single yes: ${q} → consult a professional, training HELD until clearance (stricter than S1)`,
+    input: responses({ yes: [q] }),
+    expect: {
+      screeningOutcome: 'consult_professional' as const,
+      ...S1_CAPPED,
+      unresolvedFlags: [q],
+      professionalGuidance: true,
+      deficitNutritionAllowed: true,
+      automaticProgrammingAllowed: false,
+      avoidTags: inTagOrder(SCREENING_RULES[q].afterClearance.avoidTags ?? []),
+      reasons: [SCREENING_RULES[q].reasonCode, 'safety_profile.s1.unresolved_flag', TRAINING_HOLD_REASON],
+    },
+  })),
+  {
+    name: 'a holding flag with an attested clearance → the hold is lifted, after-clearance restrictions kept',
+    input: responses({ yes: ['fainting_or_dizziness'], clearanceAttested: true }),
+    expect: { screeningOutcome: 'cleared_with_restrictions', unresolvedFlags: [], automaticProgrammingAllowed: true, maxRPE: 10, avoidTags: inTagOrder(['inversion', 'high_balance_demand']) },
+  },
+  {
+    name: 'single yes: medication_affecting_heart_rate → effort-based zones (no heart-rate zones), before and after clearance (CS-7)',
+    input: responses({ yes: ['medication_affecting_heart_rate'] }),
+    expect: { screeningOutcome: 'cleared_with_restrictions', heartRateZonesAllowed: false, unresolvedFlags: [], maxRPE: 10, automaticProgrammingAllowed: true, reasons: ['safety_profile.restriction.medication_affecting_heart_rate'] },
+  },
+  {
+    name: 'single yes: eating_disorder → deficit features off, training cleared (S4, A4 M10-20)',
+    input: responses({ yes: ['eating_disorder'] }),
+    expect: { screeningOutcome: 'cleared', deficitNutritionAllowed: false, maxRPE: 10, heartRateZonesAllowed: true, reasons: ['safety_profile.s4.eating_disorder', 'safety_profile.cleared'] },
+  },
+  {
+    name: 'medication_affecting_effort, cleared → heart-rate zones still not used (CS-7)',
+    input: responses({ yes: ['medication_affecting_effort'], clearanceAttested: true }),
+    expect: { screeningOutcome: 'cleared_with_restrictions', heartRateZonesAllowed: false, unresolvedFlags: [] },
+  },
   {
     name: 'single yes: bone_joint_back → cleared with restrictions (low impact, no jumping), no S1 cap',
     input: responses({ yes: ['bone_joint_back'] }),
@@ -223,7 +267,8 @@ describe('evaluateScreening (table-driven, goal condition 2)', () => {
 
   it('every screening rule awaits seat A1 review (validated:false)', () => {
     expect(unvalidatedScreeningRules()).toEqual([...SCREENING_QUESTION_IDS]);
-    for (const q of SCREENING_QUESTION_IDS) expect(SCREENING_RULES[q]).toMatchObject({ validated: false, reviewSeat: 'A1' });
+    // The eating-disorder answer is led by seat A4 (nutrition), with A1 (FIX-B).
+    for (const q of SCREENING_QUESTION_IDS) expect(SCREENING_RULES[q]).toMatchObject({ validated: false, reviewSeat: q === 'eating_disorder' ? 'A4' : 'A1' });
     for (const v of Object.values(SCREENING_CONFIG)) expect(v.validated).toBe(false);
   });
 });
@@ -289,7 +334,9 @@ describe('screening properties', () => {
           impact.indexOf(after.impactCeiling) <= impact.indexOf(before.impactCeiling) &&
           before.avoidTags.every((t) => after.avoidTags.includes(t)) &&
           (!after.deficitNutritionAllowed || before.deficitNutritionAllowed) &&
-          (!after.automaticProgrammingAllowed || before.automaticProgrammingAllowed)
+          (!after.automaticProgrammingAllowed || before.automaticProgrammingAllowed) &&
+          (after.heartRateZonesAllowed !== true || before.heartRateZonesAllowed === true) &&
+          trainingHoldFlags(before).every((f) => trainingHoldFlags(after).includes(f))
         );
       }),
       { numRuns: 2000 },
@@ -322,7 +369,8 @@ describe('re-screening (every 12 months or on a new condition)', () => {
 
 describe('S1 screening gate check (for the engine)', () => {
   const cleared = evaluateScreening(responses());
-  const flagged = evaluateScreening(responses({ yes: ['chest_discomfort'] }));
+  // A flag that caps (FIX-B: chest discomfort now holds; see the hold tests below).
+  const flagged = evaluateScreening(responses({ yes: ['heart_or_blood_pressure'] }));
   const gate = (profile: SafetyProfile, request: { rpe: number; hiit: boolean; maximalTest: boolean }) => evaluateSafety([{ invariant: 'S1', check: screeningGateCheck }], { profile, request });
 
   it('allows anything within the profile', () => {
@@ -348,5 +396,101 @@ describe('S1 screening gate check (for the engine)', () => {
 
   it('fails closed on a NaN intensity', () => {
     expect(gate(cleared, { rpe: Number.NaN, hiit: false, maximalTest: false }).allowed).toBe(false);
+  });
+});
+
+describe('FIX-B (CS-1): symptom flags hold all training until clearance (stricter than S1)', () => {
+  const gate = (profile: SafetyProfile, request: { rpe: number; hiit: boolean; maximalTest: boolean }) => evaluateSafety([{ invariant: 'S1', check: screeningGateCheck }], { profile, request });
+
+  it('the holding flags are exactly the symptom flags and "advised to limit activity", sourced to the A1/A2 pre-review', () => {
+    expect(SCREENING_QUESTION_IDS.filter(holdsUntilClearance)).toEqual(HOLDING_FLAGS);
+    for (const q of HOLDING_FLAGS) expect(SCREENING_RULES[q]).toMatchObject({ validated: false, source: expect.stringContaining('A1-A2-clinical-safety.md') });
+  });
+
+  it('refuses even the lightest request while a holding flag is unresolved (sessions, assessments, programs)', () => {
+    const held = evaluateScreening(responses({ yes: ['chest_discomfort'] }));
+    expect(trainingHoldFlags(held)).toEqual(['chest_discomfort']);
+    expect(gate(held, { rpe: 1, hiit: false, maximalTest: false }).violations).toEqual([{ invariant: 'S1', reasonCode: 'safety.s1.training_hold' }]);
+    expect(trainingHoldCheck({ profile: held })).toEqual({ invariant: 'S1', reasonCode: 'safety.s1.training_hold' });
+    expect(trainingHoldCheck({ profile: evaluateScreening(responses({ yes: ['heart_or_blood_pressure'] })) })).toBeNull();
+    expect(trainingHoldCheck({ profile: evaluateScreening(responses({ yes: ['chest_discomfort'], clearanceAttested: true })) })).toBeNull();
+  });
+
+  it('property: any response set with a holding flag and no clearance → no automatic programming and every request refused', () => {
+    fc.assert(
+      fc.property(arbResponses, fc.constantFrom(...HOLDING_FLAGS), fc.double({ min: 0, max: 10, noNaN: true }), fc.boolean(), fc.boolean(), (r, q, rpe, hiit, maximalTest) => {
+        const p = evaluateScreening({ ...r, answers: { ...r.answers, [q]: 'yes' }, clearanceAttested: false });
+        if (p.screeningOutcome === 'blocked') return !p.automaticProgrammingAllowed;
+        return !p.automaticProgrammingAllowed && trainingHoldFlags(p).includes(q) && !gate(p, { rpe, hiit, maximalTest }).allowed;
+      }),
+      { numRuns: 2000 },
+    );
+  });
+
+  it('property: a tampered held profile (every permission reopened) is still refused', () => {
+    const held = evaluateScreening(responses({ yes: ['unusual_breathlessness'] }));
+    fc.assert(
+      fc.property(fc.double({ min: 0, max: 10, noNaN: true }), fc.boolean(), fc.boolean(), (rpe, hiit, maximalTest) => {
+        const tampered: SafetyProfile = { ...held, maxRPE: 10, allowHIIT: true, allowMaxTests: true, automaticProgrammingAllowed: true, screeningOutcome: 'cleared' };
+        return !gate(tampered, { rpe, hiit, maximalTest }).allowed;
+      }),
+    );
+  });
+
+  it('property: combining screenings keeps any hold (a clearance in one screening never lifts a hold raised in another)', () => {
+    fc.assert(
+      fc.property(fc.array(arbResponses, { minLength: 2, maxLength: 4 }), (rs) => {
+        const profiles = rs.map(evaluateScreening);
+        const combined = strictestSafetyProfile(profiles);
+        const anyHeld = profiles.some((p) => trainingHoldFlags(p).length > 0);
+        return !anyHeld || (trainingHoldFlags(combined).length > 0 && !combined.automaticProgrammingAllowed);
+      }),
+      { numRuns: 1000 },
+    );
+  });
+});
+
+describe('FIX-B (CS-7): heart-rate zones only when no medicine may change the heart-rate response', () => {
+  it('property: either medication answer "yes" never allows heart-rate zones; not screened never allows them', () => {
+    fc.assert(
+      fc.property(arbResponses, (r) => {
+        const p = evaluateScreening(r);
+        const med = r.answers.medication_affecting_heart_rate === 'yes' || r.answers.medication_affecting_effort === 'yes';
+        if (p.screeningOutcome === 'blocked' || p.screeningOutcome === 'not_screened') return p.heartRateZonesAllowed === false;
+        return p.heartRateZonesAllowed === !med;
+      }),
+      { numRuns: 2000 },
+    );
+    expect(notScreenedSafetyProfile().heartRateZonesAllowed).toBe(false);
+    expect(blockedSafetyProfile().heartRateZonesAllowed).toBe(false);
+  });
+
+  it('a combination allows heart-rate zones only if every screening does; a profile without the field counts as "not allowed"', () => {
+    const open = evaluateScreening(responses());
+    const med = evaluateScreening(responses({ yes: ['medication_affecting_heart_rate'] }));
+    expect(strictestSafetyProfile([open, med]).heartRateZonesAllowed).toBe(false);
+    const { heartRateZonesAllowed: _drop, ...legacy } = open;
+    expect(strictestSafetyProfile([open, legacy as SafetyProfile]).heartRateZonesAllowed).toBe(false);
+    expect(strictestSafetyProfile([open, open]).heartRateZonesAllowed).toBe(true);
+  });
+});
+
+describe('FIX-B (A4 M10-20): a self-reported eating disorder switches deficit features off with its own reason', () => {
+  it('deficitFeatures names the eating-disorder reason (signposting copy), not "advised against"', () => {
+    const p = evaluateScreening(responses({ yes: ['eating_disorder'] }));
+    expect(deficitFeatures(p, ADULT, TODAY)).toEqual({ allowed: false, reasonCodes: ['safety.s4.eating_disorder'] });
+    const both = evaluateScreening(responses({ yes: ['eating_disorder', 'advised_against_calorie_restriction'] }));
+    expect(deficitFeatures(both, ADULT, TODAY).reasonCodes).toEqual(['safety.s4.eating_disorder', 'safety.s4.deficit_disabled']);
+    expect(deficitFeatures(evaluateScreening(responses({ yes: ['advised_against_calorie_restriction'] })), ADULT, TODAY).reasonCodes).toEqual(['safety.s4.deficit_disabled']);
+  });
+
+  it('property: an eating-disorder "yes" never allows deficit features, whatever else is answered', () => {
+    fc.assert(
+      fc.property(arbResponses, (r) => {
+        const p = evaluateScreening({ ...r, answers: { ...r.answers, eating_disorder: 'yes' } });
+        return !p.deficitNutritionAllowed && !deficitFeatures(p, r.birthDate, TODAY).allowed;
+      }),
+      { numRuns: 1000 },
+    );
   });
 });

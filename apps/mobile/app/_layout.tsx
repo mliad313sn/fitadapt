@@ -46,7 +46,10 @@ import { createPairStore } from '../src/pair/pair-store';
  */
 function GatedStack() {
   const passed = useAgeGate((s) => s.status === 'allowed');
-  const workout = useFirstWorkoutAccess().allowed;
+  const access = useFirstWorkoutAccess();
+  const workout = access.allowed;
+  // FIX-B (CS-1): while training is on hold (a symptom flag before clearance), no session, assessment, calendar or pair route.
+  const training = access.training;
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={passed}>
@@ -63,8 +66,13 @@ function GatedStack() {
         ))}
       </Stack.Protected>
       <Stack.Protected guard={passed && workout}>
+        {/* FIX-B (CS-1): reachable during a training hold, to explain it (the engine refuses any session there). */}
         <Stack.Screen name="first-workout" />
-        {/* M07: the assessment is a workout activity: same L2 gate as the first workout. */}
+        {/* M10: nutrition behind the same L2 gate (screening done, Terms, Privacy and health consent accepted); deficit set-up shows its own L3 notice. */}
+        <Stack.Screen name="nutrition" />
+      </Stack.Protected>
+      <Stack.Protected guard={passed && workout && training}>
+        {/* M07: the assessment is a workout activity: same L2 gate as the first workout, and no training hold. */}
         <Stack.Screen name="assessment" />
         {/* M08: the training calendar is a workout activity too. */}
         <Stack.Screen name="calendar" />
@@ -72,8 +80,6 @@ function GatedStack() {
         <Stack.Screen name="workout" />
         {/* M09: Fair Pair on one phone; the owner's L2 gate here, the partner's own gate inside the screen. */}
         <Stack.Screen name="pair" />
-        {/* M10: nutrition behind the same L2 gate (screening done, Terms, Privacy and health consent accepted); deficit set-up shows its own L3 notice. */}
-        <Stack.Screen name="nutrition" />
       </Stack.Protected>
       <Stack.Protected guard={!passed}>
         <Stack.Screen name="age-gate" />

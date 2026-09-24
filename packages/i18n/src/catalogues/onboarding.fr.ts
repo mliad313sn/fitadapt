@@ -121,6 +121,9 @@ export const onboardingFr: Record<keyof typeof onboardingEn, string> = {
   'onboarding.result.pregnancy': 'Pendant la grossesse et après un accouchement, parlez-en à votre sage-femme, à votre médecin ou à un autre professionnel de santé avant de faire de l’exercice. En attendant, l’application ne propose qu’une bibliothèque d’exercices de faible intensité et ne construit pas de programme pour vous.',
   'onboarding.result.why': 'Pourquoi',
   'onboarding.result.clearanceLater': 'Une fois l’accord d’un professionnel obtenu, mettez à jour vos réponses de santé depuis l’accueil.',
+  'onboarding.result.hold.title': 'L’entraînement est en pause pour le moment',
+  'onboarding.result.hold.body': 'Vous avez signalé un symptôme, ou un professionnel vous a demandé de limiter l’activité. Consultez un médecin avant de commencer à faire de l’exercice. Tant qu’un professionnel n’a pas donné son accord, l’application ne propose ni séance, ni évaluation, ni programme.',
+  'onboarding.result.hold.urgent': 'Si vous avez maintenant une douleur ou une pression dans la poitrine, une sensation de malaise ou si vous vous sentez très mal, n’attendez pas :',
 
   'onboarding.terms.title': 'Conditions et confidentialité',
   'onboarding.terms.intro': 'Veuillez lire et accepter les deux textes pour continuer.',
@@ -136,6 +139,7 @@ export const onboardingFr: Record<keyof typeof onboardingEn, string> = {
   'firstWorkout.available': '{count, plural, =0 {Aucun exercice disponible ici pour l’instant} one {# exercice disponible ici} other {# exercices disponibles ici}}',
   'firstWorkout.builderPending': 'Votre séance est construite à partir de vos objectifs et du matériel de ce lieu. Le générateur de séances n’est pas encore inclus dans cette version.',
   'firstWorkout.lowIntensity': 'Seule la bibliothèque d’exercices de faible intensité est proposée pour l’instant.',
+  'firstWorkout.hold': 'L’entraînement est en pause jusqu’à ce qu’un professionnel de santé vous ait examiné·e et soit d’accord pour que vous fassiez de l’exercice. Mettez ensuite à jour vos réponses de santé depuis l’accueil.',
   'firstWorkout.noticeAcknowledged': 'Information lue',
   'firstWorkout.home': 'Retour à l’accueil',
 
@@ -173,6 +177,10 @@ export const onboardingFr: Record<keyof typeof onboardingEn, string> = {
   'reason.safety_profile.s7.under_minimum_age': 'L’application n’est accessible qu’à partir de 16 ans.',
   'reason.safety_profile.s1.clearance_attested': 'Vous avez confirmé qu’un professionnel vous a autorisé·e à faire de l’exercice.',
   'reason.safety_profile.s1.unresolved_flag': 'Tant qu’un professionnel ne vous a pas donné son accord, l’effort reste modéré, sans intervalles à haute intensité ni tests maximaux.',
+  'reason.safety_profile.s1.training_hold': 'D’après ce que vous avez indiqué, les séances, les évaluations et les programmes sont en pause jusqu’à ce qu’un professionnel vous ait examiné·e et soit d’accord pour que vous fassiez de l’exercice.',
+  'reason.safety_profile.restriction.medication_affecting_heart_rate': 'Vous avez indiqué prendre un médicament qui peut modifier votre fréquence cardiaque : l’effort se règle sur la sensation d’effort et le test de la parole, pas sur des zones de fréquence cardiaque.',
+  'reason.safety_profile.s4.eating_disorder': 'Vous avez indiqué avoir ou avoir eu un trouble du comportement alimentaire : les fonctions de déficit calorique restent désactivées.',
+  'reason.safety.s1.training_hold': 'L’entraînement est en pause jusqu’à ce qu’un professionnel vous ait examiné·e et soit d’accord pour que vous fassiez de l’exercice.',
   'reason.safety_profile.limitation.reported': 'Vous avez demandé à ménager certaines zones du corps.',
   'reason.safety_profile.not_screened.incomplete': 'Toutes les questions de santé n’ont pas de réponse.',
   'reason.safety_profile.not_screened.invalid': 'Les réponses de santé n’ont pas pu être lues.',

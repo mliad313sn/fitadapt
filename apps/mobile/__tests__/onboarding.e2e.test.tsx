@@ -148,7 +148,8 @@ async function onboard(j: ReturnType<typeof journey>, options: Options = {}) {
 
   await screen.findByTestId(/^onboarding-result-/);
   const outcome = String(screen.getByTestId(/^onboarding-result-/).props.testID).replace('onboarding-result-', '');
-  await j.at(t(`onboarding.result.title.${outcome}` as Parameters<typeof t>[0]));
+  // FIX-B (CS-1): a training hold has its own title.
+  await j.at(screen.queryByTestId('result-hold') ? t('onboarding.result.hold.title') : t(`onboarding.result.title.${outcome}` as Parameters<typeof t>[0]));
   press('onboarding-next');
 
   await j.at(t('onboarding.terms.title'));
@@ -339,11 +340,40 @@ describe('S1/S7 routing in onboarding', () => {
     launch();
     const j = journey('en');
     await passAgeGate(j);
-    await onboard(j, { yes: ['chest_discomfort'], stopAt: 'terms' });
+    await onboard(j, { yes: ['heart_or_blood_pressure'], stopAt: 'terms' });
     act(() => router.back());
     await j.at(j.t.t('onboarding.result.title.consult_professional'));
     expect(screen.getByText(j.t.t('reason.safety_profile.s1.unresolved_flag'))).toBeTruthy();
     expect(screen.getByText(j.t.t('onboarding.result.clearanceLater'))).toBeTruthy();
+  });
+
+  it('FIX-B (CS-1): a symptom flag holds all training until clearance — the hold is explained with the emergency line, and no session, assessment or calendar is offered', async () => {
+    launch();
+    const j = journey('en');
+    await passAgeGate(j);
+    await onboard(j, { yes: ['chest_discomfort'], stopAt: 'terms' });
+    act(() => router.back());
+    await j.at(j.t.t('onboarding.result.hold.title'));
+    expect(screen.getByText(j.t.t('onboarding.result.hold.body'))).toBeTruthy();
+    expect(screen.getByText(j.t.t('reason.safety_profile.s1.training_hold'))).toBeTruthy();
+    expect(screen.getByTestId('result-hold-emergency').props.children).toBe('Emergency number: call 999.');
+    press('onboarding-next');
+    await j.at(j.t.t('onboarding.terms.title'));
+    for (const doc of ['terms', 'privacy']) {
+      press(`legal-${doc}-read`);
+      press(`legal-${doc}-accept`);
+    }
+    press('onboarding-next');
+    await j.at(j.t.t('legal.exerciseRisk.v1.title'));
+    press('onboarding-next');
+    await j.at(j.t.t('firstWorkout.title'));
+    expect(screen.getByTestId('first-workout-hold')).toBeTruthy();
+    expect(screen.queryByTestId('first-session-plan')).toBeNull();
+    expect(screen.queryByTestId('first-workout-assess')).toBeNull();
+    press('first-workout-home');
+    await j.at(j.t.t('home.title'));
+    expect(screen.getByTestId('training-hold')).toBeTruthy();
+    for (const id of ['open-workout', 'open-calendar', 'open-assessment', 'open-pair']) expect(screen.queryByTestId(id)).toBeNull();
   });
 
   it('pregnancy routes to professional guidance and the low-intensity library', async () => {

@@ -47,9 +47,13 @@ export function OnboardingScaffold({ step, title, children, onNext, nextLabel, n
 }
 
 /** Body text in the onboarding style. */
-export function Paragraph({ children, muted = false }: { children?: ReactNode; muted?: boolean }) {
+export function Paragraph({ children, muted = false, testID }: { children?: ReactNode; muted?: boolean; testID?: string }) {
   const theme = useTheme();
-  return <Text style={{ color: muted ? theme.colors.textMuted : theme.colors.text, fontSize: theme.fontSize.body }}>{children}</Text>;
+  return (
+    <Text style={{ color: muted ? theme.colors.textMuted : theme.colors.text, fontSize: theme.fontSize.body }} testID={testID}>
+      {children}
+    </Text>
+  );
 }
 
 /** A sub-heading inside a step. */

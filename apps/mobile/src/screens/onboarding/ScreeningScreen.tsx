@@ -1,5 +1,5 @@
 import { useI18n } from '@fitadapt/i18n/react';
-import { SCREENING_CONFIG, SCREENING_QUESTIONS, SCREENING_RULES } from '@fitadapt/safety';
+import { SCREENING_CONFIG, SCREENING_QUESTIONS, SCREENING_RULES, holdsUntilClearance } from '@fitadapt/safety';
 import { SCREENING_REASONS, type ScreeningAnswer, type ScreeningRecord } from '@fitadapt/shared';
 import { ChoiceGroup, Toggle } from '@fitadapt/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -36,6 +36,8 @@ export function ScreeningScreen() {
     { value: 'no' as const, label: t('screening.no') },
   ];
   const flagged = SCREENING_QUESTIONS.some((q) => answers[q] === 'yes' && SCREENING_RULES[q].kind === 'clearance_flag');
+  // FIX-B (CS-1): say before the result that some answers hold training until a professional agrees.
+  const holding = SCREENING_QUESTIONS.some((q) => answers[q] === 'yes' && holdsUntilClearance(q));
   const complete = SCREENING_QUESTIONS.every((q) => answers[q] !== undefined);
 
   return (
@@ -64,6 +66,7 @@ export function ScreeningScreen() {
           testID={`screening-${q}`}
         />
       ))}
+      {holding ? <Paragraph testID="screening-hold-notice">{t('screening.hold.notice')}</Paragraph> : null}
       {flagged ? (
         <Toggle
           label={t('screening.clearance.label')}

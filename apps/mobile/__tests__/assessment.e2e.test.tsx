@@ -204,7 +204,7 @@ describe('P5 (advanced powerlifter, gym, 4 × 75 min): submaximal load tests →
 
 describe('S1 on screen: a user with an unresolved screening flag (goal condition 3)', () => {
   it('sees every test stop at RIR 3 with the S1 note, and the S1 cap is logged', async () => {
-    await onboard({ birthYear: '1988', minutes: '40', experience: 'beginner', equipment: [{ location: 'home', ids: ['pull_up_bar'] }], yes: ['chest_discomfort'] });
+    await onboard({ birthYear: '1988', minutes: '40', experience: 'beginner', equipment: [{ location: 'home', ids: ['pull_up_bar'] }], yes: ['heart_or_blood_pressure'] });
     await startAssessment('home');
     const reserveTexts: string[] = [];
     for (const [testId, value] of [

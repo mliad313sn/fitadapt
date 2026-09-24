@@ -85,7 +85,7 @@ describe('generateSession uses the CapacityModel for the first session', () => {
   });
 
   it('S1: an unresolved flag raises the reserve to RIR 3 or more (RPE ≤ 7) — and the plan says why', () => {
-    expect(firstSessionRir(profileFrom(['chest_discomfort']))).toBe(3);
+    expect(firstSessionRir(profileFrom(['heart_or_blood_pressure']))).toBe(3);
     const lowCap = SafetyProfileSchema.parse({ ...cleared, maxRPE: 6 });
     const { plan } = ok({ safetyProfile: lowCap });
     expect(plan.targetRir).toBe(4);

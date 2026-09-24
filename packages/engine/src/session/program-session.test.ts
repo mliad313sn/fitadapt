@@ -68,7 +68,7 @@ describe('program session from the M08 session of the day (ADR-015 API)', () => 
   });
 
   it('S1 overrides the program: an unresolved flag stops every set at RIR ≥ 3 (RPE ≤ 7), a tampered cap is still applied, and intervals become steady', () => {
-    const flagged = profileFrom(['chest_discomfort']);
+    const flagged = profileFrom(['heart_or_blood_pressure']);
     const r = generateSession(gymInput({ safetyProfile: flagged, programSession: programContext({ conditioning: { kind: 'intervals', placement: 'finisher', minutes: 10 } }) }), SESSION_LIBRARY, ctxAt(MON));
     if (r.status !== 'ok') throw new Error('expected a plan');
     expect(r.plan.targetRir).toBe(3);

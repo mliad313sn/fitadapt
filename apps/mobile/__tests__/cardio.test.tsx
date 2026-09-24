@@ -148,7 +148,7 @@ describe('gated users (goal condition 4)', () => {
   it('without two weeks of logged training, or with an unresolved screening flag, HIIT is not available and says why', () => {
     for (const [d, reason] of [
       [device(), 'cardio.unavailable.hiit_needs_consistent_training'],
-      [device({ yes: ['chest_discomfort'], trainedDaysAgo: TWO_WEEKS }), 'cardio.unavailable.hiit_s1'],
+      [device({ yes: ['heart_or_blood_pressure'], trainedDaysAgo: TWO_WEEKS }), 'cardio.unavailable.hiit_s1'],
     ] as const) {
       renderWith(d);
       press('workout-mode-cardio');

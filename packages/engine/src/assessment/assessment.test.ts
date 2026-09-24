@@ -30,7 +30,7 @@ import {
 
 const exercises = new Map(FIXTURE_EXERCISES.map((e) => [e.id, e]));
 const cleared = profileFrom();
-const flagged = profileFrom(['chest_discomfort']);
+const flagged = profileFrom(['heart_or_blood_pressure']);
 const def = (p: AssessmentProtocol, id: string) => p.tests.find((t) => t.id === id) as AssessmentTestDefinition;
 const done = (testId: string, exerciseId: string, m: { reps?: number; seconds?: number; loadKg?: number; rir?: number }): AssessmentTestResult => ({
   status: 'done',

@@ -102,7 +102,7 @@ describe('concurrent training (goal condition 4): no HIIT the day before a heavy
       const has = w.sessions.some((s) => s.conditioning?.kind === 'intervals');
       expect(has).toBe(w.kind === 'accumulation' && w.week >= programValue('conditioning.intervalsFromWeek'));
     }
-    const flagged = generateProgram(programInput({ goal: 'endurance', days: 4, profile: profileFrom(['unusual_breathlessness']) }), PROGRAM_LIBRARY, ctx());
+    const flagged = generateProgram(programInput({ goal: 'endurance', days: 4, profile: profileFrom(['heart_or_blood_pressure']) }), PROGRAM_LIBRARY, ctx());
     if (flagged.status !== 'ok') throw new Error('unavailable');
     expect(all(flagged.program).some((s) => s.conditioning?.kind === 'intervals')).toBe(false);
   });

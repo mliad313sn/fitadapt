@@ -74,6 +74,8 @@ export function strictestSafetyProfile(profiles: readonly SafetyProfile[]): Safe
     lowIntensityLibraryOnly: all('lowIntensityLibraryOnly').some(Boolean),
     professionalGuidance: all('professionalGuidance').some(Boolean),
     limitedJoints: inOrder(JOINTS, profiles.flatMap((p) => p.limitedJoints)),
+    // FIX-B (CS-7): heart-rate zones only if every candidate allows them (absent = not allowed).
+    heartRateZonesAllowed: profiles.every((p) => p.heartRateZonesAllowed === true),
     reasonCodes: reasons,
     rulesVersion: [...all('rulesVersion')].sort()[0],
   });
@@ -96,7 +98,8 @@ export function isAtLeastAsStrict(a: SafetyProfile, b: SafetyProfile): boolean {
     (!a.automaticProgrammingAllowed || b.automaticProgrammingAllowed) &&
     (a.lowIntensityLibraryOnly || !b.lowIntensityLibraryOnly) &&
     (a.professionalGuidance || !b.professionalGuidance) &&
-    covers(a.limitedJoints, b.limitedJoints)
+    covers(a.limitedJoints, b.limitedJoints) &&
+    (a.heartRateZonesAllowed !== true || b.heartRateZonesAllowed === true)
   );
 }
 
