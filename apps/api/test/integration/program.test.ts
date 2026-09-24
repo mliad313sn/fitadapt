@@ -87,8 +87,8 @@ describe('M08 program sync with server-side re-derivation', () => {
   });
 
   it('S1: a flagged user’s program is stored with its S1 caps logged (RPE ceiling, no intervals)', async () => {
-    const { s, gymId } = await ready(['chest_discomfort']);
-    const record = programRecord(gymId, { yes: ['chest_discomfort'], goal: 'fat_loss', days: 4 });
+    const { s, gymId } = await ready(['heart_or_blood_pressure']);
+    const record = programRecord(gymId, { yes: ['heart_or_blood_pressure'], goal: 'fat_loss', days: 4 });
     expect(await push(s, [insert('programs', record)])).toEqual(['applied']);
     const types = (await chain(s)).slice(-3).map((e) => [e.type, (e.payload as { reasonCode?: string }).reasonCode ?? null]);
     expect(types).toEqual([
@@ -99,13 +99,13 @@ describe('M08 program sync with server-side re-derivation', () => {
   });
 
   it('refuses a program that is not what the engine derives, or not for the stored SafetyProfile, places or engine', async () => {
-    const { s, gymId } = await ready(['chest_discomfort']);
-    const good = programRecord(gymId, { yes: ['chest_discomfort'] });
+    const { s, gymId } = await ready(['heart_or_blood_pressure']);
+    const good = programRecord(gymId, { yes: ['heart_or_blood_pressure'] });
     const firstWeek = good.program.microcycles[0]!;
     const edited: Program = { ...good.program, microcycles: [{ ...firstWeek, sessions: firstWeek.sessions.map((x, i) => (i === 0 ? { ...x, targetRpe: 9 } : x)) }, ...good.program.microcycles.slice(1)] };
     const looser = programRecord(gymId); // built on a cleared profile, but the stored screening has an unresolved flag
-    const otherPlace = programRecord(gymId, { yes: ['chest_discomfort'], equipment: ['dumbbell'] });
-    const unknownPlace = programRecord(randomUUID(), { yes: ['chest_discomfort'] });
+    const otherPlace = programRecord(gymId, { yes: ['heart_or_blood_pressure'], equipment: ['dumbbell'] });
+    const unknownPlace = programRecord(randomUUID(), { yes: ['heart_or_blood_pressure'] });
     const oldEngine = { ...good, program: { ...good.program, engineVersion: '0.0.9' } };
     expect(await push(s, [insert('programs', { ...good, program: edited }), insert('programs', looser), insert('programs', otherPlace), insert('programs', unknownPlace), insert('programs', oldEngine), insert('programs', { reason: 'first' })])).toEqual([
       'program.mismatch',

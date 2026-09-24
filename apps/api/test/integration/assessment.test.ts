@@ -99,7 +99,7 @@ describe('M07 assessment records on the server', () => {
   it('S1: with an unresolved flag, a record stopped at RIR 2 is refused; at RIR 3 it is stored with its S1 safety event, in one transaction', async () => {
     const s = await session();
     await grantHealth(s);
-    await push(s, [insert('screenings', screening(['chest_discomfort']))]);
+    await push(s, [insert('screenings', screening(['heart_or_blood_pressure']))]);
     const before = (await safetyEvents(s)).length;
     expect(await push(s, [insert('assessments', record(2))])).toEqual(['safety.s1.assessment_reserve_too_low']);
     expect(await push(s, [insert('assessments', record(3))])).toEqual(['applied']);
