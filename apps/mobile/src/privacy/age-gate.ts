@@ -7,7 +7,8 @@ export type AgeGateStatus = 'unknown' | 'allowed' | 'blocked';
 export interface AgeGateState {
   status: AgeGateStatus;
   /** Checks a date of birth. Only the outcome is stored, never the date. */
-  submit(birth: CalendarDate, today: CalendarDate, jurisdiction?: string): AgeGateOutcome;
+  /** FIX-B (MOB-13): `minimumAge` is the jurisdiction's own minimum (it can only raise the S7 floor of 16). */
+  submit(birth: CalendarDate, today: CalendarDate, jurisdiction?: string, minimumAge?: number): AgeGateOutcome;
 }
 
 const KEY = 'age_gate_status';
@@ -22,9 +23,9 @@ export function createAgeGateStore(kv: KeyValueStore) {
   const initial: AgeGateStatus = stored === 'allowed' || stored === 'blocked' ? stored : 'unknown';
   return createStore<AgeGateState>((set, get) => ({
     status: initial,
-    submit(birth, today, jurisdiction) {
+    submit(birth, today, jurisdiction, minimumAge) {
       if (get().status === 'blocked') return { status: 'blocked', reasonCode: 'safety.s7.under_minimum_age' };
-      const outcome = evaluateAgeGate(birth, today, jurisdiction);
+      const outcome = evaluateAgeGate(birth, today, jurisdiction, minimumAge);
       if (outcome.status !== 'invalid') {
         kv.set(KEY, outcome.status);
         set({ status: outcome.status });
