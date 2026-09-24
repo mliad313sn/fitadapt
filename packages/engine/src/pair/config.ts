@@ -25,6 +25,13 @@ export const PAIR_CONFIG = defineConfig({
   /** Changing the load on a shared single implement (one barbell, one pair of dumbbells) between partners' turns. */
   'equipment.changeoverSeconds': { value: 30, unit: 's', source: ENG, validated: false },
   /**
+   * Turns make a pair session longer than either solo session: both sessions are generated for fewer minutes
+   * (the engine's own time-boxing) until the shared timeline fits the time both have, in steps of this size…
+   */
+  'time.stepMinutes': { value: 1, unit: 'min', source: ENG, validated: false },
+  /** …never below this many minutes per person (then the timeline is kept as it is and says it runs over). */
+  'time.minimumMinutes': { value: 15, unit: 'min', source: ENG, validated: false },
+  /**
    * Largest credit a set earns, as a share of its expected volume (1 = no extra points for going past the
    * prescription: the score never rewards grinding reps or adding load, L4).
    */

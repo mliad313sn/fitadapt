@@ -6,6 +6,7 @@ import { recoveryFr } from './recovery.fr.js';
 import { recoveryMedicalFr } from './recovery-medical.fr.js';
 import { cardioFr } from './cardio.fr.js';
 import { progressFr } from './progress.fr.js';
+import { pairFr } from './pair.fr.js';
 import { legalFr } from './legal.fr.js';
 import { libraryFr } from './library.fr.js';
 import { onboardingFr } from './onboarding.fr.js';
@@ -137,4 +138,7 @@ export const fr: Record<MessageKey, string> = {
 
   // M04 progress dashboard, body data, encrypted progress photos, export (no body-shaming; forecasts are estimates).
   ...progressFr,
+
+  // M09 : séance à deux et codes de raison (coopération d’abord ; ni gagnant, ni propos sur le corps ou l’âge, ni pression).
+  ...pairFr,
 };

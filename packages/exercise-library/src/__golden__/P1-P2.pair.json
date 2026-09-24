@@ -1,0 +1,92 @@
+{
+  "reasonCodes": [
+    "pair.timeline.turns",
+    "pair.timeline.rest_kept",
+    "pair.timeline.own_prescriptions",
+    "pair.session.time_shared"
+  ],
+  "totalMinutes": 39.9,
+  "p1": "budget 23.3 of 24 min, reserve RIR 3",
+  "p2": "budget 23.4 of 24 min, reserve RIR 3",
+  "blocks": [
+    {
+      "block": "0 warm_up",
+      "why": [
+        "You warm up together, each with your own warm-up."
+      ]
+    },
+    {
+      "block": "1 solo hinge",
+      "p1": "hip_hinge_drill 2 × 5–8 reps @ no set load, RIR 3, rest 15 s",
+      "why": [
+        "Only one of you has this movement today; the other rests."
+      ]
+    },
+    {
+      "block": "2 shared vertical_pull (one pull_up_bar: staggered, 0 s changeover)",
+      "p1": "dead_hang 1 × 10 s @ no set load, RIR 3, rest 75 s",
+      "p2": "dead_hang 3 × 15 s @ no set load, RIR 3, rest 15 s",
+      "why": [
+        "The same movement for both of you, each at your own level.",
+        "One set of equipment for this movement: you take turns on it."
+      ]
+    },
+    {
+      "block": "3 shared vertical_push",
+      "p1": "hands_elevated_pike_push_up 2 × 8–12 reps @ no set load, RIR 3, rest 75 s",
+      "p2": "hands_elevated_pike_push_up 3 × 3–6 reps @ no set load, RIR 3, rest 120 s",
+      "why": [
+        "The same movement for both of you, each at your own level."
+      ]
+    },
+    {
+      "block": "4 solo lunge",
+      "p1": "dumbbell_reverse_lunge 1 × 8–12 reps @ no set load, RIR 3, rest 15 s",
+      "why": [
+        "Only one of you has this movement today; the other rests."
+      ]
+    },
+    {
+      "block": "5 solo horizontal_push",
+      "p2": "knee_push_up 3 × 7–9 reps @ no set load, RIR 3, rest 15 s",
+      "why": [
+        "Only one of you has this movement today; the other rests."
+      ]
+    },
+    {
+      "block": "6 shared core",
+      "p1": "knee_plank 1 × 15 s @ no set load, RIR 3, rest 75 s",
+      "p2": "front_plank 1 × 21 s @ no set load, RIR 3, rest 120 s",
+      "why": [
+        "The same movement for both of you, each at your own level."
+      ]
+    },
+    {
+      "block": "7 conditioning",
+      "why": [
+        "Cardio together, each at your own effort."
+      ]
+    }
+  ],
+  "turns": [
+    "   0 s together 300 s, then rest 0 s",
+    " 300 s P1 0.0 24 s, then rest 100 s",
+    " 424 s P1 0.1 24 s, then rest 75 s",
+    " 523 s P1 1.0 10 s, then rest 75 s",
+    " 543 s P2 0.0 15 s, then rest 153 s",
+    " 711 s P2 0.1 15 s, then rest 153 s",
+    " 879 s P2 0.2 15 s, then rest 15 s",
+    " 894 s P1 2.0 36 s, then rest 75 s",
+    " 940 s P2 1.0 18 s, then rest 150 s",
+    "1005 s P1 2.1 36 s, then rest 75 s",
+    "1108 s P2 1.1 18 s, then rest 150 s",
+    "1276 s P2 1.2 18 s, then rest 120 s",
+    "1294 s P1 3.0 36 s, then rest 15 s",
+    "1414 s P2 2.0 27 s, then rest 156 s",
+    "1597 s P2 2.1 27 s, then rest 120 s",
+    "1744 s P2 2.2 27 s, then rest 120 s",
+    "1771 s P1 4.0 15 s, then rest 75 s",
+    "1891 s P2 3.0 21 s, then rest 120 s",
+    "2032 s together 360 s, then rest 0 s"
+  ]
+}

@@ -15,3 +15,4 @@ export { STEADY_MODALITIES, VENUE_SWAPS } from './seed/cardio.js';
 export * from './assessment.js';
 export * from './program.js';
 export * from './progress.js';
+export * from './pair.js';

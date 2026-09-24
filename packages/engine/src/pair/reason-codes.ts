@@ -16,6 +16,7 @@ export const M09_REASON_PARAMS: Readonly<Record<string, readonly string[]>> = Ob
   'pair.block.conditioning_together': [],
   'pair.block.cool_down_together': [],
   'pair.equipment.staggered': ['seconds'],
+  'pair.equipment.shared': [],
   // Fair Challenge Score
   'pair.score.relative': [],
   'pair.score.capped_at_plan': [],
@@ -29,6 +30,8 @@ export const M09_REASON_PARAMS: Readonly<Record<string, readonly string[]>> = Ob
   // Pair session generation
   'pair.session.own_profile': [],
   'pair.session.shared_place': [],
+  'pair.session.time_shared': [],
+  'pair.session.over_time': [],
   'pair.unavailable.partner': [],
 });
 

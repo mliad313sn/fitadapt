@@ -5,6 +5,7 @@ import { recoveryEn } from './recovery.en.js';
 import { recoveryMedicalEn } from './recovery-medical.en.js';
 import { cardioEn } from './cardio.en.js';
 import { progressEn } from './progress.en.js';
+import { pairEn } from './pair.en.js';
 import { legalEn } from './legal.en.js';
 import { libraryEn } from './library.en.js';
 import { onboardingEn } from './onboarding.en.js';
@@ -150,6 +151,9 @@ export const en = {
 
   // M04 progress dashboard, body data, encrypted progress photos, export (no body-shaming; forecasts are estimates).
   ...progressEn,
+
+  // M09 Fair Pair: the pair screens and pair reason codes (cooperation first; no winner, no body or age wording, no pressure).
+  ...pairEn,
 } as const;
 
 export type MessageKey = keyof typeof en;

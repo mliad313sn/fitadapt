@@ -10,3 +10,4 @@ export { MEDICAL_REVIEW } from './catalogues/recovery-medical.en.js';
 export { NO_GUILT_DENYLIST, guiltPhrases } from './guilt.js';
 export { FAT_BURN_DENYLIST, fatBurnClaims } from './honest-physiology.js';
 export { BODY_SHAMING_DENYLIST, ALLOWED_FAT_PHRASES, judgementalBodyTerms } from './body-language.js';
+export { PAIR_PRESSURE_DENYLIST, pairPressurePhrases } from './pair-language.js';

@@ -1,4 +1,4 @@
-import { JOINTS, SCREENING_QUESTION_IDS, SharedTimelineSchema, type EquipmentId, type JointFlags, type PlannedExercise, type SessionPlan, type SharedTimeline } from '@fitadapt/shared';
+import { JOINTS, SCREENING_QUESTION_IDS, SharedTimelineSchema, type EquipmentId, type JointFlags, type PlannedExercise, type SessionPlan, type SharedTimeline, type TimelineStep } from '@fitadapt/shared';
 import { screeningGateCheck } from '@fitadapt/safety';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
@@ -101,11 +101,31 @@ describe('mergePlans (goal condition 1): one shared timeline from two individual
     expect(timeline.reasonCodes).toEqual(expect.arrayContaining(['pair.timeline.turns', 'pair.timeline.rest_kept', 'pair.timeline.own_prescriptions']));
   });
 
-  it('never changes a prescription: the plans are the ones generateSession gives each partner alone at the shared place', () => {
-    const { a, b } = pairAtHome();
+  it('never changes a prescription: the plans are the ones generateSession gives each partner alone, from their own input with only the place and the shared minutes changed', () => {
+    const { a, b, timeline } = pairAtHome();
     const alone = (input: GenerateSessionInput, who: 'a' | 'b') => generateSession(input, SESSION_LIBRARY, createEngineContext({ clock: fixedClock(MON), seed: partnerSeed(11, who) }));
-    expect(alone(p1(), 'a')).toEqual({ status: 'ok', plan: a.plan, safetyEvents: a.safetyEvents });
-    expect(alone(p2(), 'b')).toEqual({ status: 'ok', plan: b.plan, safetyEvents: b.safetyEvents });
+    expect(alone(a.input, 'a')).toEqual({ status: 'ok', plan: a.plan, safetyEvents: a.safetyEvents });
+    expect(alone(b.input, 'b')).toEqual({ status: 'ok', plan: b.plan, safetyEvents: b.safetyEvents });
+    const { minutesAvailable: ma, ...restA } = a.input;
+    const { minutesAvailable: mb, ...restB } = b.input;
+    const { minutesAvailable: _a, ...rawA } = p1();
+    const { minutesAvailable: _b, ...rawB } = p2();
+    expect(restA).toEqual(rawA);
+    expect(restB).toEqual({ ...rawB, equipment: HOME, equipmentLoads: HOME_LOADS, equipmentProfileId: HOME_ID });
+    // The time both have (40 min): the plans were time-boxed until the turns fit it.
+    expect(ma).toBe(mb);
+    expect(ma).toBeLessThanOrEqual(40);
+    expect(timeline.totalSeconds).toBeLessThanOrEqual(40 * 60);
+    if (ma < 40) expect(timeline.reasonCodes).toContain('pair.session.time_shared');
+  });
+
+  it('the shared time: turns never make the session longer than the time both have, down to the minimum; below it the timeline says it runs over', () => {
+    for (const minutes of [60, 45, 40, 30, 20]) {
+      const { a, timeline } = pairAtHome(p1({ minutesAvailable: minutes }), p2({ minutesAvailable: minutes + 15 }));
+      expect(a.input.minutesAvailable).toBeGreaterThanOrEqual(Math.min(minutes, PAIR_CONFIG['time.minimumMinutes'].value));
+      if (timeline.reasonCodes.includes('pair.session.over_time')) expect(a.input.minutesAvailable).toBeLessThan(PAIR_CONFIG['time.minimumMinutes'].value + PAIR_CONFIG['time.stepMinutes'].value);
+      else expect(timeline.totalSeconds).toBeLessThanOrEqual(minutes * 60);
+    }
   });
 
   it('a pattern only one partner has becomes a solo block; the other partner has no step in it', () => {
@@ -164,6 +184,25 @@ describe('mergePlans (goal condition 1): one shared timeline from two individual
     expect(() => implementsOf('no_such_exercise', home)).toThrow(PairEquipmentError);
   });
 
+  it('a superset keeps its recovery: between two sets of one exercise the person rests at least as long as the superset gave them', () => {
+    const { a, b } = pairAtHome();
+    const ex = a.plan.exercises[0]!;
+    const set = (rest: number, i: number) => ({ ...ex.sets[0]!, index: i + 1, restSeconds: rest, target: { kind: 'reps' as const, min: 8, max: 10 } });
+    const superset: SessionPlan = {
+      ...a.plan,
+      exercises: [
+        { ...ex, slot: 'horizontal_push', exerciseId: 'push_up', supersetGroup: 'A', sets: [set(15, 0), set(15, 1), set(15, 2)] },
+        { ...ex, slot: 'horizontal_pull', exerciseId: 'seated_band_row', supersetGroup: 'A', sets: [set(60, 0), set(60, 1), set(60, 2)] },
+      ],
+    };
+    const timeline = mergePlans(superset, b.plan, home);
+    const pushes = stepsOf(timeline, 'a').filter((s) => s.exerciseIndex === 0);
+    // 15 s rest + the row set (10 reps × 3 s) + its 60 s rest = 105 s, not 15 s.
+    expect(pushes.slice(0, 2).map((s) => s.restAfterSeconds)).toEqual([105, 105]);
+    expect(pushes[2]!.restAfterSeconds).toBe(15);
+    expectRestWindows(timeline);
+  });
+
   it('warm-up, conditioning and cool-down are done together, each following their own content', () => {
     const { a, b } = pairAtHome();
     const withCardio = (plan: SessionPlan, minutes: number): SessionPlan => ({ ...plan, conditioning: { kind: 'steady', placement: 'finisher', minutes }, cardio: null, coolDown: { minutes: 3, drills: [{ exerciseId: 'hip_circles', seconds: 60 }] as never, reasonCodes: ['cooldown.after_session'] } });
@@ -194,6 +233,24 @@ describe('mergePlans (goal condition 1): one shared timeline from two individual
     expect(alone.reasonCodes).toContain('pair.timeline.partner_ended');
     expect(alone.blocks.every((k) => k.b === null)).toBe(true);
     expectRestWindows(alone);
+  });
+
+  it('re-planning after every set (as the pair screen does) gives exactly the turn order of the full timeline', () => {
+    for (const seed of [11, 12, 13, 14, 15]) {
+      const { a, b, timeline } = pairAtHome(p1(), p2(), seed);
+      const full = timeline.steps.filter((s) => s.kind === 'set').map((s) => [s.participant, s.exerciseIndex, s.setIndex]);
+      const done = { a: new Set<string>(), b: new Set<string>() };
+      let last: 'a' | 'b' | null = null;
+      const replayed: unknown[] = [];
+      for (;;) {
+        const next: TimelineStep | undefined = remainingTimeline({ plan: a.plan, done: done.a, active: true }, { plan: b.plan, done: done.b, active: true }, home, { lastTurn: last }).steps.find((s) => s.kind === 'set');
+        if (!next) break;
+        replayed.push([next.participant, next.exerciseIndex, next.setIndex]);
+        done[next.participant!].add(setKey(next.exerciseIndex!, next.setIndex!));
+        last = next.participant;
+      }
+      expect(replayed).toEqual(full);
+    }
   });
 
   it('property: for random pairs of plans, every block keeps one pattern, every set appears once for its partner, rest windows hold', () => {
@@ -263,7 +320,8 @@ describe('safety (goal condition 3): each partner’s SafetyProfile and red join
     // S2 for P1 only: no exercise loads the red knee at medium or high.
     for (const e of a.plan.exercises) expect(redJointsLoaded(SESSION_LIBRARY.graph.exercises.get(e.exerciseId)!, redKnee)).toEqual([]);
     // P2 is not capped by P1's profile: her plan is what she gets alone (reserve 2, knee exercises allowed).
-    const bAlone = generateSession({ ...p2() }, SESSION_LIBRARY, createEngineContext({ clock: fixedClock(MON), seed: partnerSeed(11, 'b') }));
+    const bAlone = generateSession(b.input, SESSION_LIBRARY, createEngineContext({ clock: fixedClock(MON), seed: partnerSeed(11, 'b') }));
+    expect(b.input.safetyProfile).toEqual(profileFrom());
     expect(bAlone).toEqual({ status: 'ok', plan: b.plan, safetyEvents: b.safetyEvents });
     expect(b.plan.targetRir).toBe(2);
     expect(b.plan.exercises.some((e) => redJointsLoaded(SESSION_LIBRARY.graph.exercises.get(e.exerciseId)!, { knee: 'red' }).length > 0)).toBe(true);
@@ -306,9 +364,17 @@ describe('safety (goal condition 3): each partner’s SafetyProfile and red join
         const ib = p2({ safetyProfile: profileFrom(yb), jointFlags: fb });
         const r = generatePairSession(ia, ib, { equipment: HOME, equipmentLoads: HOME_LOADS, equipmentProfileId: HOME_ID }, SESSION_LIBRARY, ctx(seed));
         for (const [who, input, res] of [['a', ia, r.a], ['b', ib, r.b]] as const) {
-          const solo = generateSession(input, SESSION_LIBRARY, createEngineContext({ clock: fixedClock(MON), seed: partnerSeed(seed, who) }));
-          expect(res.status).toBe(solo.status);
-          if (res.status !== 'ok' || solo.status !== 'ok') continue;
+          if (res.status !== 'ok') {
+            // No pair session only when that person gets no session on their own (at the shared time).
+            if (r.status === 'unavailable' && res.status === 'unavailable') expect(generateSession(input, SESSION_LIBRARY, createEngineContext({ clock: fixedClock(MON), seed: partnerSeed(seed, who) })).status).toBe('unavailable');
+            continue;
+          }
+          // Their own input (own SafetyProfile and joint flags), only the place and minutes shared.
+          expect(res.input.safetyProfile).toEqual(input.safetyProfile);
+          expect(res.input.jointFlags).toEqual(input.jointFlags);
+          const solo = generateSession(res.input, SESSION_LIBRARY, createEngineContext({ clock: fixedClock(MON), seed: partnerSeed(seed, who) }));
+          expect(solo.status).toBe('ok');
+          if (solo.status !== 'ok') continue;
           expect(res.plan).toEqual(solo.plan);
           for (const e of res.plan.exercises) {
             expect(redJointsLoaded(SESSION_LIBRARY.graph.exercises.get(e.exerciseId)!, input.jointFlags ?? {})).toEqual([]);

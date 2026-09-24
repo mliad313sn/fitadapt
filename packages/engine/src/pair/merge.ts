@@ -77,11 +77,14 @@ function align(a: readonly PlannedExercise[], b: readonly PlannedExercise[]): { 
   return out;
 }
 
+/** One single implement both need: staggered turns; a load change between them only when both load it. */
 function conflictOf(ea: PlannedExercise, eb: PlannedExercise, shared: SharedEquipment): EquipmentConflict | null {
   const ia = implementsOf(ea.exerciseId, shared);
   const ib = new Set(implementsOf(eb.exerciseId, shared));
   const single = ia.find((id) => ib.has(id) && countOf(shared.items, id) < 2);
-  return single ? { equipment: single, resolution: 'staggered', changeoverSeconds: PAIR_CONFIG['equipment.changeoverSeconds'].value } : null;
+  if (!single) return null;
+  const loaded = (e: PlannedExercise) => e.sets.some((s) => s.loadKg !== null);
+  return { equipment: single, resolution: 'staggered', changeoverSeconds: loaded(ea) && loaded(eb) ? PAIR_CONFIG['equipment.changeoverSeconds'].value : 0 };
 }
 
 interface SetRef {
@@ -89,16 +92,40 @@ interface SetRef {
   readonly exerciseIndex: number;
   readonly setIndex: number;
   readonly set: PlannedSet;
+  /** The rest this person needs before their next set (at least the plan's rest target). */
+  readonly rest: number;
 }
 
-/** Sets of a block in turn order: a, b, a, b, … then whoever has sets left. */
-function turns(block: { a: number | null; b: number | null }, planA: SessionPlan, planB: SessionPlan): SetRef[] {
-  const listA = block.a === null ? [] : planA.exercises[block.a]!.sets.map((set, s) => ({ participant: 'a' as const, exerciseIndex: block.a!, setIndex: s, set }));
-  const listB = block.b === null ? [] : planB.exercises[block.b]!.sets.map((set, s) => ({ participant: 'b' as const, exerciseIndex: block.b!, setIndex: s, set }));
+/**
+ * The rest a person needs after a set. In their own plan a superset spends
+ * the time between two sets of one exercise on the other exercises of the
+ * group, with a short rest after each; the pair timeline does each exercise's
+ * sets in turn, so between two sets of the same exercise that person keeps
+ * all the recovery the superset gave them: the rest target plus the other
+ * group exercises' set and rest. Never shorter than the plan's own rest.
+ */
+function restAfter(plan: SessionPlan, exerciseIndex: number, setIndex: number): number {
+  const exercise = plan.exercises[exerciseIndex]!;
+  const set = exercise.sets[setIndex]!;
+  if (exercise.supersetGroup === null || setIndex + 1 >= exercise.sets.length) return set.restSeconds;
+  let rest = set.restSeconds;
+  plan.exercises.forEach((other, i) => {
+    if (i === exerciseIndex || other.supersetGroup !== exercise.supersetGroup) return;
+    const same = other.sets[setIndex];
+    if (same) rest += workSeconds(same) + same.restSeconds;
+  });
+  return rest;
+}
+
+/** Sets of a block in turn order: a, b, a, b, … (or b first) then whoever has sets left. */
+function turns(block: { a: number | null; b: number | null }, planA: SessionPlan, planB: SessionPlan, first: ParticipantSlot = 'a'): SetRef[] {
+  const listA = block.a === null ? [] : planA.exercises[block.a]!.sets.map((set, s) => ({ participant: 'a' as const, exerciseIndex: block.a!, setIndex: s, set, rest: restAfter(planA, block.a!, s) }));
+  const listB = block.b === null ? [] : planB.exercises[block.b]!.sets.map((set, s) => ({ participant: 'b' as const, exerciseIndex: block.b!, setIndex: s, set, rest: restAfter(planB, block.b!, s) }));
   const out: SetRef[] = [];
-  for (let k = 0; k < Math.max(listA.length, listB.length); k++) {
-    if (listA[k]) out.push(listA[k]!);
-    if (listB[k]) out.push(listB[k]!);
+  const [one, two] = first === 'a' ? [listA, listB] : [listB, listA];
+  for (let k = 0; k < Math.max(one.length, two.length); k++) {
+    if (one[k]) out.push(one[k]!);
+    if (two[k]) out.push(two[k]!);
   }
   return out;
 }
@@ -116,7 +143,8 @@ const minutesToSeconds = (m: number | undefined | null) => Math.round((m ?? 0) *
  *   one partner's set is the other's rest when the rest targets allow.
  * - Rest windows are honoured for both: a set never starts before the same
  *   partner's previous set ended plus its full rest target (the timeline
- *   only ever lengthens a rest, never shortens it).
+ *   only ever lengthens a rest, never shortens it; a superset's recovery is
+ *   kept, see restAfter).
  * - One shared single implement (one barbell, one pair of dumbbells): the
  *   turns are staggered and a load change between partners gets its time.
  * - Warm-up, the conditioning block and the cool-down are done together,
@@ -126,7 +154,12 @@ const minutesToSeconds = (m: number | undefined | null) => Math.round((m ?? 0) *
  * never mixes the two plans: every set of each plan appears exactly once,
  * for its own partner, in that partner's order. Pure and deterministic.
  */
-export function mergePlans(planA: SessionPlan, planB: SessionPlan, sharedEquipment: SharedEquipment): SharedTimeline {
+export interface MergeOptions {
+  /** Who takes the first turn of the first shared block (re-planning mid-block keeps the alternation). Default 'a'. */
+  readonly firstTurn?: ParticipantSlot;
+}
+
+export function mergePlans(planA: SessionPlan, planB: SessionPlan, sharedEquipment: SharedEquipment, options: MergeOptions = {}): SharedTimeline {
   const handover = PAIR_CONFIG['turn.handoverSeconds'].value;
   const blocks: TimelineBlock[] = [];
   const steps: TimelineStep[] = [];
@@ -151,6 +184,7 @@ export function mergePlans(planA: SessionPlan, planB: SessionPlan, sharedEquipme
 
   together('warm_up', Math.max(minutesToSeconds(planA.warmUp.minutes), minutesToSeconds(planB.warmUp.minutes)), 'pair.block.warm_up_together');
 
+  let firstShared = true;
   for (const pair of align(planA.exercises, planB.exercises)) {
     const ea = pair.a === null ? null : planA.exercises[pair.a]!;
     const eb = pair.b === null ? null : planB.exercises[pair.b]!;
@@ -160,26 +194,28 @@ export function mergePlans(planA: SessionPlan, planB: SessionPlan, sharedEquipme
     const conflict = ea && eb ? conflictOf(ea, eb, sharedEquipment) : null;
     const shared = ea !== null && eb !== null;
     const index = blocks.length;
-    const reasonCodes = [shared ? 'pair.block.shared_pattern' : 'pair.block.solo', ...(conflict ? ['pair.equipment.staggered'] : [])];
+    const reasonCodes = [shared ? 'pair.block.shared_pattern' : 'pair.block.solo', ...(conflict ? [conflict.changeoverSeconds > 0 ? 'pair.equipment.staggered' : 'pair.equipment.shared'] : [])];
     blocks.push({ index, kind: shared ? 'shared' : 'solo', pattern: (ea ?? eb)!.slot, a: pair.a, b: pair.b, exerciseA: ea?.exerciseId ?? null, exerciseB: eb?.exerciseId ?? null, conflict, reasonCodes });
     let lastParticipant: ParticipantSlot | null = null;
     let lastLoad: number | null = null;
-    for (const ref of turns(pair, planA, planB)) {
+    const first = shared && firstShared ? (options.firstTurn ?? 'a') : 'a';
+    if (shared) firstShared = false;
+    for (const ref of turns(pair, planA, planB, first)) {
       const p = ref.participant;
       let start = Math.max(t, lastEnd[p] === null ? 0 : lastEnd[p]! + lastRest[p]);
       if (lastParticipant !== null && lastParticipant !== p) {
         start = Math.max(start, t + handover);
         // One implement, two loads: the partner changes it before their turn.
-        if (conflict && ref.set.loadKg !== null && lastLoad !== null && ref.set.loadKg !== lastLoad) {
+        if (conflict && conflict.changeoverSeconds > 0 && ref.set.loadKg !== null && lastLoad !== null && ref.set.loadKg !== lastLoad) {
           start = Math.max(start, t + conflict.changeoverSeconds);
           staggered = true;
         }
       }
       const duration = workSeconds(ref.set);
-      steps.push({ index: steps.length, block: index, kind: 'set', participant: p, exerciseIndex: ref.exerciseIndex, setIndex: ref.setIndex, startSecond: start, durationSeconds: duration, restAfterSeconds: ref.set.restSeconds });
+      steps.push({ index: steps.length, block: index, kind: 'set', participant: p, exerciseIndex: ref.exerciseIndex, setIndex: ref.setIndex, startSecond: start, durationSeconds: duration, restAfterSeconds: ref.rest });
       t = start + duration;
       lastEnd[p] = t;
-      lastRest[p] = ref.set.restSeconds;
+      lastRest[p] = ref.rest;
       lastParticipant = p;
       lastLoad = ref.set.loadKg;
     }
@@ -225,7 +261,7 @@ export const setKey = (exerciseIndex: number, setIndex: number) => `${exerciseIn
  * set indexes of the full plans. A partner who left has no steps; the other
  * goes on alone ('pair.timeline.partner_ended').
  */
-export function remainingTimeline(a: PlanPosition, b: PlanPosition, sharedEquipment: SharedEquipment): SharedTimeline {
+export function remainingTimeline(a: PlanPosition, b: PlanPosition, sharedEquipment: SharedEquipment, options: { readonly lastTurn?: ParticipantSlot | null } = {}): SharedTimeline {
   const cut = (pos: PlanPosition): { plan: SessionPlan; map: { e: number; s: number }[][] } => {
     const map: { e: number; s: number }[][] = [];
     const exercises: PlannedExercise[] = [];
@@ -249,7 +285,9 @@ export function remainingTimeline(a: PlanPosition, b: PlanPosition, sharedEquipm
   };
   const ca = cut(a);
   const cb = cut(b);
-  const timeline = mergePlans(ca.plan, cb.plan, sharedEquipment);
+  // The alternation goes on: after a's set, b's turn comes first (and the reverse).
+  const firstTurn: ParticipantSlot = options.lastTurn === 'a' ? 'b' : 'a';
+  const timeline = mergePlans(ca.plan, cb.plan, sharedEquipment, { firstTurn });
   const steps = timeline.steps.map((step) => {
     if (step.kind !== 'set') return step;
     const m = (step.participant === 'a' ? ca : cb).map[step.exerciseIndex!]![step.setIndex!]!;
