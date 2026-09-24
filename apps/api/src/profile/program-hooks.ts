@@ -2,11 +2,12 @@ import { isDeepStrictEqual } from 'node:util';
 import { ENGINE_VERSION, PROGRAM_RULES_VERSION, createEngineContext, decideReflow, fixedClock } from '@fitadapt/engine';
 import { generateProgram } from '@fitadapt/exercise-library';
 import { EquipmentProfileSchema, PROFILE_COLLECTIONS, PROGRAM_COLLECTIONS, ProgramRecordSchema, ReflowRecordSchema, orderChain, type ProgramRecord, type ReflowRecord, type SafetyProfile } from '@fitadapt/shared';
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { DbExecutor } from '../db/client.js';
 import { syncChanges } from '../db/schema.js';
 import type { LegalService } from '../legal/service.js';
 import type { PgServerTx } from '../sync/pg-store.js';
+import { collectionRows } from './stored-rows.js';
 
 /**
  * M08 on the server (ADR-015): a synced program must be exactly what the
@@ -18,13 +19,8 @@ import type { PgServerTx } from '../sync/pg-store.js';
  * are written in the sync transaction (ADR-009).
  */
 
-async function latestRows(db: DbExecutor, userId: string, collection: string) {
-  return db
-    .select({ recordId: syncChanges.recordId, op: syncChanges.op, data: syncChanges.data, revision: syncChanges.revision })
-    .from(syncChanges)
-    .where(and(eq(syncChanges.userId, userId), eq(syncChanges.collection, collection)))
-    .orderBy(asc(syncChanges.revision));
-}
+/** API-11: stored rows through the per-push cache. */
+const latestRows = collectionRows;
 
 /** The latest stored state of an equipment profile (null if never stored or deleted). */
 async function storedEquipmentProfile(db: DbExecutor, userId: string, recordId: string) {

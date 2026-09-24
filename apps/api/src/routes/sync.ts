@@ -5,6 +5,7 @@ import { ApiError } from '../auth/errors.js';
 import { syncValue } from '../config/sync.config.js';
 import type { AuthService } from '../auth/service.js';
 import { authenticate, requireAuth } from '../plugins/authenticate.js';
+import { withPushCache } from '../profile/stored-rows.js';
 
 export const syncRoutes =
   (auth: AuthService, sync: SyncServer): FastifyPluginAsyncZod =>
@@ -31,7 +32,8 @@ export const syncRoutes =
       async (request) => {
         const claims = requireAuth(request);
         sameDevice(claims.deviceId, request.body.deviceId);
-        return sync.push(claims.userId, request.body);
+        // API-11: one cache of stored rows for the whole push (up to 500 mutations re-check the same history).
+        return withPushCache(() => sync.push(claims.userId, request.body));
       },
     );
 

@@ -422,6 +422,35 @@ describe('API-12: the photo count quota cannot be raced past', () => {
   });
 });
 
+describe('API-11: a push reads each stored collection once, then only what was appended', () => {
+  it('rows are cached within a push, appended rows are fetched incrementally, and an erasure forces a full reload', async () => {
+    const { collectionRows, pushCacheStats, withPushCache, parsedRows } = await import('../../src/profile/stored-rows.js');
+    const { SetLogSchema } = await import('@fitadapt/shared');
+    const s = await session();
+    const log = (reps: number) => ({ schemaVersion: 1, planId: randomUUID(), exerciseIndex: 0, exerciseId: 'goblet_squat', set: { index: 1, status: 'done', reps, seconds: null, loadKg: 20, rir: 2 }, loggedAt: h.clock.now().toISOString(), correctionOf: null });
+    expect(await push(s, [insert('set_logs', log(1)), insert('set_logs', log(2)), insert('set_logs', log(3))])).toEqual(['applied', 'applied', 'applied']);
+    const db = h.database.db;
+    await withPushCache(async () => {
+      expect(await collectionRows(db, s.userId, 'set_logs')).toHaveLength(3);
+      const first = await collectionRows(db, s.userId, 'set_logs');
+      expect(pushCacheStats()).toEqual({ fullLoads: 1, incrementalLoads: 0 });
+      // Parsed once per row and schema: the same objects come back.
+      expect(parsedRows(first, SetLogSchema)[0]!.data).toBe(parsedRows(first, SetLogSchema)[0]!.data);
+      // Another device appends (committed between two mutations of this push).
+      await db.insert(syncChanges).values({ userId: s.userId, revision: 4, collection: 'set_logs', recordId: randomUUID(), op: 'upsert', data: log(4), originDeviceId: s.deviceId });
+      expect((await collectionRows(db, s.userId, 'set_logs')).map((r) => (r.data as { set: { reps: number } }).set.reps)).toEqual([1, 2, 3, 4]);
+      expect(pushCacheStats()).toEqual({ fullLoads: 1, incrementalLoads: 1 });
+      // A row erased in between (e.g. a consent withdrawal) is never served from the cache.
+      await db.delete(syncChanges).where(and(eq(syncChanges.userId, s.userId), eq(syncChanges.revision, 2)));
+      expect((await collectionRows(db, s.userId, 'set_logs')).map((r) => r.revision)).toEqual([1, 3, 4]);
+      expect(pushCacheStats()).toEqual({ fullLoads: 2, incrementalLoads: 1 });
+    });
+    // Outside a push there is no cache.
+    expect(pushCacheStats()).toBeNull();
+    expect(await collectionRows(db, s.userId, 'set_logs')).toHaveLength(3);
+  });
+});
+
 describe('sync push body limit (with FIX-E: the device keeps a push at 512 KiB or less)', () => {
   it('a push body over the configured limit answers 413; one under it is processed', async () => {
     const { syncConfig } = await import('../../src/config/sync.config.js');

@@ -1,9 +1,10 @@
 import { isDeepStrictEqual } from 'node:util';
 import { notScreenedSafetyProfile, orderScreenings, safetyProfileFromScreenings, type CalendarDate } from '@fitadapt/safety';
 import { PROFILE_COLLECTIONS, PROFILE_RECORD_ID, ProfileSchema, ScreeningRecordSchema } from '@fitadapt/shared';
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import type { DbExecutor } from '../db/client.js';
 import { syncChanges } from '../db/schema.js';
+import { collectionRows, parsedRows } from './stored-rows.js';
 
 /** Stored screenings and profile, as the server-side re-checks read them (always through the caller's executor, API-1). */
 
@@ -21,16 +22,8 @@ export async function latestSafetyProfile(db: DbExecutor, userId: string) {
 }
 
 async function storedScreenings(db: DbExecutor, userId: string) {
-  const rows = await db
-    .select({ recordId: syncChanges.recordId, op: syncChanges.op, data: syncChanges.data })
-    .from(syncChanges)
-    .where(and(eq(syncChanges.userId, userId), eq(syncChanges.collection, PROFILE_COLLECTIONS.screenings)))
-    .orderBy(asc(syncChanges.revision));
-  return rows.flatMap((r) => {
-    if (r.op === 'delete') return [];
-    const parsed = ScreeningRecordSchema.safeParse(r.data);
-    return parsed.success ? [{ id: r.recordId, data: parsed.data }] : [];
-  });
+  // API-11: through the per-push cache; each screening parsed once per request.
+  return parsedRows(await collectionRows(db, userId, PROFILE_COLLECTIONS.screenings), ScreeningRecordSchema);
 }
 
 /**
