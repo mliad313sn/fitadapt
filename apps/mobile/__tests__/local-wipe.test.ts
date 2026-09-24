@@ -1,3 +1,4 @@
+import { intensityLockStatus } from '@fitadapt/safety';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/sql-js';
 import { randomBytes, randomUUID } from 'node:crypto';
@@ -104,6 +105,20 @@ describe('MOB-01: an account wipe resets every in-memory store', () => {
     );
     expect(JSON.parse(after.find((r) => r.key === 'pair.guests')!.value)).toEqual([bo.id]);
     expect(JSON.parse(after.find((r) => r.key === 'pair.owner.sharing')!.value)).toEqual([expect.objectContaining({ scopes: [] })]);
+  });
+});
+
+describe('MOB-08 (device part): a local health-consent withdrawal never lifts the S3 intensity lock', () => {
+  it('the red-flag log, and so the lock, survive the withdrawal and the forgetting of health answers on this phone', () => {
+    const app = services();
+    app.consents.getState().decide('health', true, 'en');
+    app.profile.getState().logExecution({ kind: 'red_flag', planId: randomUUID(), symptom: 'chest_pain_pressure', at: NOW.toISOString() });
+    expect(intensityLockStatus(app.profile.getState().executionLogs.map((e) => e.data)).locked).toBe(true);
+    // What ProfileProvider does on a withdrawal (forgetHealthData), done here directly.
+    app.consents.getState().decide('health', false, 'en');
+    app.profile.getState().forgetHealthData();
+    app.profile.getState().reload();
+    expect(intensityLockStatus(app.profile.getState().executionLogs.map((e) => e.data)).locked).toBe(true);
   });
 });
 

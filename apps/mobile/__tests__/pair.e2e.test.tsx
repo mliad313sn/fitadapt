@@ -125,6 +125,12 @@ async function awaSetsUp() {
   fireEvent.changeText(screen.getByTestId('pair-guest-birth-month'), '6');
   fireEvent.changeText(screen.getByTestId('pair-guest-birth-year'), '1994');
   press('pair-guest-next');
+  // MOB-10: Awa confirms it is her holding the phone before anything goes into her ledgers.
+  await screen.findByTestId('pair-guest-handover');
+  press('pair-guest-next');
+  expect(screen.getByTestId('pair-guest-error')).toBeTruthy();
+  press('pair-guest-confirm');
+  press('pair-guest-next');
   await screen.findByTestId('pair-guest-legal');
   // L2: going on before accepting is refused.
   press('pair-guest-next');

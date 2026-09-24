@@ -125,6 +125,12 @@ export interface PairStoreState {
   addGuest(displayName: string, birthDate: CalendarDateValue): GuestProfile;
   saveGuestScreening(guestId: string, responses: ScreeningResponses): void;
   setGuestBodyweight(guestId: string, kg: number | null): void;
+  /**
+   * MOB-09: the guest withdrew their health consent: their screening answers
+   * and body weight are forgotten (as for the owner). Their execution logs
+   * stay: an S3 intensity lock recorded there must survive a withdrawal (S3).
+   */
+  forgetGuestHealth(guestId: string): void;
   setOwnerName(name: string): void;
   /** Records a participant's own sharing choice for the next pair session ('owner' or a guest id). */
   recordSharing(who: 'owner' | string, scopes: readonly PairSharingScope[]): PairSharing;
@@ -210,6 +216,12 @@ export function createPairStore({ kv, newId, now, jurisdiction }: PairStoreDeps)
     setGuestBodyweight(guestId, kg) {
       const profile = get().guest(guestId)!.profile;
       gkv(guestId).set('profile', JSON.stringify(GuestProfileSchema.parse({ ...profile, bodyweightKg: kg })));
+      set({ guests: readGuests(), revision: get().revision + 1 });
+    },
+    forgetGuestHealth(guestId) {
+      const data = get().guest(guestId);
+      if (!data) return;
+      gkv(guestId).set('profile', JSON.stringify(GuestProfileSchema.parse({ ...data.profile, screening: null, bodyweightKg: null })));
       set({ guests: readGuests(), revision: get().revision + 1 });
     },
     setOwnerName(name) {

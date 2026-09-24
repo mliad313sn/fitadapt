@@ -8,7 +8,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 import { randomUUID } from 'node:crypto';
 import { AppProviders } from '../src/AppProviders';
 import { createLegalStore } from '../src/legal/legal-store';
-import { createPairStore } from '../src/pair/pair-store';
+import { createPairStore, guestFacts, guestSafetyProfile, sharedScopes } from '../src/pair/pair-store';
 import { createAgeGateStore } from '../src/privacy/age-gate';
 import { createConsentStore } from '../src/privacy/consents';
 import { createProfileStore } from '../src/profile/profile-store';
@@ -257,6 +257,10 @@ describe('the S7 / M17 age gate applies to the partner too', () => {
       expect(d.pair.getState().guests.map((g) => g.displayName)).toEqual(['Awa']);
       expect(text()).not.toMatch(/\b(15|16) years?\b/i);
     } else {
+      // MOB-10: Nour first confirms it is her holding the phone.
+      expect(screen.getByTestId('pair-guest-handover')).toBeTruthy();
+      press('pair-guest-confirm');
+      press('pair-guest-next');
       expect(screen.getByTestId('pair-guest-legal')).toBeTruthy();
       expect(d.pair.getState().guests.map((g) => g.displayName)).toEqual(['Awa', 'Nour']);
     }
@@ -389,6 +393,64 @@ describe('the partner’s data is theirs: export and delete', () => {
     expect([...d.kv.data.keys()].filter((k) => k.includes(d.awa.id))).toEqual([]);
     // The owner's own records are untouched.
     expect(outbox(d, 'set_logs')).toHaveLength(1);
+  });
+
+  it('MOB-09: Awa withdraws her partner-sharing consent herself, keeping her history: nothing is shared and she cannot be chosen', () => {
+    const d = device({ guestScopes: ['performance'] });
+    renderWith(d, <PairScreen onExit={() => undefined} />);
+    press('pair-edit-Awa');
+    press('pair-guest-confirm');
+    press('pair-guest-next');
+    press('pair-guest-consent-partner_sharing-withdraw');
+    expect(screen.getByTestId('pair-guest-consent-partner_sharing-withdrawn')).toBeTruthy();
+    const ledgers = d.pair.getState().ledgers(d.awa.id);
+    const guest = d.pair.getState().guest(d.awa.id)!;
+    expect(sharedScopes(ledgers.consents.getState().records, guest.sharing)).toBeNull();
+    // The withdrawal is in HER ledger and her defensibility buffer, never the owner's.
+    expect(ledgers.consents.getState().records.at(-1)).toMatchObject({ dataType: 'partner_sharing', decision: 'withdrawn' });
+    expect(ledgers.legal.getState().events.at(-1)).toMatchObject({ type: 'consent.recorded', payload: { dataType: 'partner_sharing', decision: 'withdrawn' } });
+    expect(d.consents.getState().records.filter((r) => r.decision === 'withdrawn')).toEqual([]);
+    // Her history stays; she is no longer ready for a pair session.
+    expect(guest.profile.screening).not.toBeNull();
+    press('pair-guest-cancel');
+    press('pair-choose-Awa');
+    press('pair-preview');
+    expect(screen.getByTestId('pair-error').props.children).toBe(tr('en').t('pair.partner.needed'));
+  });
+
+  it('MOB-09 / MOB-08: withdrawing her health consent forgets her answers and body weight, but never her S3 intensity lock', () => {
+    const d = device();
+    d.pair.getState().guestLogExecution(d.awa.id, { kind: 'red_flag', planId: randomUUID(), symptom: 'chest_pain_pressure', at: '2026-09-27T10:00:00.000Z' });
+    expect(guestFacts(d.pair.getState().guest(d.awa.id)!, Date.parse(MON)).intensityLock.locked).toBe(true);
+    renderWith(d, <PairScreen onExit={() => undefined} />);
+    press('pair-edit-Awa');
+    press('pair-guest-confirm');
+    press('pair-guest-next');
+    press('pair-guest-consent-health-withdraw');
+    const guest = d.pair.getState().guest(d.awa.id)!;
+    expect(guest.profile.screening).toBeNull();
+    expect(guest.profile.bodyweightKg).toBeNull();
+    expect(guestSafetyProfile(guest, d.pair.getState().ledgers(d.awa.id))).toMatchObject({ screeningOutcome: 'not_screened', reasonCodes: ['safety_profile.not_screened.no_consent'] });
+    expect(guestFacts(guest, Date.parse(MON)).intensityLock.locked).toBe(true);
+  });
+
+  it('MOB-10: nothing goes into the partner’s ledgers until she confirms it is her, and her earlier health answers are not shown again', () => {
+    const d = device();
+    renderWith(d, <PairScreen onExit={() => undefined} />);
+    press('pair-edit-Awa');
+    expect(screen.getByTestId('pair-guest-handover')).toBeTruthy();
+    expect(screen.queryByTestId('pair-guest-consent-health')).toBeNull();
+    press('pair-guest-next');
+    expect(screen.getByTestId('pair-guest-error').props.children).toBe(tr('en').t('pair.guest.confirm.required', { name: 'Awa' }));
+    expect(screen.queryByTestId('pair-guest-legal')).toBeNull();
+    press('pair-guest-confirm');
+    press('pair-guest-next');
+    press('pair-guest-next');
+    expect(screen.getByTestId('pair-guest-screening')).toBeTruthy();
+    expect(screen.getByText(tr('en').t('pair.guest.screening.again'))).toBeTruthy();
+    // Every answer is unset: "Continue" asks for all of them again.
+    press('pair-guest-next');
+    expect(screen.getByTestId('pair-guest-error').props.children).toBe(tr('en').t('screening.incomplete'));
   });
 
   it('MOB-06: when the share sheet fails, the partner is told nothing was exported', async () => {

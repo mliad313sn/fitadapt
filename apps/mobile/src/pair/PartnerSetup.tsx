@@ -41,18 +41,46 @@ function GuestAcceptance({ ledgers, documentId }: { ledgers: GuestLedgers; docum
   );
 }
 
-/** A consent in the guest's OWN M17 ledger (health data, partner sharing), after its text. */
-function GuestConsent({ ledgers, dataType }: { ledgers: GuestLedgers; dataType: 'health' | 'partner_sharing' }) {
+/**
+ * A consent in the guest's OWN M17 ledger (health data, partner sharing),
+ * after its text. MOB-09: withdrawing is as easy as agreeing, one button in
+ * the same place; it has the same effects as for the owner (health: the
+ * screening answers and body weight are forgotten; partner sharing: nothing
+ * is shared any more). Safety records (an S3 lock) are kept.
+ */
+function GuestConsent({ guestId, ledgers, dataType }: { guestId: string; ledgers: GuestLedgers; dataType: 'health' | 'partner_sharing' }) {
   const { t, locale } = useI18n();
   const theme = useTheme();
+  const store = usePairStore();
   const records = useStore(ledgers.consents, (s) => s.records);
   const document = ledgers.legal.getState().render(`consent.${dataType}` as LegalDocumentId, locale);
-  const granted = [...records].reverse().find((r) => r.dataType === dataType)?.decision === 'granted';
+  // ADR-023: the decision in force (the consent chain), not the last line of the ledger.
+  const granted = consentState(records, dataType).granted;
+  const [withdrawn, setWithdrawn] = useState(false);
   return (
     <Card title={document.title} testID={`pair-guest-consent-${dataType}`}>
       <DocumentView document={document} showTitle={false} />
+      {withdrawn && !granted ? (
+        <Text accessibilityLiveRegion="polite" style={{ color: theme.colors.textMuted, fontSize: theme.fontSize.label }} testID={`pair-guest-consent-${dataType}-withdrawn`}>
+          {t('pair.consent.withdrawn')}
+        </Text>
+      ) : null}
       {granted ? (
-        <Text style={{ color: theme.colors.textMuted, fontSize: theme.fontSize.label }}>{t('pair.guest.consented')}</Text>
+        <>
+          <Text style={{ color: theme.colors.textMuted, fontSize: theme.fontSize.label }}>{t('pair.guest.consented')}</Text>
+          <Button
+            label={t('pair.consent.withdraw')}
+            hint={t('pair.consent.withdrawHint')}
+            variant="secondary"
+            onPress={() => {
+              const record = ledgers.consents.getState().decide(dataType, false, locale);
+              ledgers.legal.getState().logConsent(record);
+              if (dataType === 'health') store.getState().forgetGuestHealth(guestId);
+              setWithdrawn(true);
+            }}
+            testID={`pair-guest-consent-${dataType}-withdraw`}
+          />
+        </>
       ) : (
         <Button
           label={t('pair.consent.agree')}
@@ -90,7 +118,7 @@ export function SharingChoices({ name, value, onChange, testPrefix }: { name: st
   );
 }
 
-type Step = 'legal' | 'screening' | 'sharing';
+type Step = 'handover' | 'legal' | 'screening' | 'sharing';
 
 /**
  * A partner who uses the owner's phone answers for themselves (L2, M17,
@@ -183,15 +211,38 @@ function GuestSteps({ id, onDone, onCancel }: { id: string; onDone: (guestId: st
   const ledgers = store.getState().ledgers(id);
   const consentRecords = useStore(ledgers.consents, (s) => s.records);
   useStore(ledgers.legal, (s) => s.acceptances);
-  const [step, setStep] = useState<Step>('legal');
+  // MOB-10: every visit starts with the partner confirming it is them holding the phone.
+  const [step, setStep] = useState<Step>('handover');
+  const [itsMe, setItsMe] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [answers, setAnswers] = useState<Partial<Record<(typeof SCREENING_QUESTIONS)[number], ScreeningAnswer>>>(guest?.profile.screening?.answers ?? {});
-  const [clearance, setClearance] = useState(guest?.profile.screening?.clearanceAttested ?? false);
+  // MOB-10: earlier health answers are never shown again (whoever holds the phone could read them); the partner answers afresh.
+  const answeredBefore = guest?.profile.screening != null;
+  const [answers, setAnswers] = useState<Partial<Record<(typeof SCREENING_QUESTIONS)[number], ScreeningAnswer>>>({});
+  const [clearance, setClearance] = useState(false);
   const [weight, setWeight] = useState(guest?.profile.bodyweightKg != null ? String(guest.profile.bodyweightKg) : '');
   const [scopes, setScopes] = useState<PairSharingScope[]>(guest ? (sharedScopes(consentRecords, guest.sharing) ?? []) : []);
   if (!guest) return null;
   const displayName = guest.profile.displayName;
   const text = { color: theme.colors.text, fontSize: theme.fontSize.body } as const;
+
+  if (step === 'handover') {
+    return (
+      <Scaffold
+        step="handover"
+        title={t('pair.guest.confirm.title', { name: displayName })}
+        error={error}
+        onCancel={onCancel}
+        next={() => {
+          if (!itsMe) return setError(t('pair.guest.confirm.required', { name: displayName }));
+          setError(null);
+          setStep('legal');
+        }}
+      >
+        <Text style={text}>{t('pair.guest.confirm.body', { name: displayName })}</Text>
+        <Toggle label={t('pair.guest.confirm.toggle', { name: displayName })} value={itsMe} onValueChange={setItsMe} testID="pair-guest-confirm" />
+      </Scaffold>
+    );
+  }
 
   if (step === 'legal') {
     const gate = guestWorkoutGate(ledgers, clock.now(), jurisdiction);
@@ -213,9 +264,9 @@ function GuestSteps({ id, onDone, onCancel }: { id: string; onDone: (guestId: st
         <Text style={text}>{t('pair.guest.legal.intro')}</Text>
         <GuestAcceptance ledgers={ledgers} documentId="terms" />
         <GuestAcceptance ledgers={ledgers} documentId="privacy" />
-        <GuestConsent ledgers={ledgers} dataType="health" />
+        <GuestConsent guestId={id} ledgers={ledgers} dataType="health" />
         <GuestAcceptance ledgers={ledgers} documentId="exercise_risk" />
-        <GuestConsent ledgers={ledgers} dataType="partner_sharing" />
+        <GuestConsent guestId={id} ledgers={ledgers} dataType="partner_sharing" />
       </Scaffold>
     );
   }
@@ -244,6 +295,7 @@ function GuestSteps({ id, onDone, onCancel }: { id: string; onDone: (guestId: st
         }}
       >
         <Text style={text}>{t('screening.intro')}</Text>
+        {answeredBefore ? <Text style={{ color: theme.colors.textMuted, fontSize: theme.fontSize.label }}>{t('pair.guest.screening.again')}</Text> : null}
         <Text style={{ color: theme.colors.textMuted, fontSize: theme.fontSize.label }}>{t('screening.contentStatus')}</Text>
         {SCREENING_QUESTIONS.map((q) => (
           <ChoiceGroup<ScreeningAnswer>
