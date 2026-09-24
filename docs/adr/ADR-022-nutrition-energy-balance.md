@@ -54,3 +54,5 @@ M10 (docs/specs/M10-nutrition-energy-balance.md) adds the minimum nutrition a fa
 - Everything numeric is an unvalidated estimate; the release cannot claim accuracy (L1). The seed's values, the energy equation, the activity factors and the protein range need A4/A5 review before launch.
 - Nutrition data is health data on the device (encrypted database, ADR-020) and on the server (health consent, erasure on withdrawal); records of processing P10.
 - KPIs (weekly logging days, protein attainment, guardrail trigger rate) have no events yet (M18).
+
+> **Amended by ADR-023 (2026-09-24):** plans are ordered by their `supersedes` chain, never by `createdAt` (the M10 order sorted by time first, so a plan made with the clock moved back sorted first); several heads show no stored plan (fail closed) and the next plan names all of them.

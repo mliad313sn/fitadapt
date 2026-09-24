@@ -41,3 +41,5 @@ Health data is special-category data (GDPR Art. 9) and needs explicit consent; o
 - Features built later (M01, M04, M05, M11, M12, M18) must register in `FEATURE_CONSENTS` and check `isFeatureEnabled` / `requireConsent`; a new consent data type is a schema change in `packages/shared` and a migration.
 - The device ledger is not yet sent to the server: sign-in arrives with M01, which must upload device decisions (they are already shaped as `ConsentRecord`s) and reconcile them with server records.
 - L2 acceptances (Terms, Privacy Policy, exercise-risk acknowledgment) are M20's; they can reuse this record shape and ledger.
+
+> **Amended by ADR-023 (2026-09-24):** "the most recent decision wins" is the head of the decisions' `supersedes` chain, not the newest `recordedAt`; decisions stored before it keep the time-then-position order; several heads → withdrawn if any is a withdrawal (fail closed).

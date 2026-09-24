@@ -33,3 +33,5 @@ M01 must learn goals, schedule, places and equipment, optional biometrics and a 
 - M02, M03, M07 and M10 read the profile through `selectSafetyProfile` / `useSafetyProfile` and must call `screeningGateCheck` (S1) before prescribing; M10 reads `deficitNutritionAllowed`.
 - Changing a rule changes `SCREENING_RULES_VERSION`; screenings made under an older version are still re-derived with the current rules on the device, and the server refuses pushes whose stored profile differs (the device's next screening fixes it).
 - Nothing here is validated. Seat A1 must review every question, flag and mapping before any real user sees them.
+
+> **Amended by ADR-023 (2026-09-24):** the screening that counts is the head of the screenings' `supersedes` chain (device and server: `safetyProfileFromScreenings`), not the newest `completedAt` nor the last pushed; several heads → the strictest combination of their profiles.
