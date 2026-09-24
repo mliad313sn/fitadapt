@@ -26,6 +26,10 @@ import { PairProvider } from './pair/PairProvider';
 import { createNutritionStore, type NutritionStore } from './nutrition/nutrition-store';
 import { NutritionProvider } from './nutrition/NutritionProvider';
 import type { PairStore } from './pair/pair-store';
+import { CoachProvider } from './coach/CoachProvider';
+import type { CoachClient } from './coach/coach-client';
+import type { CoachAdjustmentState } from './coach/adjustments';
+import type { StoreApi } from 'zustand';
 
 export interface AppProvidersProps {
   syncClient: SyncClient;
@@ -45,6 +49,8 @@ export interface AppProvidersProps {
   pair?: PairStore;
   /** M10 nutrition: plans, intake logs, habits; defaults to an in-memory store that receives the default progress hand-offs. */
   nutrition?: NutritionStore;
+  /** M11: the AI-coach API client (absent when signed out: the coach runs offline) and today's coach adjustments. */
+  coach?: { client?: CoachClient; adjustments?: StoreApi<CoachAdjustmentState> };
   /** Replaces the plain sync on reconnect (M01: upload the device ledgers first). */
   runSync?: () => Promise<unknown>;
   children?: ReactNode;
@@ -98,7 +104,7 @@ function useDefaultProgress(syncClient: SyncClient, nutritionStore: NutritionSto
   }, [syncClient, provided, nutritionStore]);
 }
 
-export function AppProviders({ syncClient, initialLocale, initialUnitSystem = 'metric', privacy, library, profile, legal, session, progress, pair, nutrition, runSync, children }: AppProvidersProps) {
+export function AppProviders({ syncClient, initialLocale, initialUnitSystem = 'metric', privacy, library, profile, legal, session, progress, pair, nutrition, coach, runSync, children }: AppProvidersProps) {
   const privacyProps = useDefaultPrivacy(privacy);
   const m01 = useDefaultM01(syncClient, profile, legal);
   const nutritionStore = useDefaultNutrition(syncClient, nutrition);
@@ -118,7 +124,9 @@ export function AppProviders({ syncClient, initialLocale, initialUnitSystem = 'm
                 <ProgressProvider {...progressProps}>
                   <NutritionProvider store={nutritionStore}>
                     <PairProvider store={pair}>
-                      <ThemedApp>{children}</ThemedApp>
+                      <CoachProvider client={coach?.client} adjustments={coach?.adjustments}>
+                        <ThemedApp>{children}</ThemedApp>
+                      </CoachProvider>
                     </PairProvider>
                   </NutritionProvider>
                 </ProgressProvider>

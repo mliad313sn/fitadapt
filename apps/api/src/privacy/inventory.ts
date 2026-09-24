@@ -95,4 +95,22 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = Object.freeze([
     erase: 'cascade_from_users',
     personalData: 'while an S3 intensity lock is on: whether each fact is a red flag or a medical-review attestation, its time and causal ids (no symptom, no other health value); kept after a health-consent withdrawal, deleted when the lock is lifted (MOB-08, ADR-027; retention basis validated:false, B1/counsel)',
   },
+  {
+    table: 'coach_conversations',
+    export: { section: 'coach.conversations' },
+    erase: 'cascade_from_users',
+    personalData: 'AI-coach conversations: locale, jurisdiction, start and last-message times (M11); also erased when the ai_coach consent is withdrawn and after the retention period',
+  },
+  {
+    table: 'coach_messages',
+    export: { section: 'coach.conversations' },
+    erase: 'cascade_from_users',
+    personalData: 'health data: what the user typed to the AI coach and its replies (M11); same erasure as the conversation',
+  },
+  {
+    table: 'coach_tool_calls',
+    export: { section: 'coach.conversations' },
+    erase: 'cascade_from_users',
+    personalData: 'health data: each tool call of the AI coach with its input (e.g. a pain score) and the engine outcome (M11); same erasure as the conversation',
+  },
 ]);

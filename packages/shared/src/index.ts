@@ -16,3 +16,4 @@ export * from './pair.js';
 export * from './nutrition.js';
 export * from './record-chain.js';
 export * from './preferences.js';
+export * from './coach.js';

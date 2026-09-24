@@ -6,6 +6,8 @@ import { createAccountApi, runAccountSync, UploadLedger } from './account/accoun
 import { createAuthApi, jsonPost } from './auth/auth-api';
 import { createSessionStore, type SessionStore } from './auth/session-store';
 import type { TokenVault } from './auth/vault';
+import { createCoachAdjustmentStore } from './coach/adjustments';
+import { createHttpCoachClient } from './coach/coach-client';
 import { createLegalStore } from './legal/legal-store';
 import { LibraryStore } from './library/library-store';
 import { createGuardrailInbox } from './nutrition/guardrail-port';
@@ -72,6 +74,8 @@ export function createAppServices({ db, jurisdiction, initialLocale, apiUrl, ran
   const pair = createPairStore({ kv, newId: randomUUID, now, jurisdiction });
   const vault = new PhotoVault({ db, files: photoFiles, keys, randomBytes, newId: randomUUID, now });
   const ageGate = createAgeGateStore(kv);
+  // M11: today's adjustments the user chose from the coach's engine proposals (device kv).
+  const coachAdjustments = createCoachAdjustmentStore(kv);
   // MOB-07: the device data, and the record of what was uploaded, belong to one account.
   const binding = new AccountBinding(kv);
   const accountApi = createAccountApi(post, getAccessToken);
@@ -112,6 +116,7 @@ export function createAppServices({ db, jurisdiction, initialLocale, apiUrl, ran
     progress.getState().reset();
     nutritionStore.getState().reload();
     pair.getState().reset();
+    coachAdjustments.getState().clear();
     await Promise.all([photos, session.getState().forget()]);
   };
 
@@ -136,6 +141,9 @@ export function createAppServices({ db, jurisdiction, initialLocale, apiUrl, ran
     initialLocale,
     privacyClient: createHttpPrivacyClient({ baseUrl: apiBaseUrl(apiUrl), getAccessToken }),
     photoBackupApi: httpPhotoBackupApi({ baseUrl: apiBaseUrl(apiUrl), getAccessToken }),
+    // M11: the coach's API client (the model runs behind the API; the app holds no provider key) and today's adjustments.
+    coachClient: createHttpCoachClient({ baseUrl: apiBaseUrl(apiUrl), getAccessToken, ...(doFetch ? { fetch: doFetch } : {}) }),
+    coachAdjustments,
   };
 }
 

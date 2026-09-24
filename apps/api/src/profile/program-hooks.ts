@@ -20,7 +20,7 @@ import { collectionRows } from './stored-rows.js';
  */
 
 /** API-11: stored rows through the per-push cache. */
-const latestRows = collectionRows;
+export const latestRows = collectionRows;
 
 /** The latest stored state of an equipment profile (null if never stored or deleted). */
 async function storedEquipmentProfile(db: DbExecutor, userId: string, recordId: string) {
@@ -60,7 +60,7 @@ export async function validateProgram(db: DbExecutor, userId: string, data: unkn
   return null;
 }
 
-async function storedProgram(db: DbExecutor, userId: string, programId: string): Promise<ProgramRecord | null> {
+export async function storedProgram(db: DbExecutor, userId: string, programId: string): Promise<ProgramRecord | null> {
   for (const row of await latestRows(db, userId, PROGRAM_COLLECTIONS.programs)) {
     const parsed = ProgramRecordSchema.safeParse(row.data);
     if (parsed.success && parsed.data.program.programId === programId) return parsed.data;
@@ -82,7 +82,7 @@ export function orderedReflows(rows: readonly { recordId: string; op: string; da
   return orderChain(list, (r) => ({ id: r.id, supersedes: r.data.supersedes, at: r.data.decidedAt })).ordered.map((r) => r.data);
 }
 
-async function storedReflows(db: DbExecutor, userId: string, programId: string): Promise<ReflowRecord[]> {
+export async function storedReflows(db: DbExecutor, userId: string, programId: string): Promise<ReflowRecord[]> {
   return orderedReflows(await latestRows(db, userId, PROGRAM_COLLECTIONS.reflows), programId);
 }
 

@@ -17,6 +17,8 @@ const EnvSchema = z.object({
    * number of trusted hops: one more lets a client spoof its address (ADR-028).
    */
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
+  /** M11: the model provider key, server-side only (never on a device, never logged). Absent: the coach answers without a model. */
+  ANTHROPIC_API_KEY: z.string().min(20).optional().or(z.literal('').transform(() => undefined)),
 }).superRefine((env, ctx) => {
   // The .env.example values are public. A production process started with
   // them would sign tokens anyone can forge, so it must refuse to start.

@@ -1,0 +1,47 @@
+# M11 on a device: in airplane mode the AI coach opens with the AI disclosure
+# and the persistent "AI assistant" label (L5), answers a question from the
+# app's guide with its source (offline FAQ), and a red flag typed in chat
+# starts the M05 stop flow (seek-care guidance with the emergency line; the
+# workout stays locked until a medical review is attested). NOT EXECUTED in
+# this environment (no device or emulator); the same journey runs in
+# jest-expo: __tests__/coach.test.tsx. Needs the ai_coach consent on in
+# Privacy settings. Airplane mode is Android-only in Maestro.
+# Run with: maestro test apps/mobile/e2e/coach-red-flag.yaml
+appId: dev.companion.app
+---
+- clearState
+- launchApp
+- tapOn: { id: "age-gate-day" }
+- inputText: "14"
+- tapOn: { id: "age-gate-month" }
+- inputText: "3"
+- tapOn: { id: "age-gate-year" }
+- inputText: "1988"
+- tapOn: { id: "age-gate-continue" }
+- assertVisible: { id: "home-screen" }
+- runFlow:
+    file: onboarding-steps.yaml
+    env:
+      SKIP_MEASUREMENTS: "true"
+- tapOn: { id: "open-privacy" }
+- tapOn: { id: "consent-ai_coach" }
+- back
+- setAirplaneMode: enabled
+- tapOn: { id: "open-coach" }
+- assertVisible: { id: "coach-ai-label" }
+- assertVisible: { id: "coach-disclosure" }
+- assertVisible: { id: "coach-offline" }
+- tapOn: { id: "coach-input" }
+- inputText: "What is RIR?"
+- tapOn: { id: "coach-send" }
+- assertVisible: { id: "coach-references" }
+- tapOn: { id: "coach-input" }
+- inputText: "I have chest pain"
+- tapOn: { id: "coach-send" }
+- assertVisible: { id: "notice-seek_care" }
+- assertVisible: { id: "notice-seek_care-emergency" }
+- assertVisible: { id: "coach-ai-label" }
+- tapOn: { id: "coach-exit" }
+- tapOn: { id: "open-workout" }
+- assertVisible: { id: "workout-locked" }
+- setAirplaneMode: disabled

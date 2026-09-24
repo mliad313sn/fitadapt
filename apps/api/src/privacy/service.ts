@@ -49,6 +49,7 @@ import {
 } from '../db/schema.js';
 import { exportLockFacts } from '../profile/intensity-lock.js';
 import type { BackupCatalog } from './backup-catalog.js';
+import { exportCoach } from '../ai-coach/store.js';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
@@ -265,6 +266,8 @@ export class PrivacyService {
       const pairEventRows = await tx.select().from(pairEvents).where(eq(pairEvents.fromUserId, userId)).orderBy(asc(pairEvents.createdAt), asc(pairEvents.seq));
       // MOB-08: the S3 lock facts retained apart from the erasable logs (ADR-027).
       const lockFacts = await exportLockFacts(tx, userId);
+      // M11: AI-coach conversations (health data), their messages and every tool call.
+      const coach = await exportCoach(tx, userId);
 
       return {
         format: DATA_EXPORT_FORMAT,
@@ -304,6 +307,7 @@ export class PrivacyService {
           events: pairEventRows.map((e) => ({ pairSessionId: e.pairSessionId, seq: e.seq, clientEventId: e.clientEventId, event: e.event as Record<string, unknown>, createdAt: iso(e.createdAt) })),
         },
         safetyLocks: lockFacts,
+        coach,
       };
     });
   }

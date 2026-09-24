@@ -80,7 +80,7 @@ import { collectionRows, latestRecordRow, parsedRows } from './stored-rows.js';
 const rows = collectionRows;
 
 /** What the server stores about the user's execution: sessions, set logs, execution logs (in the order stored). */
-async function storedExecution(db: DbExecutor, userId: string) {
+export async function storedExecution(db: DbExecutor, userId: string) {
   const sessions = parsedRows(await rows(db, userId, SESSION_COLLECTIONS.workoutSessions), WorkoutSessionRecordSchema).map((r) => r.data);
   const setLogs: StoredSetLog[] = parsedRows(await rows(db, userId, SESSION_COLLECTIONS.setLogs), SetLogSchema);
   const events: ExecutionLog[] = parsedRows(await rows(db, userId, SESSION_COLLECTIONS.executionLogs), ExecutionLogSchema).map((r) => r.data);

@@ -57,6 +57,9 @@ function GatedStack() {
         <Stack.Screen name="first-workout" />
         {/* M10: nutrition behind the same L2 gate (screening done, Terms, Privacy and health consent accepted); deficit set-up shows its own L3 notice. */}
         <Stack.Screen name="nutrition" />
+        {/* M11: the AI coach behind the same L2 gate; it opens with the AI disclosure (L5) and needs the ai_coach consent.
+            Reachable during a training hold (CS-1) like nutrition: the engine it calls refuses any session there. */}
+        <Stack.Screen name="coach" />
       </Stack.Protected>
       <Stack.Protected guard={passed && workout && training}>
         {/* M07: the assessment is a workout activity: same L2 gate as the first workout, and no training hold. */}
@@ -139,6 +142,8 @@ function AppRoot({ db }: { db: SyncSqliteDatabase }) {
   const privacy = useMemo(() => ({ ...app.privacy, client: signedIn ? app.privacyClient : undefined }), [app, signedIn]);
   // M04: the encrypted photo backup needs an account; without one no backup client exists at all.
   const progress = useMemo(() => ({ ...app.progress, backupApi: signedIn ? app.photoBackupApi : undefined }), [app, signedIn]);
+  // M11: signed out, the coach runs on the device only (offline mode).
+  const coach = useMemo(() => ({ client: signedIn ? app.coachClient : undefined, adjustments: app.coachAdjustments }), [app, signedIn]);
   return (
     <AppProviders
       syncClient={app.syncClient}
@@ -152,6 +157,7 @@ function AppRoot({ db }: { db: SyncSqliteDatabase }) {
       runSync={app.accountSync}
       pair={app.pair}
       nutrition={app.nutritionStore}
+      coach={coach}
     >
       <StatusBar style="auto" />
       <GatedStack />

@@ -216,6 +216,10 @@ describe('access control and stubs', () => {
       '/v1/auth/otp/request',
       '/v1/auth/otp/verify',
       '/v1/auth/refresh',
+      // M11: the AI coach (server-side model proxy).
+      '/v1/coach/conversations',
+      '/v1/coach/conversations/{id}',
+      '/v1/coach/conversations/{id}/messages',
       '/v1/legal/acceptances',
       '/v1/legal/documents/{documentId}',
       '/v1/legal/notices',

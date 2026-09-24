@@ -12,6 +12,7 @@ import { onboardingEn } from './onboarding.en.js';
 import { screeningEn } from './screening.en.js';
 import { nutritionEn } from './nutrition.en.js';
 import { deviceDataEn } from './device-data.en.js';
+import { coachEn } from './coach.en.js';
 import { flattenFoodText } from './foods.js';
 
 /**
@@ -163,6 +164,9 @@ export const en = {
 
   // M10 nutrition: screens, reason codes, habits, supportive mode (no earn/burn/cheat, no guilt, no body judgement; general guidance only).
   ...nutritionEn,
+
+  // M11 AI coach: screen, deterministic safety replies, tool outcomes, offline mode, knowledge registry (drafts; no diagnosis, no claims).
+  ...coachEn,
 
   // M10 food names (original content; values are unvalidated estimates in packages/food-library).
   ...flattenFoodText('en'),

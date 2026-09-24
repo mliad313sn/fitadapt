@@ -1,3 +1,4 @@
+import { COACH_TOOL_NAMES } from '@fitadapt/shared';
 import { z } from 'zod';
 import { canonicalJson, sha256Hex } from './sha256.js';
 
@@ -91,6 +92,12 @@ export const DefensibilityPayloads = {
     deficitAllowed: z.boolean(),
     reasonCodes: z.array(code).max(50),
   }),
+  /**
+   * M11: a tool call of the AI coach (S6): which tool (or `unknown` for a name outside the tool list), what the engine
+   * did (applied, proposed, refused, invalid), the reason code and the engine version. Never the tool input or the
+   * conversation text (health data stays in the consent-gated conversation store).
+   */
+  'coach.tool_call': z.strictObject({ tool: z.enum([...COACH_TOOL_NAMES, 'unknown']), status: z.enum(['applied', 'proposed', 'refused', 'invalid']), reasonCode: code, engineVersion }),
   'content.approved': z.strictObject({ contentId: code, contentVersion: version, reviewerSeat: z.string().regex(/^[A-Z]\d{1,2}$/), signOffRecord: z.string().regex(/^[\w./-]{1,200}$/) }),
   'incident.recorded': z.strictObject({
     incidentId: z.uuid(),
@@ -309,6 +316,8 @@ export interface LegalHoldExport {
   readonly pairSessions: readonly DefensibilityEvent[];
   /** M10: nutrition targets the engine prescribed (mode, versions and reason codes; no value). */
   readonly nutritionTargets: readonly DefensibilityEvent[];
+  /** M11: AI-coach tool calls (tool, outcome, reason code, engine version; no input, no text). */
+  readonly coachToolCalls: readonly DefensibilityEvent[];
   readonly engineVersions: readonly { readonly engineVersion: string; readonly firstSeen: string; readonly lastSeen: string; readonly events: number }[];
   readonly legalHolds: readonly DefensibilityEvent[];
   readonly accessLog: readonly DefensibilityEvent[];
@@ -320,7 +329,7 @@ export interface LegalHoldExport {
 export function buildLegalHoldExport(subjectRef: string, chain: readonly DefensibilityEvent[], generatedAt: string, expected?: ChainHead): LegalHoldExport {
   const of = (...types: DefensibilityEventType[]) => chain.filter((e) => types.includes(e.type));
   const versions = new Map<string, { engineVersion: string; firstSeen: string; lastSeen: string; events: number }>();
-  for (const e of of('safety.event', 'safety.attested', 'prescription.issued', 'program.generated', 'program.reflowed', 'pair.timeline_built', 'nutrition.target_set')) {
+  for (const e of of('safety.event', 'safety.attested', 'prescription.issued', 'program.generated', 'program.reflowed', 'pair.timeline_built', 'nutrition.target_set', 'coach.tool_call')) {
     const v = (e.payload as { engineVersion: string }).engineVersion;
     const entry = versions.get(v) ?? { engineVersion: v, firstSeen: e.occurredAt, lastSeen: e.occurredAt, events: 0 };
     entry.events += 1;
@@ -344,6 +353,7 @@ export function buildLegalHoldExport(subjectRef: string, chain: readonly Defensi
     programs: of('program.generated', 'program.reflowed'),
     pairSessions: of('pair.joined', 'pair.timeline_built', 'pair.challenge_started', 'pair.left', 'pair.partner_left'),
     nutritionTargets: of('nutrition.target_set'),
+    coachToolCalls: of('coach.tool_call'),
     engineVersions: [...versions.values()],
     legalHolds: of('legal_hold.placed', 'legal_hold.released'),
     accessLog: of('log.accessed'),

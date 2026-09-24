@@ -322,6 +322,12 @@ describe('in-app export (goal condition 2)', () => {
     const flag = { mutationId: randomUUID(), collection: 'execution_logs', recordId: randomUUID(), op: 'insert', baseRevision: null, data: { kind: 'red_flag', planId: null, symptom: 'fainting', at: h.clock.now().toISOString(), eventId: randomUUID() }, clientCreatedAt: h.clock.now().toISOString() };
     const flagged = await h.app.inject({ method: 'POST', url: '/v1/sync/push', headers: bearer(token), payload: { deviceId: first.deviceId, mutations: [flag] } });
     expect((flagged.json() as { results: { status: string }[] }).results[0]!.status).toBe('applied');
+    // M11: an AI-coach conversation with a tool call (the coach sections of the export).
+    expect((await consent(token, 'ai_coach', 'granted')).statusCode).toBe(201);
+    const convo = await h.app.inject({ method: 'POST', url: '/v1/coach/conversations', headers: bearer(token), payload: { locale: 'fr', jurisdiction: 'FR' } });
+    expect(convo.statusCode).toBe(201);
+    const said = await h.app.inject({ method: 'POST', url: `/v1/coach/conversations/${(convo.json() as { conversationId: string }).conversationId}/messages`, headers: bearer(token), payload: { text: 'J’ai mal au genou, 3 sur 10', context: { locale: 'fr', jurisdiction: 'FR', today: null, program: null } } });
+    expect(said.statusCode).toBe(200);
     const doc = (await exportData(token)).json() as Record<string, unknown>;
     for (const entry of DATA_INVENTORY) {
       if (!('section' in entry.export)) continue;

@@ -52,7 +52,7 @@ export default defineConfig(
   // The security tooling scripts touch the file system; keep the SAST rule on
   // here so their justified suppressions stay checked in normal lint too.
   {
-    files: ['tooling/security/scripts/**/*.mjs', 'tooling/legal/scripts/**/*.mjs', 'tooling/legal/lib/**/*.mjs', 'apps/api/src/legal/cli.ts'],
+    files: ['tooling/security/scripts/**/*.mjs', 'tooling/legal/scripts/**/*.mjs', 'tooling/legal/lib/**/*.mjs', 'apps/api/src/legal/cli.ts', 'apps/api/src/ai-coach/prompts.ts', 'apps/api/eval/run.ts'],
     rules: { 'security/detect-non-literal-fs-filename': 'error' },
   },
   // CLAUDE.md rule 5: no user-facing string outside packages/i18n.
@@ -66,8 +66,9 @@ export default defineConfig(
     rules: { 'fitadapt/no-hardcoded-jsx-strings': 'error' },
   },
   // packages/engine and packages/safety are pure: no I/O, no network, injected clock and seed.
+  // M11: packages/coach too (the same turn runs on the device offline and on the server; the model is injected).
   {
-    files: ['packages/engine/src/**/*.ts', 'packages/safety/src/**/*.ts'],
+    files: ['packages/engine/src/**/*.ts', 'packages/safety/src/**/*.ts', 'packages/coach/src/**/*.ts'],
     ignores: ['**/*.test.ts'],
     rules: {
       'no-restricted-imports': [

@@ -24,6 +24,12 @@ export const REDACT_PATHS = [
   'refreshToken',
   'idToken',
   'password',
+  // M11: the model provider key and the conversation (health data) never reach a log.
+  'apiKey',
+  'x-api-key',
+  'req.headers["x-api-key"]',
+  'text',
+  'messages',
   'data',
   'body',
   '*.email',

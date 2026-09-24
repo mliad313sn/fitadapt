@@ -15,6 +15,7 @@ export default function Index() {
       onOpenPair={() => router.push('/pair')}
       onOpenProgress={() => router.push('/progress')}
       onOpenNutrition={() => router.push('/nutrition')}
+      onOpenCoach={() => router.push('/coach')}
       // A missing health consent is renewed in Privacy settings; changed texts on the terms screen.
       onReviewLegal={(missing) => router.push(missing.every((id) => id.startsWith('consent.')) ? '/privacy' : '/onboarding/terms')}
       onRescreen={(reason) => router.push({ pathname: '/onboarding/screening', params: { reason } })}

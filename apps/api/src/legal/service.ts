@@ -253,6 +253,11 @@ export class LegalService {
     await this.log.append(tx, { type: 'program.reflowed', chain: this.subjectRef(userId), occurredAt: this.deps.now().toISOString(), payload });
   }
 
+  /** M11: an AI-coach tool call (tool, outcome, reason code, engine version; never its input), with the transaction that stores the conversation turn (ADR-009). */
+  async recordCoachToolCall(userId: string, payload: DefensibilityPayload<'coach.tool_call'>, tx: Tx): Promise<void> {
+    await this.log.append(tx, { type: 'coach.tool_call', chain: this.subjectRef(userId), occurredAt: this.deps.now().toISOString(), payload });
+  }
+
   /** M10: a nutrition target the engine prescribed (versions, mode, codes; never a value), with the transaction of the stored plan (ADR-009). */
   async recordNutritionTarget(userId: string, payload: DefensibilityPayload<'nutrition.target_set'>, tx: Tx): Promise<void> {
     await this.log.append(tx, { type: 'nutrition.target_set', chain: this.subjectRef(userId), occurredAt: this.deps.now().toISOString(), payload });

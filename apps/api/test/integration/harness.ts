@@ -45,6 +45,8 @@ export interface HarnessOptions {
   withdrawalHandlers?: AppDeps['withdrawalHandlers'];
   legalRegistry?: AppDeps['legalRegistry'];
   trustProxyHops?: AppDeps['trustProxyHops'];
+  coachModel?: AppDeps['coachModel'];
+  coachTierOf?: AppDeps['coachTierOf'];
 }
 
 export async function createHarness(options: HarnessOptions = {}): Promise<Harness> {
@@ -109,7 +111,7 @@ export async function truncateAll(h: Harness) {
     await tx.execute(sql`ALTER TABLE defensibility_events DISABLE TRIGGER USER`);
     await tx.execute(sql`ALTER TABLE defensibility_heads DISABLE TRIGGER USER`);
     await tx.execute(
-      sql`TRUNCATE users, devices, otp_codes, auth_sessions, refresh_tokens, sync_heads, sync_changes, sync_mutations, consent_records, data_requests, audit_entries, legal_acceptances, notice_impressions, defensibility_events, defensibility_heads, photo_backup_keys, photo_backups, pair_sessions, pair_participants, pair_events, safety_locks CASCADE`,
+      sql`TRUNCATE users, devices, otp_codes, auth_sessions, refresh_tokens, sync_heads, sync_changes, sync_mutations, consent_records, data_requests, audit_entries, legal_acceptances, notice_impressions, defensibility_events, defensibility_heads, photo_backup_keys, photo_backups, pair_sessions, pair_participants, pair_events, safety_locks, coach_conversations, coach_messages, coach_tool_calls CASCADE`,
     );
     await tx.execute(sql`ALTER TABLE defensibility_events ENABLE TRIGGER USER`);
     await tx.execute(sql`ALTER TABLE defensibility_heads ENABLE TRIGGER USER`);

@@ -1,4 +1,5 @@
 import { Redis } from 'ioredis';
+import { assertCoachContentReleaseReady } from '@fitadapt/coach';
 import { assertLegalReleaseReady } from '@fitadapt/legal';
 import { buildApp } from './app.js';
 import { MemoryMailer } from './auth/mailer.js';
@@ -12,6 +13,8 @@ const reporter = await initErrorReporting(env.SENTRY_DSN, env.NODE_ENV);
 if (env.NODE_ENV === 'production') {
   // M20: production refuses legal texts that lack counsel approval (every text is a draft today).
   assertLegalReleaseReady('production');
+  // M11: production refuses coach knowledge that the council has not approved (every entry is pending today).
+  assertCoachContentReleaseReady({ production: true });
   // No production mail provider is chosen yet (see docs/status/M00.md). Refuse to start
   // rather than silently dropping sign-in codes.
   throw new Error('No mail provider configured for production');
@@ -30,6 +33,7 @@ const app = await buildApp({
   logLevel: env.LOG_LEVEL,
   errorReporter: reporter,
   trustProxyHops: env.TRUST_PROXY_HOPS,
+  anthropicApiKey: env.ANTHROPIC_API_KEY,
 });
 
 // Retention schedule: backup-purge completion and expiry of old records (M17).
@@ -44,6 +48,8 @@ const retention = setInterval(() => {
     .catch((error: unknown) => app.log.error({ err: error }, 'retention job failed'));
   // M20: expired defensibility chains (not under legal hold) are purged per legalConfig.defensibilityRetentionDays.
   app.services.legal.log.purgeExpired(new Date()).catch((error: unknown) => app.log.error({ err: error }, 'defensibility retention failed'));
+  // M11: coach conversations (health data) are deleted after coachConfig.conversationRetentionDays.
+  app.services.coach.purgeExpired().catch((error: unknown) => app.log.error({ err: error }, 'coach retention failed'));
 }, privacyValue('retentionJobIntervalSeconds') * 1000);
 retention.unref();
 

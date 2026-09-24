@@ -39,6 +39,12 @@ import { PairService, pairWithdrawalHandler } from './pair/service.js';
 import { attachPairSockets } from './pair/ws.js';
 import { pairRoutes } from './routes/pair.js';
 import { safetyRoutes } from './routes/safety.js';
+import type { CoachModel } from '@fitadapt/coach';
+import { AnthropicCoachModel } from './ai-coach/anthropic-model.js';
+import { loadCoachSystemPrompt } from './ai-coach/prompts.js';
+import { CoachService, type CoachTier } from './ai-coach/service.js';
+import { coachWithdrawalHandler } from './ai-coach/store.js';
+import { coachRoutes } from './routes/coach.js';
 
 export interface AppDeps {
   db: Database;
@@ -63,6 +69,12 @@ export interface AppDeps {
   notices?: readonly NoticeDefinition[];
   /** API-8: trusted reverse-proxy hops in front of the API (env TRUST_PROXY_HOPS; 0 = none). */
   trustProxyHops?: number;
+  /** M11: the model provider key (server-side only). Absent: the coach answers without a model. */
+  anthropicApiKey?: string;
+  /** M11: a model to use instead of the provider (tests and evals inject deterministic models; null forces no model). */
+  coachModel?: CoachModel | null;
+  /** M11: subscription tier for the coach rate limits (M16; default free). */
+  coachTierOf?: (userId: string) => Promise<CoachTier>;
 }
 
 export interface AppServices {
@@ -70,6 +82,8 @@ export interface AppServices {
   legal: LegalService;
   /** M09: the multi-device pair relay. */
   pair: PairService;
+  /** M11: the AI coach. */
+  coach: CoachService;
 }
 
 declare module 'fastify' {
@@ -149,6 +163,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       photos: [photosWithdrawalHandler(), ...(deps.withdrawalHandlers?.photos ?? [])],
       // M09: withdrawing partner_sharing stops the pair relay and erases what it holds from that person.
       partner_sharing: [pairWithdrawalHandler(), ...(deps.withdrawalHandlers?.partner_sharing ?? [])],
+      // M11: withdrawing the ai_coach consent erases every conversation (health data) in the same transaction.
+      ai_coach: [coachWithdrawalHandler(), ...(deps.withdrawalHandlers?.ai_coach ?? [])],
     },
     // L2/L11: every consent decision also goes to the defensibility log, in the same transaction.
     onConsentRecorded: (tx, userId, record, at) => legal.logConsent(tx, userId, record, at),
@@ -161,7 +177,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   // validator (fail closed: `<collection>.invalid`).
   const sync = new SyncServer({ store: new PgServerStore(deps.db), validate: profileSyncValidator(profileHooks), onApplied: profileSyncListener(profileHooks), enforceCollectionSchemas: true });
   const pair = new PairService({ db: deps.db, privacy, legal, pepper: deps.pepper, now, rateLimiter });
-  app.decorate('services', { privacy, legal, pair });
+  // M11: server-side model proxy (the key never leaves this process); the coach writes records only through the sync validators.
+  const coachModel = deps.coachModel !== undefined ? deps.coachModel : deps.anthropicApiKey ? new AnthropicCoachModel({ apiKey: deps.anthropicApiKey }) : null;
+  const coach = new CoachService({ db: deps.db, redis: deps.redis, redisPrefix: deps.redisPrefix ?? 'api:', rateLimiter, privacy, legal, sync, pepper: deps.pepper, now, model: coachModel, systemStable: loadCoachSystemPrompt(), tierOf: deps.coachTierOf });
+  app.decorate('services', { privacy, legal, pair, coach });
 
   app.get('/health', { schema: { hide: true } }, async () => ({ status: 'ok' }));
   app.get('/docs/openapi.json', { schema: { hide: true } }, async () => app.swagger());
@@ -173,6 +192,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(analyticsRoutes(auth, privacy, deps.analyticsSink ?? new NoopAnalyticsSink()));
   // M09: multi-device Fair Pair (REST to create/join, WebSocket for the session itself; ADR-001, ADR-021).
   await app.register(pairRoutes(auth, pair));
+  await app.register(coachRoutes(auth, coach));
   attachPairSockets(app, auth, pair, { trustProxyHops: deps.trustProxyHops ?? 0, now });
   // MOB-08: the S3 intensity lock that outlives a health-consent withdrawal (ADR-027).
   await app.register(safetyRoutes(auth, deps.db));
