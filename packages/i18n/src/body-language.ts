@@ -80,6 +80,18 @@ export const BODY_SHAMING_DENYLIST: Readonly<Record<Locale, readonly string[]>> 
     'unflattering',
     'real women',
     'real men',
+    // FIX-B: additions from docs/governance/ai-reviews/A4-A6-nutrition-behaviour.md (X-2), AI pre-review, A6/A4 and a native FR editor to confirm.
+    'flat stomach',
+    'flat belly',
+    'tone up',
+    'toned',
+    'slim down',
+    'get rid of',
+    'thigh gap',
+    'baby weight',
+    'post-baby body',
+    'shredded',
+    'shred',
   ],
   fr: [
     'grassouillet',
@@ -125,6 +137,12 @@ export const BODY_SHAMING_DENYLIST: Readonly<Record<Locale, readonly string[]>> 
     'disgracieuse',
     'vraies femmes',
     'vrais hommes',
+    // FIX-B: additions from docs/governance/ai-reviews/A4-A6-nutrition-behaviour.md (X-2), AI pre-review, A6/A4 and a native FR editor to confirm.
+    'perdre du ventre',
+    'mincir',
+    'affiner',
+    'silhouette de reve',
+    'kilos de grossesse',
   ],
 });
 

@@ -48,6 +48,18 @@ export const CLAIM_DENYLIST: readonly DenyRule[] = Object.freeze([
   // M03 (C9): no lipolysis claim and no "fat-loss zone" — fat loss depends on energy balance, not on a heart-rate zone.
   { id: 'en.lipolysis', locale: 'en', category: 'fat_loss', description: 'lipolysis / lipolytic (e.g. "maximum lipolysis")', pattern: /(?<!\p{L})lipoly(?:sis|ses|tic)(?!\p{L})/giu },
   { id: 'en.fat_zone', locale: 'en', category: 'fat_loss', description: 'fat-loss / fat-melting zone', pattern: /(?<!\p{L})fat[\s-]{1,3}(?:loss|melting|oxidation|oxidising|oxidizing)\s{1,3}zones?(?!\p{L})/giu },
+  // FIX-B: additions from the AI pre-reviews (docs/governance/ai-reviews/A4-A6-nutrition-behaviour.md M10-25:
+  // metabolism and detox claims; B-legal-regulatory.md §3.6 (B4): rehab / recovery-from-injury wording, a medical-device risk).
+  { id: 'en.boost_metabolism', locale: 'en', category: 'fat_loss', description: 'boost (your) metabolism', pattern: /(?<!\p{L})boost(?:s|ed|ing)?\s{1,3}(?:your\s|the\s)?metabolism(?!\p{L})/giu },
+  { id: 'en.detox', locale: 'en', category: 'medical', description: 'detox / flush out toxins', pattern: /(?<!\p{L})(?:detox(?:es|ing|ify|ifying|ification)?|toxins?)(?!\p{L})/giu },
+  { id: 'en.rehab', locale: 'en', category: 'medical', description: 'rehab / rehabilitation', pattern: /(?<!\p{L})rehab(?:s|ilitation|ilitate|ilitating)?(?!\p{L})/giu },
+  {
+    id: 'en.recover_from_injury',
+    locale: 'en',
+    category: 'medical',
+    description: 'recover from (an) injury',
+    pattern: /(?<!\p{L})recover(?:s|ed|ing|y)?\s{1,3}from\s{1,3}(?:an?\s|your\s|the\s)?injur(?:y|ies)(?!\p{L})/giu,
+  },
 
   { id: 'fr.diagnostic', locale: 'fr', category: 'medical', description: 'diagnostic / diagnostiquer', pattern: /(?<!\p{L})diagnosti(?:c|cs|que|quer|quons|quez|qué|quée|qués)(?!\p{L})/giu },
   {
@@ -93,6 +105,10 @@ export const CLAIM_DENYLIST: readonly DenyRule[] = Object.freeze([
   },
   { id: 'fr.fondre', locale: 'fr', category: 'fat_loss', description: 'faire fondre les graisses / kilos', pattern: /(?<!\p{L})fond(?:re|ez)\s{1,3}(?:les\s|la\s|vos\s)?(?:graisses?|gras|kilos)(?!\p{L})/giu },
   { id: 'fr.maigrir_vite', locale: 'fr', category: 'results', description: 'maigrir vite / rapidement', pattern: /(?<!\p{L})maigri(?:r|ssez)\s{1,3}(?:vite|rapidement)(?!\p{L})/giu },
+  // FIX-B: additions from the AI pre-reviews (A4-A6 M10-25, B §3.6).
+  { id: 'fr.booster_metabolisme', locale: 'fr', category: 'fat_loss', description: 'booster le métabolisme', pattern: /(?<!\p{L})boost(?:er|ez|e|ent)\s{1,3}(?:le\s|votre\s|ton\s)?métabolisme(?!\p{L})/giu },
+  { id: 'fr.detox', locale: 'fr', category: 'medical', description: 'détox / éliminer les toxines', pattern: /(?<!\p{L})(?:d[ée]tox(?:ifier|ifiant|ifiante|ification)?|toxines?)(?!\p{L})/giu },
+  { id: 'fr.reeducation', locale: 'fr', category: 'medical', description: 'rééducation (de blessure)', pattern: /(?<!\p{L})r[ée][ée]duca(?:tion|tions|tif|tive)(?!\p{L})/giu },
 ] satisfies DenyRule[]);
 
 export interface SubstantiationEntry {

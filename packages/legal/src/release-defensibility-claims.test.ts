@@ -201,6 +201,12 @@ describe('claims linter (L1)', () => {
     ['Clinically proven method', 'en.clinically_proven'],
     ['Melt away fat', 'en.melt_fat'],
     ['Heals your knees', 'en.heal'],
+    // FIX-B additions (A4-A6 M10-25, B §3.6).
+    ['Boost your metabolism with this plan', 'en.boost_metabolism'],
+    ['A detox week', 'en.detox'],
+    ['Flush out toxins', 'en.detox'],
+    ['Your knee rehab plan', 'en.rehab'],
+    ['Recover from an injury faster', 'en.recover_from_injury'],
   ])('EN: flags "%s"', (text, rule) => {
     expect(hits(text, 'en')).toContain(rule);
   });
@@ -218,6 +224,11 @@ describe('claims linter (L1)', () => {
     ['Maigrir vite', 'fr.maigrir_vite'],
     ['Faites fondre les graisses', 'fr.fondre'],
     ['Méthode cliniquement prouvée', 'fr.cliniquement_prouve'],
+    // FIX-B additions (A4-A6 M10-25, B §3.6).
+    ['Boostez votre métabolisme', 'fr.booster_metabolisme'],
+    ['Une cure détox', 'fr.detox'],
+    ['Éliminez les toxines', 'fr.detox'],
+    ['Votre programme de rééducation', 'fr.reeducation'],
   ])('FR: flags "%s"', (text, rule) => {
     expect(hits(text, 'fr')).toContain(rule);
   });
