@@ -44,6 +44,9 @@ importers:
       '@fitadapt/exercise-library':
         specifier: workspace:*
         version: link:../../packages/exercise-library
+      '@fitadapt/food-library':
+        specifier: workspace:*
+        version: link:../../packages/food-library
       '@fitadapt/legal':
         specifier: workspace:*
         version: link:../../packages/legal
@@ -151,6 +154,9 @@ importers:
       '@fitadapt/exercise-library':
         specifier: workspace:*
         version: link:../../packages/exercise-library
+      '@fitadapt/food-library':
+        specifier: workspace:*
+        version: link:../../packages/food-library
       '@fitadapt/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -316,6 +322,34 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
     devDependencies:
+      '@fitadapt/safety':
+        specifier: workspace:*
+        version: link:../safety
+      '@vitest/coverage-v8':
+        specifier: 5.0.1
+        version: 5.0.1(vitest@5.0.1)
+      fast-check:
+        specifier: 4.10.2
+        version: 4.10.2
+      vitest:
+        specifier: 5.0.1
+        version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@22.20.4)(@vitest/coverage-v8@5.0.1)(jsdom@20.0.3)(vite@8.3.0(@types/node@22.20.4)(esbuild@0.28.2)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1))
+
+  packages/food-library:
+    dependencies:
+      '@fitadapt/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@fitadapt/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@fitadapt/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@fitadapt/legal':
+        specifier: workspace:*
+        version: link:../legal
       '@fitadapt/safety':
         specifier: workspace:*
         version: link:../safety
@@ -10046,7 +10080,7 @@ snapshots:
       server-only: 0.0.1
       stacktrace-js: 2.0.2
     optionalDependencies:
-      expo: 57.0.24(@babel/core@7.29.7)(@expo/dom-webview@57.0.1)(@expo/metro-runtime@57.0.16)(expo-router@57.0.22)(react-dom@19.2.3(react@19.2.3))(react-native-worklets@0.13.0(@babel/core@7.29.7)(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
+      expo: 57.0.24(@babel/core@7.29.7)(@expo/dom-webview@57.0.1)(@expo/metro-runtime@57.0.16)(expo-router@57.0.22)(react-native-worklets@0.13.0(@babel/core@7.29.7)(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@react-native/jest-preset@0.86.3(@babel/core@7.29.7)(react@19.2.3))(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
     transitivePeerDependencies:
       - '@babel/core'
       - bufferutil
