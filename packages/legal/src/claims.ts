@@ -141,7 +141,7 @@ export interface ClaimFinding {
 export function normaliseClaimText(text: string): string {
   return text
     .normalize('NFKC')
-    .replace(/[\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u206f\ufeff]/gu, '')
+    .replace(/\u034f|\u17b4|\u17b5|[\u00ad\u061c\u115f\u1160\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u206f\ufeff]/gu, '')
     .replace(/[\u2010-\u2015\u2212\ufe58\ufe63\uff0d]/gu, '-')
     .replace(/[\u2018\u2019\u201b\u2032\u02bc]/gu, "'")
     .replace(/\r\n?/gu, '\n')
