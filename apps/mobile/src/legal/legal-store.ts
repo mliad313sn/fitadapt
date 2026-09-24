@@ -1,10 +1,14 @@
 import {
+  AcceptanceEvidenceSchema,
   chainEvent,
+  expectedAssentMethod,
   renderDocument,
   renderNotice,
   verifyChain,
   versionInForce,
+  type AcceptanceEvidence,
   type AcceptanceRecord,
+  type JurisdictionSource,
   type DefensibilityEvent,
   type DefensibilityEventInput,
   type DefensibilityPayload,
@@ -17,6 +21,7 @@ import type { ConsentRecord, Jurisdiction, Locale } from '@fitadapt/shared';
 import { z } from 'zod';
 import { createStore } from 'zustand';
 import type { KeyValueStore } from '../storage/app-state';
+import { forgetResidence, readResidence, writeResidence, type ResidenceChoice } from './presentation';
 import { currentLegalRegistry } from './registry';
 
 const ACCEPTANCES_KEY = 'legal_acceptances';
@@ -34,6 +39,8 @@ const AcceptanceSchema = z.object({
   source: z.enum(['mobile', 'web', 'api']),
   contentHash: z.string().regex(/^[0-9a-f]{64}$/),
   acceptedAt: z.iso.datetime({ offset: true }),
+  // FIX-B: how assent was given (absent on records made before it).
+  evidence: AcceptanceEvidenceSchema.optional(),
 });
 const ImpressionSchema = z.object({
   id: z.uuid(),
@@ -66,7 +73,20 @@ export interface LegalStoreDeps {
   kv: KeyValueStore;
   newId: () => string;
   now: () => Date;
+  /** The device locale's jurisdiction; a country of residence the user confirmed (stored in kv) takes precedence. */
   jurisdiction: Jurisdiction;
+  /** FIX-B: the app version and build, recorded with every acceptance. */
+  appBuild?: string;
+}
+
+/** FIX-B: how an acceptance was given on a screen (the store adds the method, the build and the jurisdiction source). */
+export interface AssentGiven {
+  /** From presentationOf(): the screen and flow version. */
+  readonly presentation: string;
+  /** The full text was opened before assent. */
+  readonly textOpened: boolean;
+  /** The statements ticked (every statement of the document). */
+  readonly statementIds?: readonly string[];
 }
 
 export interface LegalStoreState {
@@ -77,10 +97,18 @@ export interface LegalStoreState {
   /** Device buffer of the defensibility log (hash-chained); the server writes its own log on upload. */
   events: DefensibilityEvent[];
   jurisdiction: Jurisdiction;
+  /** FIX-B (B pre-review §1.5 item 1): whether the user confirmed their country of residence or only the device locale is known. */
+  jurisdictionSource: JurisdictionSource;
+  /** FIX-B: the user answered "Where do you live?": texts, emergency numbers and age rules follow it from now on. */
+  confirmResidence(jurisdiction: ResidenceChoice): void;
   /** The version in force of a document, rendered exactly as it is shown (with its content hash). */
   render(documentId: LegalDocumentId, locale: Locale): RenderedDocument;
-  /** Records acceptance of the rendered version in force (L2: version, locale, jurisdiction, timestamp, hash). */
-  accept(documentId: LegalDocumentId, locale: Locale): AcceptanceRecord;
+  /**
+   * Records acceptance of the rendered version in force (L2: version, locale, jurisdiction, timestamp, hash).
+   * FIX-B: screens pass how assent was given, and the record carries it as evidence. Without it (test helpers,
+   * records made before FIX-B) no evidence is recorded.
+   */
+  accept(documentId: LegalDocumentId, locale: Locale, how?: AssentGiven): AcceptanceRecord;
   recordNotice(notice: NoticeDefinition, kind: 'shown' | 'acknowledged', locale: Locale): DeviceNoticeImpression;
   /** Adds a consent decision to the device defensibility buffer (the ledger itself is the M17 consent store). */
   logConsent(record: ConsentRecord): void;
@@ -102,7 +130,8 @@ export interface LegalStoreState {
  * The same @fitadapt/legal rules as the API decide the first-workout gate, so
  * it works offline; records are uploaded after sign-in with their device time.
  */
-export function createLegalStore({ kv, newId, now, jurisdiction }: LegalStoreDeps) {
+export function createLegalStore({ kv, newId, now, jurisdiction: deviceJurisdiction, appBuild = 'unknown' }: LegalStoreDeps) {
+  const residence = readResidence(kv);
   const append = (events: DefensibilityEvent[], input: Omit<DefensibilityEventInput, 'chain'>) => {
     const next = [...events, chainEvent(events[events.length - 1], { ...input, chain: DEVICE_CHAIN } as DefensibilityEventInput, newId())];
     kv.set(LOG_KEY, JSON.stringify(next));
@@ -122,14 +151,31 @@ export function createLegalStore({ kv, newId, now, jurisdiction }: LegalStoreDep
     acceptances: load(kv, ACCEPTANCES_KEY, AcceptanceSchema) as AcceptanceRecord[],
     notices: load(kv, NOTICES_KEY, ImpressionSchema) as DeviceNoticeImpression[],
     events: storedEvents,
-    jurisdiction,
+    jurisdiction: residence?.jurisdiction ?? deviceJurisdiction,
+    jurisdictionSource: residence ? 'user_confirmed' : 'device_locale',
+    confirmResidence(choice) {
+      writeResidence(kv, choice, now());
+      set({ jurisdiction: choice, jurisdictionSource: 'user_confirmed' });
+    },
     render(documentId, locale) {
       const doc = currentLegalRegistry().get(documentId);
       if (!doc) throw new Error(`unknown legal document ${documentId}`);
-      return renderDocument(doc, versionInForce(doc, now()), locale, jurisdiction);
+      return renderDocument(doc, versionInForce(doc, now()), locale, get().jurisdiction);
     },
-    accept(documentId, locale) {
+    accept(documentId, locale, how) {
       const rendered = get().render(documentId, locale);
+      const jurisdiction = get().jurisdiction;
+      const doc = currentLegalRegistry().get(documentId)!;
+      const evidence: AcceptanceEvidence | undefined = how
+        ? AcceptanceEvidenceSchema.parse({
+            presentation: how.presentation,
+            assentMethod: expectedAssentMethod(doc),
+            textOpened: how.textOpened,
+            appBuild,
+            jurisdictionSource: get().jurisdictionSource,
+            ...(how.statementIds ? { statementIds: [...how.statementIds] } : {}),
+          })
+        : undefined;
       const record: AcceptanceRecord = {
         id: newId(),
         documentId,
@@ -139,18 +185,20 @@ export function createLegalStore({ kv, newId, now, jurisdiction }: LegalStoreDep
         source: 'mobile',
         contentHash: rendered.contentHash,
         acceptedAt: now().toISOString(),
+        ...(evidence ? { evidence } : {}),
       };
       const acceptances = [...get().acceptances, record];
       kv.set(ACCEPTANCES_KEY, JSON.stringify(acceptances));
       const events = append(get().events, {
         type: 'acceptance.recorded',
         occurredAt: record.acceptedAt,
-        payload: { documentId, version: record.version, locale, jurisdiction, contentHash: record.contentHash, source: 'mobile' },
+        payload: { documentId, version: record.version, locale, jurisdiction, contentHash: record.contentHash, source: 'mobile', ...(evidence ?? {}) },
       });
       set({ acceptances, events });
       return record;
     },
     recordNotice(notice, kind, locale) {
+      const jurisdiction = get().jurisdiction;
       const rendered = renderNotice(notice, locale, jurisdiction);
       const impression: DeviceNoticeImpression = {
         id: newId(),
@@ -198,7 +246,8 @@ export function createLegalStore({ kv, newId, now, jurisdiction }: LegalStoreDep
     },
     clear() {
       for (const key of [ACCEPTANCES_KEY, NOTICES_KEY, LOG_KEY]) kv.remove(key);
-      set({ acceptances: [], notices: [], events: [] });
+      forgetResidence(kv);
+      set({ acceptances: [], notices: [], events: [], jurisdiction: deviceJurisdiction, jurisdictionSource: 'device_locale' });
     },
   }));
 }

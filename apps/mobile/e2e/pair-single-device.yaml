@@ -62,6 +62,11 @@ appId: dev.companion.app
 - tapOn: { id: "pair-guest-consent-health-agree" }
 - scrollUntilVisible: { element: { id: "pair-guest-legal-exercise_risk-read" } }
 - tapOn: { id: "pair-guest-legal-exercise_risk-read" }
+# FIX-B: the guest ticks each exercise-risk statement on her own.
+- tapOn: { id: "pair-guest-risk-statement-risk" }
+- tapOn: { id: "pair-guest-risk-statement-stop" }
+- tapOn: { id: "pair-guest-risk-statement-honest" }
+- tapOn: { id: "pair-guest-risk-statement-control" }
 - tapOn: { id: "pair-guest-legal-exercise_risk-accept" }
 - scrollUntilVisible: { element: { id: "pair-guest-consent-partner_sharing-agree" } }
 - tapOn: { id: "pair-guest-consent-partner_sharing-agree" }

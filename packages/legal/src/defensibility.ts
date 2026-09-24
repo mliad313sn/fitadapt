@@ -27,7 +27,21 @@ const version = z.number().int().positive();
 const engineVersion = z.string().regex(/^\d{1,4}\.\d{1,4}\.\d{1,4}$|^\d{1,4}\.\d{1,4}\.\d{1,4}[-+][0-9A-Za-z.-]{1,40}$/);
 
 export const DefensibilityPayloads = {
-  'acceptance.recorded': z.strictObject({ documentId: code, version, locale, jurisdiction, contentHash: hash, source: z.enum(['mobile', 'web', 'api']) }),
+  /** FIX-B: how assent was given (optional: events recorded before it have none). No free text, no personal data. */
+  'acceptance.recorded': z.strictObject({
+    documentId: code,
+    version,
+    locale,
+    jurisdiction,
+    contentHash: hash,
+    source: z.enum(['mobile', 'web', 'api']),
+    presentation: z.string().regex(/^[a-z][a-z0-9_.-]{0,60}@\d{1,4}$/).optional(),
+    assentMethod: z.enum(['button_after_open', 'read_acknowledged', 'statements_ticked']).optional(),
+    textOpened: z.boolean().optional(),
+    appBuild: z.string().regex(/^[0-9A-Za-z.+_-]{1,40}$/).optional(),
+    jurisdictionSource: z.enum(['user_confirmed', 'device_locale', 'store_country']).optional(),
+    statementIds: z.array(z.string().regex(/^[a-z_]{1,40}$/)).max(20).optional(),
+  }),
   'consent.recorded': z.strictObject({ dataType: code, decision: z.enum(['granted', 'withdrawn']), version, locale, jurisdiction }),
   'notice.shown': z.strictObject({ noticeId: code, version, locale, jurisdiction, contentHash: hash }),
   'notice.acknowledged': z.strictObject({ noticeId: code, version, locale, jurisdiction, contentHash: hash }),

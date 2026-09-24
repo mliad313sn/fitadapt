@@ -42,6 +42,8 @@ appId: dev.companion.app
 # 6 — health-data consent
 - assertVisible:
     id: "onboarding-health-consent"
+# FIX-B: the country of residence is asked explicitly (the flows run on a GB-region device).
+- tapOn: { id: "residence-GB" }
 - scrollUntilVisible:
     element:
       id: "health-consent-agree"
@@ -128,6 +130,12 @@ appId: dev.companion.app
 # 11 — exercise-risk acknowledgment
 - assertVisible:
     id: "onboarding-exercise-risk"
+# FIX-B: each statement is ticked on its own.
+- tapOn: { id: "risk-statement-risk" }
+- tapOn: { id: "risk-statement-stop" }
+- scrollUntilVisible: { element: { id: "risk-statement-control" } }
+- tapOn: { id: "risk-statement-honest" }
+- tapOn: { id: "risk-statement-control" }
 - scrollUntilVisible: { element: { id: "onboarding-next" } }
 - tapOn: { id: "onboarding-next" }
 # 12 — first workout

@@ -12,6 +12,8 @@ export interface ConsentStoreDeps {
   newId: () => string;
   now?: () => Date;
   jurisdiction: Jurisdiction;
+  /** FIX-B: the current jurisdiction (the country of residence the user confirmed); defaults to `jurisdiction`. */
+  getJurisdiction?: () => Jurisdiction;
 }
 
 export interface ConsentStoreState {
@@ -39,10 +41,11 @@ function load(kv: KeyValueStore): ConsentRecord[] {
  * off the moment consent is withdrawn. Sending the ledger to the API needs
  * sign-in (M01).
  */
-export function createConsentStore({ kv, newId, now = () => new Date(), jurisdiction }: ConsentStoreDeps) {
+export function createConsentStore({ kv, newId, now = () => new Date(), jurisdiction: initial, getJurisdiction = () => initial }: ConsentStoreDeps) {
   return createStore<ConsentStoreState>((set, get) => ({
     records: load(kv),
     decide(dataType, granted, locale) {
+      const jurisdiction = getJurisdiction();
       const record: ConsentRecord = {
         id: newId(),
         dataType,

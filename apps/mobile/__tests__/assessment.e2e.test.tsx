@@ -76,6 +76,8 @@ async function onboard(p: Persona) {
   }
   press('onboarding-next');
   await screen.findByRole('header', { name: t('onboarding.healthConsent.title') });
+  // FIX-B: the country of residence is asked explicitly.
+  press('residence-GB');
   press('health-consent-agree');
   await screen.findByRole('header', { name: t('onboarding.about.title') });
   fireEvent.changeText(screen.getByTestId('about-birth-day'), '14');
@@ -94,6 +96,8 @@ async function onboard(p: Persona) {
   }
   press('onboarding-next');
   await screen.findByRole('header', { name: t('legal.exerciseRisk.v1.title') });
+  // FIX-B: each exercise-risk statement is ticked on its own.
+  for (const s of ['risk', 'stop', 'honest', 'control']) press(`risk-statement-${s}`);
   press('onboarding-next');
   await screen.findByRole('header', { name: t('firstWorkout.title') });
 }

@@ -9,6 +9,8 @@ import { Text, View } from 'react-native';
 import { useStore } from 'zustand';
 import { clock } from '../clock';
 import { DocumentView } from '../legal/DocumentView';
+import { RiskStatements } from '../legal/LegalChoices';
+import { presentationOf } from '../legal/presentation';
 import { currentLegalRegistry } from '../legal/registry';
 import { localToday } from '../privacy/age-gate';
 import { guestWorkoutGate, sharedScopes, type GuestLedgers } from './pair-store';
@@ -20,14 +22,21 @@ const MONTHS_PARAM: Partial<Record<(typeof SCREENING_QUESTIONS)[number], number>
   pregnancy_or_recent_birth: SCREENING_CONFIG.postpartumWindowMonths.value,
 };
 
-/** One L2 text in the guest's OWN ledger: read it, then "I accept" (informed acceptance). */
+/**
+ * One L2 text in the guest's OWN ledger: read it, then "I accept" (informed acceptance).
+ * FIX-B: the Privacy Policy is "I have read"; the exercise-risk statements are ticked one by one.
+ */
 function GuestAcceptance({ ledgers, documentId }: { ledgers: GuestLedgers; documentId: 'terms' | 'privacy' | 'exercise_risk' }) {
   const { t, locale } = useI18n();
   const theme = useTheme();
   const acceptances = useStore(ledgers.legal, (s) => s.acceptances);
   const jurisdiction = useStore(ledgers.legal, (s) => s.jurisdiction);
   const [open, setOpen] = useState(false);
+  const [ticked, setTicked] = useState<ReadonlySet<string>>(new Set());
   const document = ledgers.legal.getState().render(documentId, locale);
+  const doc = currentLegalRegistry().get(documentId);
+  const statements = doc?.statements ?? [];
+  const read = doc?.assent === 'read';
   const accepted = acceptanceState(acceptances, documentId, { jurisdiction, now: clock.now(), registry: currentLegalRegistry() }).status === 'accepted';
   return (
     <Card title={document.title} testID={`pair-guest-legal-${documentId}`}>
@@ -35,8 +44,22 @@ function GuestAcceptance({ ledgers, documentId }: { ledgers: GuestLedgers; docum
         {accepted ? t('pair.guest.accepted') : t('legal.status.needsAcceptance')}
       </Text>
       <Button label={open ? t('onboarding.terms.hide') : t('legal.action.readFull')} variant="secondary" onPress={() => setOpen(!open)} testID={`pair-guest-legal-${documentId}-read`} />
-      {open ? <DocumentView document={document} showTitle={false} testID={`pair-guest-legal-${documentId}-text`} /> : null}
-      {open && !accepted ? <Button label={t('legal.action.accept')} hint={t('legal.action.acceptHint')} onPress={() => ledgers.legal.getState().accept(documentId, locale)} testID={`pair-guest-legal-${documentId}-accept`} /> : null}
+      {open && statements.length > 0 && !accepted ? (
+        <View testID={`pair-guest-legal-${documentId}-text`}>
+          <RiskStatements document={document} statements={statements} ticked={ticked} onToggle={(id, on) => setTicked((prev) => (on ? new Set([...prev, id]) : new Set([...prev].filter((x) => x !== id))))} testIDPrefix={`pair-guest-risk-statement`} />
+        </View>
+      ) : open ? (
+        <DocumentView document={document} showTitle={false} testID={`pair-guest-legal-${documentId}-text`} />
+      ) : null}
+      {open && !accepted ? (
+        <Button
+          label={read ? t('legal.action.read') : t('legal.action.accept')}
+          hint={read ? t('legal.action.readHint') : t('legal.action.acceptHint')}
+          disabled={!statements.every((s) => ticked.has(s.id))}
+          onPress={() => ledgers.legal.getState().accept(documentId, locale, { presentation: presentationOf('pair.guest_legal'), textOpened: true, ...(statements.length > 0 ? { statementIds: statements.map((s) => s.id) } : {}) })}
+          testID={`pair-guest-legal-${documentId}-accept`}
+        />
+      ) : null}
     </Card>
   );
 }

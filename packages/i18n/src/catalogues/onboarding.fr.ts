@@ -126,12 +126,12 @@ export const onboardingFr: Record<keyof typeof onboardingEn, string> = {
   'onboarding.result.hold.urgent': 'Si vous avez maintenant une douleur ou une pression dans la poitrine, une sensation de malaise ou si vous vous sentez très mal, n’attendez pas :',
 
   'onboarding.terms.title': 'Conditions et confidentialité',
-  'onboarding.terms.intro': 'Veuillez lire et accepter les deux textes pour continuer.',
+  'onboarding.terms.intro': 'Lisez et acceptez les conditions d’utilisation, et lisez la politique de confidentialité, pour continuer.',
   'onboarding.terms.accepted': 'Accepté (version {version})',
   'onboarding.terms.hide': 'Masquer le texte',
-  'onboarding.terms.required': 'Acceptez les deux textes pour continuer.',
+  'onboarding.terms.required': 'Acceptez les conditions d’utilisation et confirmez avoir lu la politique de confidentialité pour continuer.',
 
-  'onboarding.risk.accept': 'J’ai compris et j’accepte',
+  'onboarding.risk.accept': 'Je confirme ces affirmations',
 
   'firstWorkout.title': 'Votre séance',
   'firstWorkout.where': 'Où vous entraînez-vous aujourd’hui ?',

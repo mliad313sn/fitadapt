@@ -7,7 +7,11 @@ import { describe, expect, it } from 'vitest';
 import {
   AI_PERSISTENT_LABEL,
   CONSENT_DOCUMENT_IDS,
+  AcceptanceEvidenceSchema,
   DEFAULT_REGISTRY,
+  DefensibilityPayloads,
+  expectedAssentMethod,
+  receiveAcceptance,
   DOCUMENT_VARIANTS,
   JURISDICTION_MATRIX,
   LEGAL_DOCUMENTS,
@@ -321,5 +325,54 @@ describe('FIX-B (B pre-review §1.5 item 4, §3.1): the texts say what the app r
     expect(renderNotice(n, 'en', 'GB').body).not.toMatch(/safe floors/i);
     expect(renderNotice(n, 'fr', 'FR').body).toContain('seuils minimaux');
     expect(renderNotice(n, 'fr', 'FR').body).not.toMatch(/seuils sûrs/i);
+  });
+});
+
+describe('FIX-B (B pre-review §1.5 items 2, 3, 5): how assent was given is recorded and checked', () => {
+  const NOW_C = new Date('2026-10-01T00:00:00.000Z');
+  const hashOf = (documentId: 'terms' | 'privacy' | 'exercise_risk', locale: 'en' | 'fr' = 'en', jurisdiction = 'GB') => {
+    const doc = DEFAULT_REGISTRY.get(documentId)!;
+    return renderDocument(doc, versionInForce(doc, NOW_C), locale, jurisdiction).contentHash;
+  };
+  const base = (documentId: 'terms' | 'privacy' | 'exercise_risk') => ({ documentId, version: 1, locale: 'en' as const, jurisdiction: 'GB', contentHash: hashOf(documentId) });
+  const evidence = (over: Record<string, unknown> = {}) => ({ presentation: 'onboarding.exercise_risk@2', assentMethod: 'statements_ticked', textOpened: true, appBuild: '1.0.0+42', jurisdictionSource: 'user_confirmed', statementIds: ['risk', 'stop', 'honest', 'control'], ...over });
+
+  it('the exercise-risk acknowledgment is four separate statements plus "does not limit your legal rights", FR and EN', () => {
+    const doc = DEFAULT_REGISTRY.get('exercise_risk')!;
+    expect(doc.statements!.map((s) => s.id)).toEqual(['risk', 'stop', 'honest', 'control']);
+    const en = renderDocument(doc, versionInForce(doc, NOW_C), 'en', 'GB');
+    const fr = renderDocument(doc, versionInForce(doc, NOW_C), 'fr', 'FR');
+    for (const s of doc.statements!) expect(en.sections.map((x) => x.key)).toContain(s.key);
+    expect(en.sections.map((x) => x.text)).toContain('This acknowledgment does not limit your legal rights.');
+    expect(fr.sections.map((x) => x.text)).toContain('Cette reconnaissance ne limite pas vos droits.');
+    // The stop statement names the same warning signs as the S3 list (A1: identical wording across the texts).
+    const stop = en.sections.find((x) => x.key === 'legal.exerciseRisk.v1.stop')!.text;
+    for (const sign of ['chest pain or pressure', 'faintness', 'racing or irregular heartbeat', 'sudden numbness or weakness', 'face drooping or trouble speaking', 'sudden severe headache', 'sudden change of vision']) expect(stop).toContain(sign);
+    for (const text of [...en.sections, ...fr.sections].map((x) => x.text)) expect(text).not.toMatch(/waiver|release|décharge/i);
+  });
+
+  it('every statement must be ticked; the evidence must match the document (statements, read, accept after opening)', () => {
+    const ctx = { jurisdiction: 'GB', now: NOW_C };
+    expect(checkAcceptance({ ...base('exercise_risk'), evidence: evidence() }, ctx)).toEqual({ ok: true });
+    expect(checkAcceptance({ ...base('exercise_risk'), evidence: evidence({ statementIds: ['risk', 'stop', 'control'] }) }, ctx)).toEqual({ ok: false, code: 'legal.statements_incomplete' });
+    expect(checkAcceptance({ ...base('exercise_risk'), evidence: evidence({ statementIds: ['risk', 'stop', 'honest', 'control', 'extra'] }) }, ctx)).toEqual({ ok: false, code: 'legal.statements_incomplete' });
+    expect(checkAcceptance({ ...base('exercise_risk'), evidence: evidence({ assentMethod: 'button_after_open' }) }, ctx)).toEqual({ ok: false, code: 'legal.evidence_invalid' });
+    expect(checkAcceptance({ ...base('privacy'), evidence: evidence({ presentation: 'onboarding.terms@2', assentMethod: 'read_acknowledged', statementIds: undefined }) }, ctx)).toEqual({ ok: true });
+    expect(checkAcceptance({ ...base('privacy'), evidence: evidence({ presentation: 'onboarding.terms@2', assentMethod: 'button_after_open', statementIds: undefined }) }, ctx)).toEqual({ ok: false, code: 'legal.evidence_invalid' });
+    expect(checkAcceptance({ ...base('terms'), evidence: evidence({ presentation: 'onboarding.terms@2', assentMethod: 'button_after_open', textOpened: false, statementIds: undefined }) }, ctx)).toEqual({ ok: false, code: 'legal.evidence_invalid' });
+    expect(checkAcceptance({ ...base('terms'), evidence: { presentation: 'free text!' } }, ctx)).toEqual({ ok: false, code: 'legal.evidence_invalid' });
+    // A record without evidence (other clients, records made before FIX-B) is still checked as before.
+    expect(checkAcceptance(base('terms'), ctx)).toEqual({ ok: true });
+    expect(DEFAULT_REGISTRY.get('privacy')!.assent).toBe('read');
+    expect(expectedAssentMethod(DEFAULT_REGISTRY.get('terms')!)).toBe('button_after_open');
+  });
+
+  it('the server stamps its own receipt time beside the device time; the defensibility payload carries the evidence (and nothing free-form)', () => {
+    const record = { id: '00000000-0000-4000-8000-000000000001', ...base('terms'), source: 'mobile' as const, acceptedAt: '2026-09-01T08:00:00.000Z' };
+    expect(receiveAcceptance(record, NOW_C)).toEqual({ ...record, serverReceivedAt: '2026-10-01T00:00:00.000Z' });
+    const payload = { documentId: 'exercise_risk', version: 1, locale: 'en', jurisdiction: 'GB', contentHash: hashOf('exercise_risk'), source: 'mobile', ...evidence() };
+    expect(DefensibilityPayloads['acceptance.recorded'].safeParse(payload).success).toBe(true);
+    expect(DefensibilityPayloads['acceptance.recorded'].safeParse({ ...payload, note: 'free text' }).success).toBe(false);
+    expect(AcceptanceEvidenceSchema.safeParse(evidence({ jurisdictionSource: 'guessed' })).success).toBe(false);
   });
 });

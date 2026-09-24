@@ -60,6 +60,15 @@ export type AcceptanceKind =
   /** Shown for information only (no acceptance recorded). */
   | 'information';
 
+/**
+ * FIX-B (B pre-review §1.5 item 3): a statement of an acknowledgment that the user ticks on its own (unticked by
+ * default), recorded by its stable id. Every statement of a document must be ticked for the acceptance to count.
+ */
+export interface AcknowledgmentStatement {
+  readonly id: string;
+  readonly key: MessageKey;
+}
+
 export interface LegalDocument {
   readonly id: LegalDocumentId;
   /** Internal name for counsel (not user-facing). */
@@ -69,6 +78,13 @@ export interface LegalDocument {
   readonly requiredBeforeFirstWorkout: boolean;
   /** Material changes must be published `materialChangeNoticeDays` before they apply. */
   readonly requiresAdvanceNotice: boolean;
+  /**
+   * FIX-B (B pre-review §1.5 item 5): 'read' for an information notice the user confirms having read (the
+   * Privacy Policy: accepting it is not a lawful basis and looks like bundling); 'accept' otherwise (default).
+   */
+  readonly assent?: 'accept' | 'read';
+  /** FIX-B (§1.5 item 3): statements ticked one by one (the exercise-risk acknowledgment). */
+  readonly statements?: readonly AcknowledgmentStatement[];
   readonly versions: readonly DocumentVersion[];
 }
 
@@ -137,6 +153,7 @@ export const LEGAL_DOCUMENTS: readonly LegalDocument[] = Object.freeze([
     kind: 'acceptance',
     requiredBeforeFirstWorkout: true,
     requiresAdvanceNotice: true,
+    assent: 'read',
     versions: [
       v1('legal.privacy.v1.title', [
         'legal.privacy.v1.controller',
@@ -163,8 +180,21 @@ export const LEGAL_DOCUMENTS: readonly LegalDocument[] = Object.freeze([
     kind: 'acceptance',
     requiredBeforeFirstWorkout: true,
     requiresAdvanceNotice: false,
+    statements: [
+      { id: 'risk', key: 'legal.exerciseRisk.v1.risk' },
+      { id: 'stop', key: 'legal.exerciseRisk.v1.stop' },
+      { id: 'honest', key: 'legal.exerciseRisk.v1.honest' },
+      { id: 'control', key: 'legal.exerciseRisk.v1.control' },
+    ],
     versions: [
-      v1('legal.exerciseRisk.v1.title', ['legal.exerciseRisk.v1.risk', 'legal.exerciseRisk.v1.stop', 'legal.exerciseRisk.v1.clearance', 'legal.exerciseRisk.v1.control']),
+      v1('legal.exerciseRisk.v1.title', [
+        'legal.exerciseRisk.v1.risk',
+        'legal.exerciseRisk.v1.stop',
+        'legal.exerciseRisk.v1.clearance',
+        'legal.exerciseRisk.v1.honest',
+        'legal.exerciseRisk.v1.control',
+        'legal.exerciseRisk.v1.rights',
+      ]),
     ],
   },
   {

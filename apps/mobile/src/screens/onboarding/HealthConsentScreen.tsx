@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 import { DocumentView } from '../../legal/DocumentView';
+import { ResidenceChoice } from '../../legal/LegalChoices';
 import { OnboardingScaffold, Paragraph } from '../../onboarding/OnboardingScaffold';
 import { nextPath } from '../../onboarding/steps';
 import { featureOn } from '../../privacy/consents';
@@ -26,10 +27,15 @@ export function HealthConsentScreen() {
   const records = useConsents((s) => s.records);
   const decide = useConsents((s) => s.decide);
   const [declined, setDeclined] = useState(false);
+  const [needResidence, setNeedResidence] = useState(false);
   const granted = featureOn('health.screening', records);
+  // FIX-B (B pre-review §1.5 item 1): the first legal text asks where the user lives (never inferred from the locale).
+  const residenceConfirmed = useLegal((s) => s.jurisdictionSource === 'user_confirmed');
   const document = render('consent.health', locale);
   return (
     <OnboardingScaffold step="health-consent" title={t('onboarding.healthConsent.title')}>
+      <ResidenceChoice />
+      {needResidence && !residenceConfirmed ? <Paragraph testID="residence-required">{t('legal.residence.required')}</Paragraph> : null}
       <Paragraph muted>{t('onboarding.healthConsent.intro')}</Paragraph>
       <DocumentView document={document} testID="health-consent-text" />
       <View style={{ gap: theme.spacing.md }}>
@@ -37,6 +43,7 @@ export function HealthConsentScreen() {
           label={granted ? t('onboarding.next') : t('onboarding.healthConsent.agree')}
           hint={granted ? undefined : t('onboarding.healthConsent.agreeHint')}
           onPress={() => {
+            if (!residenceConfirmed) return setNeedResidence(true);
             if (!granted) decide('health', true, locale);
             router.push(nextPath('health-consent'));
           }}

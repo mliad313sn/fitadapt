@@ -134,13 +134,13 @@ export const onboardingEn = {
 
   // Terms and privacy step
   'onboarding.terms.title': 'Terms and privacy',
-  'onboarding.terms.intro': 'Please read and accept both texts to continue.',
+  'onboarding.terms.intro': 'Please read and accept the Terms of Use, and read the Privacy Policy, to continue.',
   'onboarding.terms.accepted': 'Accepted (version {version})',
   'onboarding.terms.hide': 'Hide the text',
-  'onboarding.terms.required': 'Accept both texts to continue.',
+  'onboarding.terms.required': 'Accept the Terms of Use and confirm you read the Privacy Policy to continue.',
 
   // Exercise-risk step
-  'onboarding.risk.accept': 'I understand and accept',
+  'onboarding.risk.accept': 'I confirm these statements',
 
   // First session
   'firstWorkout.title': 'Your session',
