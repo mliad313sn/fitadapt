@@ -86,7 +86,7 @@ const CALENDARS = [
    once the appointment is signed (docs/governance/01-product-owner-charter.md). */
 const PEOPLE = [
   ["PE-01", "Founder (sponsor)", "Sponsor & company director"],
-  ["PE-02", "Product Owner (to appoint)", "Product owner"],
+  ["PE-02", "Product Owner (Claude Code, AI, by the founder's delegation)", "Product owner"],
   ["PE-03", "Tech lead (to appoint)", "Tech lead & architect"],
   ["PE-04", "Engine engineer (to appoint)", "Engine & safety engineer"],
   ["PE-05", "Mobile engineer (to appoint)", "Mobile engineer"],
@@ -318,8 +318,8 @@ const RAID = [
     "Tier-based rate limits, routing to smaller models, caching, offline deterministic fallback."],
   ["RSK-20", "PRJ-202", "Poor experience on low connectivity and low-end devices", 3, 3, "Mitigate", "PE-03",
     "Offline-first architecture, performance budgets, downloadable media packs."],
-  ["ISS-01", "PRJ-206", "Product Owner not yet named", 5, 4, "Fix", "PE-01",
-    "The appointment instrument is drafted (docs/governance/01). Until it is signed the founder acts as interim Product Owner."],
+  ["ISS-01", "PRJ-206", "Founder's powers delegated to an AI Product Owner: legal and expert acts still need people", 4, 5, "Mitigate", "PE-01",
+    "Since 24 Sep 2026 the Product Owner is Claude Code, an AI agent, by the founder's written delegation (docs/governance/01 §1a). It runs delivery and sponsor decisions visibly under that delegation, with no second pair of eyes. It cannot incorporate, sign contracts or IP assignments, file with authorities, sign off validated:false items or legal texts, or close human acts: those remain with the founder and the council."],
   ["ISS-02", "PRJ-206", "All eleven council seats are open", 5, 5, "Fix", "PE-02",
     "No validated:false item can be signed off until the seats are filled. Recruitment brief: docs/governance/03, §4. Each seat has a Meridian seat and a review-grant account, inactive until the seat is filled."],
   ["ASM-01", null, "The v2.1 committee was a simulated panel", 5, 5, "Monitor", "PE-02",

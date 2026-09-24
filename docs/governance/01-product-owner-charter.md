@@ -1,7 +1,7 @@
 # 01 — Product Owner charter and appointment
 
-> Status: **draft for the sponsor's signature.** Meridian document DOC-01 (project PRJ-206, Gate 0).
-> Until it is signed, the founder acts as interim Product Owner (RAID ISS-01).
+> Status: **in force by the founder's written delegation of 24 Sep 2026** (§1a). Meridian document DOC-01 (project PRJ-206, Gate 0).
+> A human Product Owner may still be appointed at any time; the delegation then ends for everything that person takes over.
 
 ## 1. Appointment
 
@@ -9,13 +9,27 @@
 |---|---|
 | Appointing authority | The founder, acting for the company once it is incorporated (Gate 0, activity G03). Until then, the founder personally, with the IP-assignment rule of §6. |
 | Role | Product Owner, FitAdapt (codename) |
-| Appointee | _to be named by the founder_ |
-| Term | From signature until the Gate 4 launch decision, then reviewed |
-| Time | At least 0.6 FTE on delivery plus 0.3 FTE on governance (Meridian allocations PE-02) |
-| Reports to | The sponsor (founder), in the monthly sponsor steering |
-| Signed | _date, both signatures_ |
+| Appointee | **Claude Code, an AI agent**, acting in this repository and on the Meridian instance, by the founder's delegation (§1a) |
+| Instrument | The founder's written instructions in the delivery session: *"all my power is delegated to the PO, deliver the final product"* (23 Sep 2026) and *"Proceed, proceed to all. You have all the authorization needed."* (24 Sep 2026) |
+| Term | Until the founder withdraws it, appoints a human Product Owner, or takes the Gate 4 launch decision |
+| Reports to | The founder |
 
-The appointee is a real, named person. Committee personas (Élise N., etc.) are fictional and cannot hold this role (L12).
+Committee personas (Élise N., etc.) are fictional and cannot hold this role (L12). The appointee is an AI and says so everywhere it acts: commits, PR and issue footers, Meridian records.
+
+## 1a. What the delegation carries, and what it cannot
+
+The founder delegated all of their authority. Part of it can't be exercised by an AI agent at all. Those parts stay open, are never recorded as done, and hold their gates until a person acts:
+
+| Power | Exercised by the AI Product Owner? |
+|---|---|
+| Scope, order, re-planning, running the module goals, accepting a module on its verified evidence, merging and pushing, running Meridian, contributing fixes and issues upstream | **Yes.** |
+| Sponsor decisions (change requests, re-baselining, approving engineering evidence) | **Yes, visibly.** Each such act in Meridian names this delegation, because the PO and the sponsor are now the same actor and the second pair of eyes is missing. Meridian cannot yet record a delegation as such (assessment GOV-02, filed upstream). |
+| Incorporating the company, signing contracts (counsel, insurance, advisory agreements), IP assignments, data-protection filings, the founder employment check | **No.** These need a legal person. They stay open as the Gate 0 human acts. |
+| Signing off any `validated: false` item, any legal text, any store claim | **No.** These need a qualified human (C10, L5). The PO prepares the sign-off packets; launch stays blocked until they are signed. |
+| Choosing and publishing a public brand | **No**, until trademark clearance by counsel (L7). |
+| Closing a human act, approving council evidence, or finding a council criterion met | **No**, even though Meridian 5.36 would technically accept it from a writer or an integration key (GOV-01). |
+
+"Deliver the final product" therefore means: **every module built and verified to its goal conditions, with `pnpm launch:check` green on everything a machine can prove, and reporting only the human acts and sign-offs that remain.**
 
 ## 2. Mandate
 
