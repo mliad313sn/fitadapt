@@ -326,6 +326,8 @@ describe('M01 collections and server-side validation', () => {
     // M02: started sessions and execution events are append-only too.
     expect(SYNC_COLLECTIONS.workout_sessions).toEqual({ appendOnly: true });
     expect(SYNC_COLLECTIONS.execution_logs).toEqual({ appendOnly: true });
+    // M05: readiness checks are append-only too.
+    expect(SYNC_COLLECTIONS.readiness_checks).toEqual({ appendOnly: true });
   });
 
   it('rejects a mutation the validator refuses, finally, and reports applied ones to the listener', async () => {
