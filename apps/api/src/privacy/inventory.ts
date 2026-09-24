@@ -65,4 +65,22 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = Object.freeze([
     erase: 'cascade_from_users',
     personalData: 'ciphertext only (photo id, size, time stored); also erased when the photos consent is withdrawn or the backup is turned off',
   },
+  {
+    table: 'pair_sessions',
+    export: { section: 'pair.participations' },
+    erase: 'cascade_from_users',
+    personalData: 'who started a multi-device pair session and when; keyed hash of the join code (M09); also erased when the host withdraws partner_sharing',
+  },
+  {
+    table: 'pair_participants',
+    export: { section: 'pair.participations' },
+    erase: 'cascade_from_users',
+    personalData: 'display name chosen for the session, sharing scopes and consent version (M09); also erased on a partner_sharing withdrawal',
+  },
+  {
+    table: 'pair_events',
+    export: { section: 'pair.events' },
+    erase: 'cascade_from_users',
+    personalData: 'events a participant sent to the partner (turns; reps and loads, body weight or score only with that scope) (M09); also erased on a partner_sharing withdrawal',
+  },
 ]);

@@ -35,6 +35,9 @@ import { syncRoutes } from './routes/sync.js';
 import { healthWithdrawalHandler, profileSyncListener, profileSyncValidator } from './profile/sync-hooks.js';
 import { PgServerStore } from './sync/pg-store.js';
 import { PhotoBackupService, photosWithdrawalHandler } from './photos/service.js';
+import { PairService, pairWithdrawalHandler } from './pair/service.js';
+import { attachPairSockets } from './pair/ws.js';
+import { pairRoutes } from './routes/pair.js';
 
 export interface AppDeps {
   db: Database;
@@ -62,6 +65,8 @@ export interface AppDeps {
 export interface AppServices {
   privacy: PrivacyService;
   legal: LegalService;
+  /** M09: the multi-device pair relay. */
+  pair: PairService;
 }
 
 declare module 'fastify' {
@@ -136,6 +141,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       ...deps.withdrawalHandlers,
       health: [healthWithdrawalHandler(), ...(deps.withdrawalHandlers?.health ?? [])],
       photos: [photosWithdrawalHandler(), ...(deps.withdrawalHandlers?.photos ?? [])],
+      // M09: withdrawing partner_sharing stops the pair relay and erases what it holds from that person.
+      partner_sharing: [pairWithdrawalHandler(), ...(deps.withdrawalHandlers?.partner_sharing ?? [])],
     },
     // L2/L11: every consent decision also goes to the defensibility log, in the same transaction.
     onConsentRecorded: (tx, userId, record, at) => legal.logConsent(tx, userId, record, at),
@@ -145,7 +152,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   // in the sync transaction (L11: a screening and its safety events commit together or not at all).
   const profileHooks = { privacy, legal, now, db: deps.db };
   const sync = new SyncServer({ store: new PgServerStore(deps.db), validate: profileSyncValidator(profileHooks), onApplied: profileSyncListener(profileHooks) });
-  app.decorate('services', { privacy, legal });
+  const pair = new PairService({ db: deps.db, privacy, legal, pepper: deps.pepper, now });
+  app.decorate('services', { privacy, legal, pair });
 
   app.get('/health', { schema: { hide: true } }, async () => ({ status: 'ok' }));
   app.get('/docs/openapi.json', { schema: { hide: true } }, async () => app.swagger());
@@ -155,5 +163,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(legalRoutes(auth, legal));
   await app.register(photoRoutes(auth, new PhotoBackupService({ db: deps.db, privacy, now })));
   await app.register(analyticsRoutes(auth, privacy, deps.analyticsSink ?? new NoopAnalyticsSink()));
+  // M09: multi-device Fair Pair (REST to create/join, WebSocket for the session itself; ADR-001, ADR-021).
+  await app.register(pairRoutes(auth, pair));
+  attachPairSockets(app, auth, pair);
   return app;
 }

@@ -278,3 +278,60 @@ export const photoBackups = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.photoId] })],
 );
+
+/**
+ * M09 Fair Pair, multi-device (ADR-021). The relay of a pair session between
+ * two accounts over the WebSocket: who takes part (their display name and the
+ * sharing scopes they chose, with the partner_sharing consent version) and
+ * the events each device sent (append-only, ordered by `seq`, idempotent on
+ * the device's event id). Timers are never here: rest and turn timing stay
+ * on the devices. Each person's training logs stay in their own sync
+ * collections; a relayed event is projected for the partner by the sender's
+ * scopes. Erased with the account (cascade) and when that person withdraws
+ * the partner_sharing consent.
+ */
+export const pairSessions = pgTable('pair_sessions', {
+  id: uuid('id').primaryKey(),
+  hostUserId: uuid('host_user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  /** Keyed hash of the six-character join code (the code itself is never stored). */
+  joinCodeHash: text('join_code_hash').notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+});
+
+export const pairParticipants = pgTable(
+  'pair_participants',
+  {
+    pairSessionId: uuid('pair_session_id')
+      .notNull()
+      .references(() => pairSessions.id, { onDelete: 'cascade' }),
+    slot: text('slot', { enum: ['a', 'b'] }).notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    displayName: text('display_name').notNull(),
+    scopes: jsonb('scopes').notNull(),
+    consentVersion: integer('consent_version').notNull(),
+    joinedAt: timestamp('joined_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.pairSessionId, t.slot] }), uniqueIndex('pair_participants_user_idx').on(t.pairSessionId, t.userId)],
+);
+
+export const pairEvents = pgTable(
+  'pair_events',
+  {
+    pairSessionId: uuid('pair_session_id')
+      .notNull()
+      .references(() => pairSessions.id, { onDelete: 'cascade' }),
+    seq: integer('seq').notNull(),
+    fromUserId: uuid('from_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    fromSlot: text('from_slot', { enum: ['a', 'b'] }).notNull(),
+    clientEventId: uuid('client_event_id').notNull(),
+    event: jsonb('event').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.pairSessionId, t.seq] }), uniqueIndex('pair_events_client_idx').on(t.pairSessionId, t.fromUserId, t.clientEventId)],
+);

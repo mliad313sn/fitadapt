@@ -229,6 +229,16 @@ export class LegalService {
   }
 
   /**
+   * M09 Fair Pair: a participant's own pair event (joined, challenge started,
+   * left, partner left), in their own chain, always with the transaction of
+   * the pair data it describes (ADR-009). A partner's chain never receives
+   * the other person's reason for leaving.
+   */
+  async recordPairEvent<T extends 'pair.joined' | 'pair.timeline_built' | 'pair.challenge_started' | 'pair.left' | 'pair.partner_left'>(userId: string, type: T, payload: DefensibilityPayload<T>, tx: Tx): Promise<void> {
+    await this.log.append(tx, { type, chain: this.subjectRef(userId), occurredAt: this.deps.now().toISOString(), payload } as Parameters<DefensibilityLog['append']>[1]);
+  }
+
+  /**
    * Legal-hold export (L11): logs the access first, places a hold unless one
    * is already active, then returns the subject's whole chain with its
    * verification. Works after account deletion (the log is pseudonymous).

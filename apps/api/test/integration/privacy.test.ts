@@ -136,6 +136,8 @@ describe('consent records, versioned per data type (goal condition 1)', () => {
       ['wearables', false, null],
       ['ai_coach', false, null],
       ['analytics', false, null],
+      // M09: sharing with a training partner.
+      ['partner_sharing', false, null],
     ]);
   });
 
@@ -303,7 +305,16 @@ describe('in-app export (goal condition 2)', () => {
     );
     expect(live.rows.map((r) => r.table_name)).toEqual(DATA_INVENTORY.map((e) => e.table).sort());
 
-    const { token } = await populatedUser();
+    const { token, userId } = await populatedUser();
+    // M09: a multi-device pair session this user started and an event they sent (the pair sections of the export).
+    for (const documentId of ['privacy', 'exercise_risk']) {
+      const d = (await h.app.inject({ method: 'GET', url: `/v1/legal/documents/${documentId}?locale=fr&jurisdiction=FR` })).json() as { version: number; contentHash: string };
+      expect((await h.app.inject({ method: 'POST', url: '/v1/legal/acceptances', headers: bearer(token), payload: { documentId, version: d.version, locale: 'fr', jurisdiction: 'FR', source: 'mobile', contentHash: d.contentHash } })).statusCode).toBe(201);
+    }
+    expect((await consent(token, 'partner_sharing', 'granted')).statusCode).toBe(201);
+    const created = await h.app.inject({ method: 'POST', url: '/v1/pair/sessions', headers: bearer(token), payload: { displayName: 'Mariam', scopes: [], jurisdiction: 'FR' } });
+    expect(created.statusCode).toBe(201);
+    await h.app.services.pair.append(userId, (created.json() as { pairSessionId: string }).pairSessionId, randomUUID(), { type: 'left' });
     const doc = (await exportData(token)).json() as Record<string, unknown>;
     for (const entry of DATA_INVENTORY) {
       if (!('section' in entry.export)) continue;

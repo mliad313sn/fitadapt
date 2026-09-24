@@ -221,6 +221,9 @@ describe('access control and stubs', () => {
       '/v1/legal/notices',
       '/v1/legal/status',
       '/v1/me',
+      // M09: multi-device Fair Pair (the session itself runs over the WebSocket, not in OpenAPI).
+      '/v1/pair/sessions',
+      '/v1/pair/sessions/join',
       // M04: the end-to-end-encrypted progress-photo backup.
       '/v1/photos/backup',
       '/v1/photos/backup/key',

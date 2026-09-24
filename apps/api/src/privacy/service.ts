@@ -43,6 +43,8 @@ import {
   syncHeads,
   syncMutations,
   users,
+  pairEvents,
+  pairParticipants,
 } from '../db/schema.js';
 import type { BackupCatalog } from './backup-catalog.js';
 
@@ -235,6 +237,9 @@ export class PrivacyService {
       const auditRows = await tx.select().from(auditEntries).where(eq(auditEntries.subjectRef, subjectRef)).orderBy(asc(auditEntries.occurredAt));
       const acceptanceRows = await tx.select().from(legalAcceptances).where(eq(legalAcceptances.userId, userId)).orderBy(asc(legalAcceptances.acceptedAt), asc(legalAcceptances.seq));
       const noticeRows = await tx.select().from(noticeImpressions).where(eq(noticeImpressions.userId, userId)).orderBy(asc(noticeImpressions.occurredAt), asc(noticeImpressions.seq));
+      // M09: this person's participations in multi-device pair sessions and the events they sent (never the partner's).
+      const pairRows = await tx.select().from(pairParticipants).where(eq(pairParticipants.userId, userId)).orderBy(asc(pairParticipants.joinedAt));
+      const pairEventRows = await tx.select().from(pairEvents).where(eq(pairEvents.fromUserId, userId)).orderBy(asc(pairEvents.createdAt), asc(pairEvents.seq));
 
       return {
         format: DATA_EXPORT_FORMAT,
@@ -268,6 +273,10 @@ export class PrivacyService {
         legal: {
           acceptances: acceptanceRows.map((a) => ({ id: a.id, documentId: a.documentId, version: a.version, locale: a.locale, jurisdiction: a.jurisdiction, source: a.source, contentHash: a.contentHash, acceptedAt: iso(a.acceptedAt) })),
           notices: noticeRows.map((n) => ({ id: n.id, noticeId: n.noticeId, version: n.version, kind: n.kind, locale: n.locale, jurisdiction: n.jurisdiction, contentHash: n.contentHash, occurredAt: iso(n.occurredAt) })),
+        },
+        pair: {
+          participations: pairRows.map((p) => ({ pairSessionId: p.pairSessionId, slot: p.slot, displayName: p.displayName, scopes: p.scopes as ('performance' | 'bodyweight' | 'challenge')[], consentVersion: p.consentVersion, joinedAt: iso(p.joinedAt) })),
+          events: pairEventRows.map((e) => ({ pairSessionId: e.pairSessionId, seq: e.seq, clientEventId: e.clientEventId, event: e.event as Record<string, unknown>, createdAt: iso(e.createdAt) })),
         },
       };
     });

@@ -164,5 +164,13 @@ export const DataExportSchema = z.object({
   })
     // Exports produced before M20 have no legal section.
     .default({ acceptances: [], notices: [] }),
+  /** M09: pair sessions taken part in over the multi-device relay, and the events this person sent. */
+  pair: z
+    .object({
+      participations: z.array(z.object({ pairSessionId: UuidSchema, slot: z.enum(['a', 'b']), displayName: z.string(), scopes: z.array(z.enum(['performance', 'bodyweight', 'challenge'])), consentVersion: z.number().int().positive(), joinedAt: IsoDateTimeSchema })),
+      events: z.array(z.object({ pairSessionId: UuidSchema, seq: z.number().int().positive(), clientEventId: UuidSchema, event: z.record(z.string(), z.unknown()), createdAt: IsoDateTimeSchema })),
+    })
+    // Exports produced before M09 have no pair section.
+    .default({ participations: [], events: [] }),
 });
 export type DataExport = z.infer<typeof DataExportSchema>;

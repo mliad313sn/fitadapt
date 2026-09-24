@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ReasonCodeSchema } from './assessment.js';
 import { IsoDateTimeSchema, UuidSchema } from './common.js';
+import { JurisdictionSchema } from './privacy.js';
 import { EquipmentIdSchema, MovementPatternSchema, SlugSchema } from './exercise.js';
 import { PerformedSetSchema } from './session.js';
 
@@ -257,14 +258,17 @@ export const PairServerMessageSchema = z.discriminatedUnion('type', [
 ]);
 export type PairServerMessage = z.infer<typeof PairServerMessageSchema>;
 
+/** `jurisdiction`: the variant of the legal texts this person accepted (their own L2 gate is checked in it). */
 export const CreatePairSessionRequestSchema = z.strictObject({
   displayName: DisplayNameSchema,
   scopes: z.array(PairSharingScopeSchema).max(PAIR_SHARING_SCOPES.length),
+  jurisdiction: JurisdictionSchema,
 });
 export const CreatePairSessionResponseSchema = z.strictObject({ pairSessionId: UuidSchema, joinCode: z.string().regex(/^[A-Z2-9]{6}$/) });
 export const JoinPairSessionRequestSchema = z.strictObject({
   joinCode: z.string().regex(/^[A-Z2-9]{6}$/),
   displayName: DisplayNameSchema,
   scopes: z.array(PairSharingScopeSchema).max(PAIR_SHARING_SCOPES.length),
+  jurisdiction: JurisdictionSchema,
 });
 export const JoinPairSessionResponseSchema = z.strictObject({ pairSessionId: UuidSchema, slot: ParticipantSlotSchema, challenge: z.boolean() });
