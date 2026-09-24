@@ -171,6 +171,8 @@ export const NutritionPlanRecordSchema = z.strictObject({
   /** Why it was computed: set-up, the weekly update, an M04 guardrail hand-off, a style change. */
   reason: z.enum(['setup', 'weekly_update', 'guardrail', 'settings_changed']),
   createdAt: IsoDateTimeSchema,
+  /** The target this plan replaces (null for the first): orders plans made within the same millisecond. */
+  supersedes: UuidSchema.nullable(),
 });
 export type NutritionPlanRecord = z.infer<typeof NutritionPlanRecordSchema>;
 

@@ -37,8 +37,9 @@ export const DefensibilityPayloads = {
     /**
      * M05 adds joint_flagged: a pain report made a joint red (S2), logged with the report.
      * M04 adds handed_off: a sustained body-weight loss was handed to the nutrition guardrails (S4, M10) with a supportive notice.
+     * M10 adds deficit_reduced: after that hand-off the nutrition target removed or reduced a planned deficit (S4).
      */
-    action: z.enum(['blocked', 'substituted', 'session_ended', 'intensity_locked', 'capped', 'joint_flagged', 'handed_off']),
+    action: z.enum(['blocked', 'substituted', 'session_ended', 'intensity_locked', 'capped', 'joint_flagged', 'handed_off', 'deficit_reduced']),
     engineVersion,
   }),
   /** M02: a session the user started (the executed prescription): engine and session-rules versions and every reason code it carries. */
@@ -62,6 +63,20 @@ export const DefensibilityPayloads = {
   'pair.challenge_started': z.strictObject({ pairSessionId: z.uuid(), rulesVersion: engineVersion }),
   'pair.left': z.strictObject({ pairSessionId: z.uuid(), reason: z.enum(['completed', 'stopped', 'safety_stop', 'consent_withdrawn']) }),
   'pair.partner_left': z.strictObject({ pairSessionId: z.uuid() }),
+  /**
+   * M10: a nutrition target the engine prescribed (the prescription record for nutrition): its id, engine and
+   * nutrition-rules versions, the mode (numbers or supportive, no number in the payload), why it was computed and
+   * every reason code. Never a calorie, weight or intake value (health data stays out of the log).
+   */
+  'nutrition.target_set': z.strictObject({
+    targetId: z.uuid(),
+    engineVersion,
+    rulesVersion: engineVersion,
+    mode: z.enum(['numeric', 'supportive', 'needs_measurements']),
+    reason: z.enum(['setup', 'weekly_update', 'guardrail', 'settings_changed']),
+    deficitAllowed: z.boolean(),
+    reasonCodes: z.array(code).max(50),
+  }),
   'content.approved': z.strictObject({ contentId: code, contentVersion: version, reviewerSeat: z.string().regex(/^[A-Z]\d{1,2}$/), signOffRecord: z.string().regex(/^[\w./-]{1,200}$/) }),
   'incident.recorded': z.strictObject({
     incidentId: z.uuid(),
@@ -176,6 +191,8 @@ export interface LegalHoldExport {
   readonly programs: readonly DefensibilityEvent[];
   /** M09: Fair Pair sessions taken part in (joined, timeline, challenge, left). */
   readonly pairSessions: readonly DefensibilityEvent[];
+  /** M10: nutrition targets the engine prescribed (mode, versions and reason codes; no value). */
+  readonly nutritionTargets: readonly DefensibilityEvent[];
   readonly engineVersions: readonly { readonly engineVersion: string; readonly firstSeen: string; readonly lastSeen: string; readonly events: number }[];
   readonly legalHolds: readonly DefensibilityEvent[];
   readonly accessLog: readonly DefensibilityEvent[];
@@ -187,7 +204,7 @@ export interface LegalHoldExport {
 export function buildLegalHoldExport(subjectRef: string, chain: readonly DefensibilityEvent[], generatedAt: string): LegalHoldExport {
   const of = (...types: DefensibilityEventType[]) => chain.filter((e) => types.includes(e.type));
   const versions = new Map<string, { engineVersion: string; firstSeen: string; lastSeen: string; events: number }>();
-  for (const e of of('safety.event', 'safety.attested', 'prescription.issued', 'program.generated', 'program.reflowed', 'pair.timeline_built')) {
+  for (const e of of('safety.event', 'safety.attested', 'prescription.issued', 'program.generated', 'program.reflowed', 'pair.timeline_built', 'nutrition.target_set')) {
     const v = (e.payload as { engineVersion: string }).engineVersion;
     const entry = versions.get(v) ?? { engineVersion: v, firstSeen: e.occurredAt, lastSeen: e.occurredAt, events: 0 };
     entry.events += 1;
@@ -209,6 +226,7 @@ export function buildLegalHoldExport(subjectRef: string, chain: readonly Defensi
     prescriptions: of('prescription.issued'),
     programs: of('program.generated', 'program.reflowed'),
     pairSessions: of('pair.joined', 'pair.timeline_built', 'pair.challenge_started', 'pair.left', 'pair.partner_left'),
+    nutritionTargets: of('nutrition.target_set'),
     engineVersions: [...versions.values()],
     legalHolds: of('legal_hold.placed', 'legal_hold.released'),
     accessLog: of('log.accessed'),

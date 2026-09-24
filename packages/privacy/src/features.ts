@@ -29,6 +29,8 @@ export const FEATURE_CONSENTS = Object.freeze({
    * performance, body weight, the Fair Challenge). Each participant's own consent; never the owner's for a guest.
    */
   'pair.share_with_partner': Object.freeze(['partner_sharing']),
+  /** M10 nutrition: settings, targets, intake logs and habit ticks (health data). */
+  'nutrition.tracking': Object.freeze(['health']),
   /** Product analytics events (M18). */
   'analytics.product': Object.freeze(['analytics']),
 } satisfies Record<string, readonly ConsentDataType[]>);
