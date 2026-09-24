@@ -25,7 +25,8 @@ function tabataBlock(): CardioPlan {
   });
   const history: SessionHistoryEntry[] = [15, 12, 10, 8, 5, 3].map((d, i) => {
     const at = new Date(T0 - d * DAY).toISOString();
-    return { planId: `00000000-0000-4000-8000-00000000000${i + 1}`, prescribedAt: at, startedAt: at, countsForProgression: false, exercises: [], cardioSeconds: 1200 };
+    // Interval sessions run to the end: past the first-exposure ramp (A3/A5 #66), so the full 3-block Tabata applies.
+    return { planId: `00000000-0000-4000-8000-00000000000${i + 1}`, prescribedAt: at, startedAt: at, countsForProgression: false, exercises: [], cardioSeconds: 1200, hiitCompleted: true as const };
   });
   // 25 minutes: a 5-minute warm-up, then 20 minutes of Tabata blocks and an easy end.
   const r = generateSession({ jointFlags: {}, recentLoads: [], birthDate: null, localDate: null, intensityLock: { locked: false, since: null }, safetyProfile: profile, equipment: [], minutesAvailable: 25, mode: 'cardio', cardio: { protocol: 'tabata' }, history, experience: 'intermediate' }, createEngineContext({ clock: fixedClock(T0), seed: 1 }));
