@@ -36,6 +36,14 @@ type Message =
  * turns the backup on (CLAUDE.md rule 7). While the app is not in the
  * foreground (app switcher), the photos are not drawn.
  */
+/**
+ * Photos are hidden while the app is in the app switcher (`inactive`) or in
+ * the background. Any other state counts as the foreground: iOS can report
+ * `unknown` at launch until its first event, and photos must not stay hidden
+ * then.
+ */
+const isForeground = (state: unknown) => state !== 'background' && state !== 'inactive';
+
 export function PhotosScreen({ onExit }: PhotosScreenProps) {
   const { t, locale } = useI18n();
   const theme = useTheme();
@@ -47,7 +55,7 @@ export function PhotosScreen({ onExit }: PhotosScreenProps) {
   const [selected, setSelected] = useState<string[]>([]);
   const [guide, setGuide] = useState(true);
   const [message, setMessage] = useState<Message | null>(null);
-  const [foreground, setForeground] = useState(AppState.currentState === 'active' || AppState.currentState === undefined || AppState.currentState === null);
+  const [foreground, setForeground] = useState(() => isForeground(AppState.currentState));
   const backup = usePhotoBackup();
   const backupAllowed = useFeature('photos.backup');
   const backupEnabled = useProgress((s) => s.photoBackupEnabled);
@@ -57,7 +65,7 @@ export function PhotosScreen({ onExit }: PhotosScreenProps) {
     analytics.track('screen_viewed', { screen: 'photos' });
   }, [analytics]);
   useEffect(() => {
-    const sub = AppState.addEventListener('change', (state) => setForeground(state === 'active'));
+    const sub = AppState.addEventListener('change', (state) => setForeground(isForeground(state)));
     return () => sub.remove();
   }, []);
   const reload = useCallback(() => setPhotos(vault && allowed ? vault.list() : []), [vault, allowed]);
