@@ -10,6 +10,8 @@ import { legalEn } from './legal.en.js';
 import { libraryEn } from './library.en.js';
 import { onboardingEn } from './onboarding.en.js';
 import { screeningEn } from './screening.en.js';
+import { nutritionEn } from './nutrition.en.js';
+import { flattenFoodText } from './foods.js';
 
 /**
  * English catalogue (ICU MessageFormat). Every key must also exist in fr.ts;
@@ -154,6 +156,12 @@ export const en = {
 
   // M09 Fair Pair: the pair screens and pair reason codes (cooperation first; no winner, no body or age wording, no pressure).
   ...pairEn,
+
+  // M10 nutrition: screens, reason codes, habits, supportive mode (no earn/burn/cheat, no guilt, no body judgement; general guidance only).
+  ...nutritionEn,
+
+  // M10 food names (original content; values are unvalidated estimates in packages/food-library).
+  ...flattenFoodText('en'),
 } as const;
 
 export type MessageKey = keyof typeof en;
