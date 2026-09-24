@@ -364,6 +364,55 @@ describe('each person’s safety applies on its own (S2, S3) and logs stay per p
     expect(d.profile.getState().executionLogs.map((e) => e.data.kind)).toEqual(['ended']);
   });
 
+  it('integration FIX-B CS-5 in Fair Pair: after a pain rating of 6 or more, the urgent-signs step for that person; a sign ends HER session with the urgent-care notice', () => {
+    const d = device();
+    start(d);
+    // A rating below S2 red asks nothing more.
+    press('pair-pain-b');
+    press('pair-pain-joint-knee');
+    press('pair-pain-score-5');
+    press('pair-pain-save');
+    expect(screen.queryByTestId('workout-urgent-check')).toBeNull();
+    // Red (≥ 6): the step appears, naming Awa.
+    press('pair-pain-b');
+    press('pair-pain-joint-knee');
+    press('pair-pain-score-6');
+    press('pair-pain-save');
+    expect(screen.getByTestId('workout-urgent-check')).toBeTruthy();
+    expect(text()).toContain(tr('en').t('pair.urgent.for', { name: 'Awa', title: tr('en').t('workout.urgent.title') }));
+    press('workout-urgent-msk_cannot_bear_weight');
+    expect(screen.queryByTestId('workout-urgent-check')).toBeNull();
+    expect(screen.getByTestId('pair-seek-care')).toBeTruthy();
+    const guest = d.pair.getState().guest(d.awa.id)!;
+    // (S2 swaps and skips for the red knee are logged too, as before.)
+    expect(guest.executionLogs.map((e) => e.kind).filter((k) => k !== 'swapped' && k !== 'exercise_skipped')).toEqual(['pain', 'pain', 'red_flag', 'ended']);
+    expect(guest.executionLogs.find((e) => e.kind === 'red_flag')).toMatchObject({ kind: 'red_flag', symptom: 'msk_cannot_bear_weight' });
+    expect(intensityLockStatus(guest.executionLogs).locked).toBe(true);
+    const guestLegal = d.pair.getState().ledgers(d.awa.id).legal.getState();
+    expect(guestLegal.notices.map((n) => n.noticeId)).toContain('urgent_care');
+    expect(guestLegal.notices.map((n) => n.noticeId)).not.toContain('seek_care');
+    // Ibrahima goes on alone; nothing about Awa's sign reaches his records.
+    expect(turnOf()).toBe('a');
+    expect(JSON.stringify(d.client.outbox('pending'))).not.toMatch(/msk_|red_flag/);
+    expect(d.profile.getState().executionLogs).toEqual([]);
+  });
+
+  it('integration FIX-B CS-5 in Fair Pair: "none of these" closes the step and the pair goes on as before', () => {
+    const d = device();
+    start(d);
+    press('pair-pain-a');
+    press('pair-pain-joint-knee');
+    press('pair-pain-score-8');
+    press('pair-pain-save');
+    expect(text()).toContain(tr('en').t('pair.urgent.for', { name: 'Ibrahima', title: tr('en').t('workout.urgent.title') }));
+    press('workout-urgent-none');
+    expect(screen.queryByTestId('workout-urgent-check')).toBeNull();
+    expect(screen.queryByTestId('pair-seek-care')).toBeNull();
+    expect(d.profile.getState().executionLogs.map((e) => e.data.kind).filter((k) => k !== 'swapped' && k !== 'exercise_skipped')).toEqual(['pain']);
+    expect(d.profile.getState().executionLogs.some((e) => e.data.kind === 'red_flag')).toBe(false);
+    expect(d.pair.getState().guest(d.awa.id)!.executionLogs).toEqual([]);
+  });
+
   it('logs stay per person: the owner’s in his sync outbox, Awa’s in her own namespace, never mixed', () => {
     const d = device();
     start(d);

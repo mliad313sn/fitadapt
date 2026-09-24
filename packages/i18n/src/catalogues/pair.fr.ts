@@ -107,6 +107,7 @@ export const pairFr: Record<keyof typeof pairEn, string> = {
   'pair.stop.end': 'Terminer la séance de {name}',
   'pair.left': '{name} a terminé pour aujourd’hui. {other} peut continuer.',
   'pair.seekCare.for': '{name} : {title}',
+  'pair.urgent.for': '{name} : {title}',
 
   // ---- Fin
   'pair.done.title': 'Séance terminée',

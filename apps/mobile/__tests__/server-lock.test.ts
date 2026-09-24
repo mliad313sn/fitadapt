@@ -1,3 +1,4 @@
+import type { ServerIntensityLock } from '@fitadapt/shared';
 import { drizzle } from 'drizzle-orm/sql-js';
 import { randomBytes, randomUUID } from 'node:crypto';
 import initSqlJs, { type SqlJsStatic } from 'sql.js';
@@ -68,7 +69,7 @@ async function services(fetch: typeof globalThis.fetch) {
 
 describe('integration FIX-C × FIX-D: the server-retained S3 lock on the device', () => {
   it('online: a lock the server retains locks the device although it holds no red flag; the attestation names the server flag and lifts it', async () => {
-    let server = { locked: true, since: SINCE, flagIds: [FLAG] };
+    let server: ServerIntensityLock = { locked: true, since: SINCE, flagIds: [FLAG] };
     const net = lockFetch(() => server);
     const app = await services(net.fetch);
     expect(app.session.getState().status).toBe('signed_in');

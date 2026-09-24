@@ -50,12 +50,12 @@ export function SeekCare({ after, noticeId = 'seek_care' }: { after?: string; no
  * FIX-B (CS-5): after a pain rating of S2 red (≥ 6), a short "does any of these apply?" step for signs that need
  * urgent care. Separate from the pain traffic light: a sign ends the session (S3); "none" continues as before.
  */
-export function UrgentSignsCheck({ onSign, onNone }: { onSign: (s: RedFlagSymptom) => void; onNone: () => void }) {
+export function UrgentSignsCheck({ onSign, onNone, name }: { onSign: (s: RedFlagSymptom) => void; onNone: () => void; /** Fair Pair: the person asked. */ name?: string }) {
   const { t } = useI18n();
   const theme = useTheme();
   const text = { color: theme.colors.text, fontSize: theme.fontSize.body } as const;
   return (
-    <Card title={t('workout.urgent.title')} testID="workout-urgent-check">
+    <Card title={name ? t('pair.urgent.for', { name, title: t('workout.urgent.title') }) : t('workout.urgent.title')} testID="workout-urgent-check">
       <Text style={text}>{t('workout.urgent.body')}</Text>
       {URGENT_MSK_SIGNS.map((s) => (
         <Button key={s} label={t(`workout.stop.symptom.${s}` as MessageKey)} hint={t('workout.urgent.signHint')} variant="danger" onPress={() => onSign(s)} testID={`workout-urgent-${s}`} />

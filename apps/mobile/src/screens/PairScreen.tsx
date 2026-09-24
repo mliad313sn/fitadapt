@@ -2,7 +2,8 @@ import { PAIR_RULES_VERSION, createEngineContext, setKey, challengeComparable, t
 import { autoregulateRemainingSets, buildCapacityModel, fairScore, generatePairSession, painAdjustments, remainingTimeline } from '@fitadapt/exercise-library';
 import { formatMass, type MessageKey } from '@fitadapt/i18n';
 import { useI18n } from '@fitadapt/i18n/react';
-import { NOTICES, noticesToShow, notice, renderNotice, type NoticeDefinition, type NoticeTrigger } from '@fitadapt/legal';
+import { S2_RED_PAIN_SCORE } from '@fitadapt/safety';
+import { NOTICES, noticesToShow, notice, renderNotice, stopNoticeFor, type NoticeDefinition, type NoticeId, type NoticeTrigger } from '@fitadapt/legal';
 import { challengeOn, isFeatureEnabled, partnerView, type PartnerScopes } from '@fitadapt/privacy';
 import { JOINTS, RED_FLAG_SYMPTOMS, SESSION_MINUTES_OPTIONS, type AssessmentResult, type ExecutionLog, type FairScore, type Joint, type PairSession, type PairSharingScope, type ParticipantSlot, type PerformedSet, type RedFlagSymptom, type ScoredSet, type SessionPlan, type SetLog, type SharedTimeline, type TimelineStep, type WorkoutSessionRecord } from '@fitadapt/shared';
 import { Button, Card, Chip, Input, Sheet, useTheme } from '@fitadapt/ui';
@@ -23,6 +24,7 @@ import { reportError } from '../observability';
 import { useProgressContext } from '../progress/ProgressProvider';
 import { useRestRemaining } from '../workout/rest-timer';
 import { seedFrom, todayInput } from '../workout/today';
+import { UrgentSignsCheck } from '../workout/RecoveryCards';
 
 export interface PairScreenProps {
   onExit: () => void;
@@ -130,6 +132,10 @@ export function PairScreen({ onExit }: PairScreenProps) {
   const [painJoint, setPainJoint] = useState<Joint | null>(null);
   const [painScore, setPainScore] = useState<number | null>(null);
   const [seekCare, setSeekCare] = useState<Who | null>(null);
+  // FIX-B (CS-5) in Fair Pair: the notice the stop sign calls for (seek care, or urgent care for a joint or back sign).
+  const [seekNotice, setSeekNotice] = useState<StopNoticeId>('seek_care');
+  // FIX-B (CS-5): after a pain rating of S2 red (≥ 6), the "does any of these apply?" step for that person.
+  const [urgentFor, setUrgentFor] = useState<Who | null>(null);
   const [tick, setTick] = useState(0);
   /** The shared place's equipment, fixed when the session starts (the preview is only computed before it). */
   const [items, setItems] = useState<readonly string[] | null>(null);
@@ -330,9 +336,12 @@ export function PairScreen({ onExit }: PairScreenProps) {
     const legal = legalOf(who);
     legal.logSafetyEvent({ invariant: 'S3', reasonCode: `safety.s3.${symptom}`, action: 'session_ended', engineVersion: p.plan.engineVersion });
     legal.logSafetyEvent({ invariant: 'S3', reasonCode: 'safety.s3.intensity_locked', action: 'intensity_locked', engineVersion: p.plan.engineVersion });
-    legal.recordNotice(notice('seek_care'), 'shown', locale);
+    const shown = stopNoticeFor(symptom);
+    legal.recordNotice(shown, 'shown', locale);
     update(who, (q) => ({ ...q, events: [...q.events, event] }));
     leave(who, 'red_flag');
+    setUrgentFor(null);
+    setSeekNotice(shown.id as StopNoticeId);
     setSeekCare(who);
   };
 
@@ -358,6 +367,7 @@ export function PairScreen({ onExit }: PairScreenProps) {
       }
     }
     update(who, (q) => ({ ...q, plan, done, events: [...q.events, event] }));
+    if (painScore >= S2_RED_PAIN_SCORE) setUrgentFor(who);
     setPainJoint(null);
     setPainScore(null);
     setSheet(null);
@@ -628,7 +638,7 @@ export function PairScreen({ onExit }: PairScreenProps) {
         <Text accessibilityRole="header" style={title}>
           {t('pair.done.title')}
         </Text>
-        {seekCare ? <PairSeekCare legal={seekCare === 'a' ? null : guestLedgers!.legal} name={nameOf(seekCare)} /> : null}
+        {seekCare ? <PairSeekCare legal={seekCare === 'a' ? null : guestLedgers!.legal} name={nameOf(seekCare)} noticeId={seekNotice} /> : null}
         {/* A6 pre-review (fix-queue): a cooperative summary by default; each person's own count only if they choose to see it. */}
         <Text style={text} testID="pair-done-together">
           {t('pair.done.together', { count: (['a', 'b'] as const).reduce((n, who) => n + people[who].sets.filter((s) => s.set.status === 'done').length, 0) })}
@@ -690,7 +700,12 @@ export function PairScreen({ onExit }: PairScreenProps) {
     </>
   );
 
-  const seek = seekCare ? <PairSeekCare legal={seekCare === 'a' ? null : guestLedgers!.legal} name={nameOf(seekCare)} /> : null;
+  const seek = (
+    <>
+      {seekCare ? <PairSeekCare legal={seekCare === 'a' ? null : guestLedgers!.legal} name={nameOf(seekCare)} noticeId={seekNotice} /> : null}
+      {urgentFor && people[urgentFor].active ? <UrgentSignsCheck name={people[urgentFor].name} onSign={(s) => redFlag(urgentFor, s)} onNone={() => setUrgentFor(null)} /> : null}
+    </>
+  );
 
   if (step.kind === 'together') {
     const block = timeline!.blocks[step.block]!;
@@ -764,25 +779,28 @@ export function PairScreen({ onExit }: PairScreenProps) {
 }
 
 /** S3 seek-care guidance for the person who reported the symptom, recorded in their own ledger (null: the owner's). */
-function PairSeekCare({ legal, name }: { legal: LegalStore | null; name: string }) {
+type StopNoticeId = Extract<NoticeId, 'seek_care' | 'pregnancy_warning' | 'urgent_care'>;
+
+function PairSeekCare({ legal, name, noticeId = 'seek_care' }: { legal: LegalStore | null; name: string; noticeId?: StopNoticeId }) {
   const { t, locale } = useI18n();
   const theme = useTheme();
   const owner = useLegal((s) => s);
   const guest = useStore(legal ?? NO_LEDGERS.legal, (s) => s);
   const store = legal ? guest : owner;
-  const rendered = renderNotice(notice('seek_care'), locale, store.jurisdiction);
-  const acknowledged = store.notices.some((i) => i.noticeId === 'seek_care' && i.kind === 'acknowledged');
+  const rendered = renderNotice(notice(noticeId), locale, store.jurisdiction);
+  const acknowledged = store.notices.some((i) => i.noticeId === noticeId && i.kind === 'acknowledged');
   const text = { color: theme.colors.text, fontSize: theme.fontSize.body } as const;
   return (
     <Card title={t('pair.seekCare.for', { name, title: rendered.title })} testID="pair-seek-care">
-      <Text style={{ color: theme.colors.danger, fontSize: theme.fontSize.label }}>{rendered.draftBanner}</Text>
-      <Text style={text}>{rendered.body}</Text>
+      {/* FIX-B (CS-2), as on the solo stop card: the emergency line first, before anything else. */}
       {rendered.emergency ? (
         <Text style={{ ...text, fontWeight: theme.fontWeight.bold }} testID="pair-seek-care-emergency">
           {rendered.emergency}
         </Text>
       ) : null}
-      {!acknowledged ? <Button label={t('legal.action.acknowledge')} hint={t('legal.action.acknowledgeHint')} onPress={() => store.recordNotice(notice('seek_care'), 'acknowledged', locale)} testID="pair-seek-care-ack" /> : null}
+      <Text style={text}>{rendered.body}</Text>
+      <Text style={{ color: theme.colors.danger, fontSize: theme.fontSize.label }}>{rendered.draftBanner}</Text>
+      {!acknowledged ? <Button label={t('legal.action.acknowledge')} hint={t('legal.action.acknowledgeHint')} onPress={() => store.recordNotice(notice(noticeId), 'acknowledged', locale)} testID="pair-seek-care-ack" /> : null}
     </Card>
   );
 }

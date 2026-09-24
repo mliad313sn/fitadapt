@@ -104,6 +104,7 @@ export const pairEn = {
   'pair.stop.end': 'End {name}’s session',
   'pair.left': '{name} has finished for today. {other} can go on.',
   'pair.seekCare.for': '{name}: {title}',
+  'pair.urgent.for': '{name}: {title}',
 
   // ---- End
   'pair.done.title': 'Session finished',
