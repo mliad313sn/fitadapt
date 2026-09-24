@@ -6,6 +6,8 @@ import { reportError } from '../observability';
 interface SyncContextValue {
   client: SyncClient;
   pendingCount: number;
+  /** Changes the server refused for good; their records were removed from the device (PKG-03). */
+  rejectedCount: number;
   /** Re-reads the outbox size (call after local writes). */
   refresh: () => void;
 }
@@ -23,7 +25,11 @@ export interface SyncProviderProps {
 
 export function SyncProvider({ client, runSync, onSynced, children }: SyncProviderProps) {
   const [pendingCount, setPendingCount] = useState(() => client.pendingCount());
-  const refresh = useCallback(() => setPendingCount(client.pendingCount()), [client]);
+  const [rejectedCount, setRejectedCount] = useState(() => client.rejectedCount());
+  const refresh = useCallback(() => {
+    setPendingCount(client.pendingCount());
+    setRejectedCount(client.rejectedCount());
+  }, [client]);
 
   useEffect(() => {
     // Push the outbox whenever connectivity comes back (offline-first, ADR-002).
@@ -39,7 +45,7 @@ export function SyncProvider({ client, runSync, onSynced, children }: SyncProvid
     });
   }, [client, refresh, runSync, onSynced]);
 
-  const value = useMemo(() => ({ client, pendingCount, refresh }), [client, pendingCount, refresh]);
+  const value = useMemo(() => ({ client, pendingCount, rejectedCount, refresh }), [client, pendingCount, rejectedCount, refresh]);
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;
 }
 

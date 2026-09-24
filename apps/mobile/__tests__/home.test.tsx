@@ -1,6 +1,8 @@
 import { act, fireEvent, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { useSettings } from '../src/state/settings';
+import { randomUUID } from 'node:crypto';
+import { InMemoryTransport, MemoryLocalStore, MemoryServerStore, SyncClient, SyncServer } from '@fitadapt/sync';
 import { memoryClient, renderHome, tr, visibleStrings } from './helpers';
 
 beforeEach(() => {
@@ -72,5 +74,25 @@ describe('home screen (goal condition 4)', () => {
       await client.sync();
     });
     expect(client.pendingCount()).toBe(0);
+  });
+
+  it('PKG-03: tells the user when the server refused a change and it was removed from the device', async () => {
+    const server = new SyncServer({ store: new MemoryServerStore(), validate: (_user, m) => ((m.data as { refused?: boolean } | null)?.refused ? 'screening.profile_mismatch' : null) });
+    const client = new SyncClient({ deviceId: randomUUID(), store: new MemoryLocalStore(), transport: new InMemoryTransport(server, randomUUID()), newId: randomUUID });
+    const id = client.insert('screenings', { refused: true });
+    await client.sync();
+    expect(client.get('screenings', id)).toBeUndefined();
+    renderHome('en', client);
+    expect(screen.getByTestId('sync-rejected').props.children).toBe(
+      '1 change was not accepted by the server and was removed from this device. Please check it and enter it again.',
+    );
+    screen.unmount();
+    renderHome('fr', client);
+    expect(screen.getByText('1 modification n’a pas été acceptée par le serveur et a été retirée de cet appareil. Vérifiez-la et saisissez-la de nouveau.')).toBeTruthy();
+  });
+
+  it('shows no rejection notice when nothing was refused', () => {
+    renderHome('en');
+    expect(screen.queryByTestId('sync-rejected')).toBeNull();
   });
 });

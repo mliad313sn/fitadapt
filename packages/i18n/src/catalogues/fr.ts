@@ -20,6 +20,8 @@ export const fr: Record<MessageKey, string> = {
   'home.subtitle': 'Vos séances fonctionnent hors ligne, en français ou en anglais.',
   'home.syncStatus':
     '{count, plural, =0 {Tout est synchronisé} one {# modification en attente de synchronisation} other {# modifications en attente de synchronisation}}',
+  'home.syncRejected':
+    '{count, plural, one {# modification n’a pas été acceptée par le serveur et a été retirée de cet appareil. Vérifiez-la et saisissez-la de nouveau.} other {# modifications n’ont pas été acceptées par le serveur et ont été retirées de cet appareil. Vérifiez-les et saisissez-les de nouveau.}}',
   'home.language.switch': 'Passer en anglais',
   'home.language.switchHint': 'Change la langue de toute l’application',
   'home.gymMode.enable': 'Activer le mode salle',

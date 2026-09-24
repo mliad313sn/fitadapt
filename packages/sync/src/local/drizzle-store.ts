@@ -23,11 +23,16 @@ function toRecord(row: typeof syncRecords.$inferSelect): LocalRecord {
   };
 }
 
-function toOutbox(row: typeof syncOutbox.$inferSelect): OutboxItem {
+/** Outbox `lastError` of a stored row whose mutation no longer parses (PKG-02). */
+export const INVALID_LOCAL_MUTATION = 'invalid_local_mutation';
+
+/** Validated at the storage boundary (zod at every process boundary); undefined for a row that does not parse. */
+function toOutbox(row: typeof syncOutbox.$inferSelect): OutboxItem | undefined {
+  const mutation = SyncMutationSchema.safeParse(row.mutation);
+  if (!mutation.success) return undefined;
   return {
     id: row.id,
-    // Validate at the storage boundary (zod at every process boundary).
-    mutation: SyncMutationSchema.parse(row.mutation),
+    mutation: mutation.data,
     status: row.status,
     attempts: row.attempts,
     createdAt: row.createdAt,
@@ -81,7 +86,20 @@ function txFor(db: SyncSqliteDatabase): LocalTx {
       const filtered = status === undefined ? base : base.where(eq(syncOutbox.status, status));
       const ordered = filtered.orderBy(asc(syncOutbox.seq));
       const rows = (limit === undefined ? ordered : ordered.limit(limit)).all() as (typeof syncOutbox.$inferSelect)[];
-      return rows.map(toOutbox);
+      const items: OutboxItem[] = [];
+      for (const row of rows) {
+        const item = toOutbox(row);
+        if (item) {
+          items.push(item);
+          continue;
+        }
+        // PKG-02: a row written before validation on write (e.g. a non-UUID record id) would make every outbox
+        // read throw, and with it pendingCount() and sync(). It is quarantined instead and left out of listings.
+        if (row.status !== 'rejected' || row.lastError !== INVALID_LOCAL_MUTATION) {
+          db.update(syncOutbox).set({ status: 'rejected', lastError: INVALID_LOCAL_MUTATION }).where(eq(syncOutbox.seq, row.seq)).run();
+        }
+      }
+      return items;
     },
     updateOutbox(id, patch) {
       const result = db.update(syncOutbox).set(patch).where(eq(syncOutbox.id, id)).returning({ id: syncOutbox.id }).all();
