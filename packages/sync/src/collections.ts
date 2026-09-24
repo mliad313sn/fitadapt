@@ -31,6 +31,10 @@ export const SYNC_COLLECTIONS: CollectionRegistry = Object.freeze({
   execution_logs: Object.freeze({ appendOnly: true }),
   /** M05 readiness checks (sleep, soreness, stress, energy, optional wearable readings): append-only; the latest of a day counts. */
   readiness_checks: Object.freeze({ appendOnly: true }),
+  /** M04 body weight and body-fat entries: append-only; a correction is a new entry naming the one it corrects. */
+  body_metrics: Object.freeze({ appendOnly: true }),
+  /** M04 circumferences: append-only, corrections as for body metrics. Progress photos are never synced (ADR-020). */
+  measurements: Object.freeze({ appendOnly: true }),
 });
 
 export function policyFor(registry: CollectionRegistry, collection: string): CollectionPolicy | undefined {

@@ -328,6 +328,10 @@ describe('M01 collections and server-side validation', () => {
     expect(SYNC_COLLECTIONS.execution_logs).toEqual({ appendOnly: true });
     // M05: readiness checks are append-only too.
     expect(SYNC_COLLECTIONS.readiness_checks).toEqual({ appendOnly: true });
+    // M04: body metrics and measurements are append-only too; progress photos are not a sync collection.
+    expect(SYNC_COLLECTIONS.body_metrics).toEqual({ appendOnly: true });
+    expect(SYNC_COLLECTIONS.measurements).toEqual({ appendOnly: true });
+    expect(Object.keys(SYNC_COLLECTIONS).some((c) => c.includes('photo'))).toBe(false);
   });
 
   it('rejects a mutation the validator refuses, finally, and reports applied ones to the listener', async () => {
