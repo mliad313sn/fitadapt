@@ -22,6 +22,8 @@ export const BW_SOURCE = {
   ebben:
     'Ebben WP et al. (2011), J Strength Cond Res 25(10):2891–2894, value as quoted in docs/specs/M02-adaptive-training-engine.md; citation compiled by the drafting assistant and not checked against the paper',
   estimate: 'Author estimate for the M06 seed; no external source',
+  ebben_interpolated:
+    'Between the Ebben WP et al. (2011, J Strength Cond Res 25(10):2891–2894) values for hands on a 30.5 cm box (~0.55) and on a 61 cm box (~0.41), as reported by the AI pre-review docs/governance/ai-reviews/A3-A5-training-science.md item 80 (the app’s low incline is a bench or chair seat, ~40–50 cm; the earlier 0.41 was the 61 cm value); from search summaries, the paper’s table not seen; seat A5 to check',
   hang: 'Physical reasoning: the grip supports the whole body in a hang; no external source',
 } as const;
 
