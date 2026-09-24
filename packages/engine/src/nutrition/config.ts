@@ -31,7 +31,7 @@ const HAND =
   'Estimated; the hand-portion method as used in coaching practice (a palm of protein food, a fist of vegetables, a cupped hand of starchy food, a thumb of oils and fats). Energy and protein per portion are the engineer’s rough estimates, not checked against any source; to be verified by seat A4';
 
 /** Version of the M10 nutrition rules (energy model, targets, guardrail, portions). Stored in every NutritionTarget. */
-export const NUTRITION_RULES_VERSION = '0.1.0';
+export const NUTRITION_RULES_VERSION = '0.2.0';
 
 export const NUTRITION_CONFIG = defineConfig({
   // ---- Mifflin-St Jeor resting energy (kcal/day) = w·kg + h·cm − a·years + sex constant

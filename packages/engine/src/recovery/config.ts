@@ -17,7 +17,7 @@ import { defineConfig } from '@fitadapt/shared';
 const ENG = 'M05 engineering default (conservative choice by the engineer); no external source';
 const SPEC = 'docs/specs/M05-recovery-mobility-pain-safety.md';
 
-export const RECOVERY_RULES_VERSION = '0.1.0';
+export const RECOVERY_RULES_VERSION = '0.2.0';
 
 export const RECOVERY_CONFIG = defineConfig({
   // ---- Warm-up (total from SESSION_CONFIG warmUp.minutes / minimumMinutes: 5–8 min)

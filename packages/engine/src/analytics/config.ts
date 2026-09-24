@@ -23,7 +23,7 @@ const HORIZON =
   'docs/governance/ai-reviews/A3-A5-training-science.md item 75 (AI pre-review, not a professional sign-off: "horizon ≤ min(3 × observed span, 180 days); use a prediction interval"; gains slow down over time, so a line fitted to a few weeks overstates a year ahead — L1 no promise); stricter than the earlier 365 days; seats A5, A3 and counsel (B2) to decide';
 
 /** Version of the M04 analytics rules (trend, rate, guardrail, forecasts). */
-export const ANALYTICS_RULES_VERSION = '0.1.0';
+export const ANALYTICS_RULES_VERSION = '0.2.0';
 
 export const ANALYTICS_CONFIG = defineConfig({
   // ---- Bodyweight trend (exponentially weighted moving average)

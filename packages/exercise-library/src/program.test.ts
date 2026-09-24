@@ -2,6 +2,7 @@ import { PROGRAM_REASON_CODES, addDays, createEngineContext, decideReflow, fixed
 import { en, fr } from '@fitadapt/i18n';
 import { ProgramSchema, type Program } from '@fitadapt/shared';
 import { describe, expect, it } from 'vitest';
+import { versioned } from './__fixtures__/golden.js';
 import { PERSONA_INPUTS } from './__fixtures__/personas.js';
 import { generateProgram, programLibrary, seedLibrary } from './index.js';
 
@@ -52,7 +53,7 @@ describe('persona programs on the M06 seed (golden, goal condition 1)', () => {
       expect(program.mesocycles.length).toBeGreaterThanOrEqual(1);
       expect(scheduledDeloads(program).length).toBe(program.mesocycles.length);
       for (const w of program.microcycles) expect(w.volume.map((v) => v.muscle)).toEqual(['chest', 'back', 'shoulders', 'arms', 'quads', 'glutes_hamstrings', 'core']);
-      await expect(JSON.stringify(golden(program, safetyEvents), null, 2) + '\n').toMatchFileSnapshot(`./__golden__/${persona}.program.json`);
+      await expect(JSON.stringify(versioned('program', golden(program, safetyEvents)), null, 2) + '\n').toMatchFileSnapshot(`./__golden__/${persona}.program.json`);
     });
   }
 

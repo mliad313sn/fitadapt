@@ -26,7 +26,7 @@ const FIRST =
 const ZONES = `${ENG}; heart-rate-reserve bands for light/moderate/vigorous effort chosen by the engineer (the Karvonen method itself is cited by ${SPEC}), not checked against any guideline. The AI pre-reviews (docs/governance/ai-reviews/A3-A5-training-science.md, A1-A2-clinical-safety.md M03-49) point to ACSM 2011 (Garber et al.: moderate 40–59 % HRR, vigorous 60–89 %; the 84 % cap here is more conservative), from search summaries, not checked`;
 
 /** Version of the cardio rules (protocols, gates, zones); the plan's session rules version moves with it. */
-export const CARDIO_RULES_VERSION = '0.1.0';
+export const CARDIO_RULES_VERSION = '0.2.0';
 
 export const CARDIO_CONFIG = defineConfig({
   // ---- Maximum heart rate (Tanaka) and heart-rate reserve (Karvonen)

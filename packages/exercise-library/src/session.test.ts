@@ -21,6 +21,7 @@ import {
 import { createTranslator, en, fr } from '@fitadapt/i18n';
 import { SessionPlanSchema, type ExecutionLog, type ReflowRecord, type SessionPlan, type WorkoutSessionRecord } from '@fitadapt/shared';
 import { describe, expect, it } from 'vitest';
+import { versioned } from './__fixtures__/golden.js';
 import { PERSONA_INPUTS } from './__fixtures__/personas.js';
 import { SAFE_FACTS, PERSONA_SESSIONS } from './__fixtures__/session-personas.js';
 import { buildCapacityModel, generateProgram, generateSession, seedLibrary } from './index.js';
@@ -162,7 +163,7 @@ describe('persona sessions on the M06 seed (golden, goal condition 2)', () => {
       // A missing golden file is a failure, never silently written.
       const file = `./__golden__/${persona}.sessions.json`;
       expect(existsSync(join(here, file)), `${file} must be committed`).toBe(true);
-      await expect(JSON.stringify(golden(sim), null, 2) + '\n').toMatchFileSnapshot(file);
+      await expect(JSON.stringify(versioned('sessions', golden(sim)), null, 2) + '\n').toMatchFileSnapshot(file);
     });
   }
 
