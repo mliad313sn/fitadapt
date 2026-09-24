@@ -219,4 +219,9 @@ export const progressEn = {
   'photos.restore.failed': 'That code does not open this backup. Check it and try again.',
   'photos.permission.camera': 'Allow the app to use the camera to take progress photos. Photos are encrypted and stay on your phone.',
   'photos.permission.library': 'Allow the app to open your photos so you can pick a progress photo. It is encrypted and stays on your phone.',
+
+  // ---- Encrypted storage unavailable (fail closed: nothing is stored unencrypted)
+  'storage.unavailable.title': 'Your data cannot be stored safely right now',
+  'storage.unavailable.body': 'This app keeps your training and health data only in encrypted storage on this phone. Encrypted storage is not available at the moment, so nothing was opened or saved.',
+  'storage.unavailable.action': 'Close the app and open it again. If this keeps happening, update the app or restart your phone.',
 } as const;

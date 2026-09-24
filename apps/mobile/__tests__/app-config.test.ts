@@ -63,3 +63,29 @@ describe('app.json background audio for the interval cues (M03)', () => {
     expect(audio[1]).toEqual({ microphonePermission: false, recordAudioAndroid: false, enableBackgroundPlayback: true });
   });
 });
+
+describe('app.json and app.config.js for M04 (encrypted database, progress photos)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const app = require('../app.json') as { expo: { plugins: (string | [string, Record<string, unknown>])[] } };
+  const plugin = (name: string) => app.expo.plugins.find((p) => (Array.isArray(p) ? p[0] : p) === name);
+
+  it('expo-sqlite is built with SQLCipher (the Android and iOS build properties `expo.sqlite.useSQLCipher`)', () => {
+    expect(plugin('expo-sqlite')).toEqual(['expo-sqlite', { useSQLCipher: true }]);
+    // The plain plugin entry (no cipher) is gone.
+    expect(app.expo.plugins).not.toContain('expo-sqlite');
+  });
+
+  it('the image picker never asks for the microphone; the camera and photo-library texts come from packages/i18n in EN and FR', () => {
+    expect(plugin('expo-image-picker')).toEqual(['expo-image-picker', { microphonePermission: false }]);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { en, fr } = require('@fitadapt/i18n') as { en: Record<string, string>; fr: Record<string, string> };
+    const input = JSON.parse(JSON.stringify(app.expo)) as Record<string, unknown>;
+    const out = withEnv({ APP_VARIANT: 'dev' }, () => appConfig({ config: input })) as { plugins: [string, Record<string, unknown>][]; locales: Record<string, Record<string, string>> };
+    expect(out.plugins.find((p) => Array.isArray(p) && p[0] === 'expo-image-picker')![1]).toEqual({ microphonePermission: false, cameraPermission: en['photos.permission.camera'], photosPermission: en['photos.permission.library'] });
+    expect(out.locales).toEqual({
+      en: { NSCameraUsageDescription: en['photos.permission.camera'], NSPhotoLibraryUsageDescription: en['photos.permission.library'] },
+      fr: { NSCameraUsageDescription: fr['photos.permission.camera'], NSPhotoLibraryUsageDescription: fr['photos.permission.library'] },
+    });
+    expect(Object.values(out.locales.fr!).every((t) => t.length > 0 && t !== en['photos.permission.camera'])).toBe(true);
+  });
+});

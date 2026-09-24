@@ -220,4 +220,9 @@ export const progressFr: Record<keyof typeof progressEn, string> = {
   'photos.restore.failed': 'Ce code n’ouvre pas cette sauvegarde. Vérifiez-le et réessayez.',
   'photos.permission.camera': 'Autorisez l’application à utiliser l’appareil photo pour prendre des photos de progression. Elles sont chiffrées et restent sur votre téléphone.',
   'photos.permission.library': 'Autorisez l’application à ouvrir vos photos pour choisir une photo de progression. Elle est chiffrée et reste sur votre téléphone.',
+
+  // ---- Stockage chiffré indisponible (échec fermé : rien n’est stocké en clair)
+  'storage.unavailable.title': 'Vos données ne peuvent pas être enregistrées de façon sûre pour le moment',
+  'storage.unavailable.body': 'Cette application ne conserve vos données d’entraînement et de santé que dans un stockage chiffré sur ce téléphone. Le stockage chiffré n’est pas disponible pour le moment : rien n’a été ouvert ni enregistré.',
+  'storage.unavailable.action': 'Fermez l’application et rouvrez-la. Si cela se reproduit, mettez l’application à jour ou redémarrez votre téléphone.',
 };

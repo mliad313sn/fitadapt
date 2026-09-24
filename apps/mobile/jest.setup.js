@@ -5,6 +5,7 @@ jest.mock('react-native-safe-area-context', () => require('react-native-safe-are
 jest.mock('expo-secure-store', () => {
   const items = new Map();
   const options = new Map();
+  const failure = { error: null };
   return {
     WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'WHEN_UNLOCKED_THIS_DEVICE_ONLY',
     AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 'AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY',
@@ -16,10 +17,18 @@ jest.mock('expo-secure-store', () => {
     deleteItemAsync: async (key) => {
       items.delete(key);
     },
-    getItem: (key) => (items.has(key) ? items.get(key) : null),
+    getItem: (key) => {
+      if (failure.error) throw failure.error;
+      return items.has(key) ? items.get(key) : null;
+    },
     setItem: (key, value, opts) => {
+      if (failure.error) throw failure.error;
       items.set(key, value);
       options.set(key, opts);
+    },
+    // M04 fail-closed tests: make the keystore fail (null: works again).
+    __setFailure: (error) => {
+      failure.error = error;
     },
     __items: items,
     __options: options,

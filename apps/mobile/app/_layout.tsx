@@ -5,6 +5,7 @@ import { getLocales } from 'expo-localization';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
+import type { SyncSqliteDatabase } from '@fitadapt/sync';
 import { Platform } from 'react-native';
 import { useStore } from 'zustand';
 import { runAccountSync, createAccountApi, UploadLedger } from '../src/account/account-sync';
@@ -31,6 +32,7 @@ import { httpPhotoBackupApi } from '../src/progress/photo-backup';
 import { expoPhotoFiles, PhotoVault } from '../src/progress/photo-vault';
 import { createProgressStore } from '../src/progress/progress-store';
 import { secureDeviceKeyStore } from '../src/storage/device-keys';
+import { StorageUnavailableScreen } from '../src/screens/StorageUnavailableScreen';
 
 /**
  * S7 age gate: until the user has passed it, the only reachable screen is the
@@ -76,9 +78,27 @@ function GatedStack() {
 
 const platform = (): 'ios' | 'android' | 'web' => (Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'web');
 
+/**
+ * M04 (ADR-020): the device database is opened encrypted or not at all. When
+ * it cannot be (no cipher in the SQLite build, a keystore failure), the app
+ * fails closed: it shows why and opens, reads and writes nothing — there is
+ * no unencrypted fallback. Only the error type is reported, never data.
+ */
 export default function RootLayout() {
+  const storage = useMemo((): { db: SyncSqliteDatabase } | { failed: true } => {
+    try {
+      return { db: openExpoDatabase() };
+    } catch (error) {
+      reportError(new Error(`local database unavailable: ${error instanceof Error ? error.name : 'unknown'}`), { area: 'storage' });
+      return { failed: true };
+    }
+  }, []);
+  if ('failed' in storage) return <StorageUnavailableScreen languageTags={getLocales().map((l) => l.languageTag)} />;
+  return <AppRoot db={storage.db} />;
+}
+
+function AppRoot({ db }: { db: SyncSqliteDatabase }) {
   const app = useMemo(() => {
-    const db = openExpoDatabase();
     const kv = new SqliteKeyValueStore(db);
     const locales = getLocales();
     const jurisdiction = resolveJurisdiction(locales[0]?.regionCode);
@@ -138,7 +158,7 @@ export default function RootLayout() {
         },
       },
     };
-  }, []);
+  }, [db]);
   // Export and deletion need a signed-in session (M17 deferred them to M01).
   const signedIn = useStore(app.session, (s) => s.status === 'signed_in');
   const privacy = useMemo(() => ({ ...app.privacy, client: signedIn ? app.privacyClient : undefined }), [app, signedIn]);
