@@ -96,8 +96,11 @@ describe('M04 device configs (CLAUDE.md rule 4)', () => {
     const { photosConfig } = require('../src/config/photos.config') as { photosConfig: Record<string, { value: number; source: string; validated: boolean }> };
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { dashboardConfig } = require('../src/config/dashboard.config') as { dashboardConfig: Record<string, { value: number; source: string; validated: boolean }> };
-    const all = { ...photosConfig, ...dashboardConfig };
-    expect(Object.keys(all)).toHaveLength(9);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { legalLogConfig } = require('../src/config/legal-log.config') as { legalLogConfig: Record<string, { value: number; source: string; validated: boolean }> };
+    // Fix wave: + display.cacheMaxBytes (MOB-05) and device.segmentMaxEvents (MOB-11), both validated:false.
+    const all = { ...photosConfig, ...dashboardConfig, ...legalLogConfig };
+    expect(Object.keys(all)).toHaveLength(11);
     for (const [key, v] of Object.entries(all)) expect({ key, number: Number.isFinite(v.value), source: v.source.length > 10, validated: v.validated }).toEqual({ key, number: true, source: true, validated: false });
   });
 });
