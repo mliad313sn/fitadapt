@@ -54,3 +54,12 @@ describe('app.config.js exercise-library release guard (M06)', () => {
     jest.dontMock('@fitadapt/legal');
   });
 });
+
+describe('app.json background audio for the interval cues (M03)', () => {
+  it('enables background playback (iOS UIBackgroundModes audio, Android media-playback service) without asking for the microphone', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const app = require('../app.json') as { expo: { plugins: (string | [string, Record<string, unknown>])[] } };
+    const audio = app.expo.plugins.find((p) => Array.isArray(p) && p[0] === 'expo-audio') as [string, Record<string, unknown>];
+    expect(audio[1]).toEqual({ microphonePermission: false, recordAudioAndroid: false, enableBackgroundPlayback: true });
+  });
+});

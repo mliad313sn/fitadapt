@@ -15,7 +15,19 @@
       "package": "dev.companion.app",
       "allowBackup": false
     },
-    "plugins": ["expo-router", "expo-localization", "expo-sqlite"],
+    "plugins": [
+      "expo-router",
+      "expo-localization",
+      "expo-sqlite",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": true
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": false
     }

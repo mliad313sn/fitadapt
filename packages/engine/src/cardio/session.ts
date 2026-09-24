@@ -77,6 +77,9 @@ export function cardioSession(input: GenerateSessionInput, library: SessionLibra
   const bctx = buildContext(input, library, nowMs);
   const hiit = isHiitRequest(request.protocol, request.custom);
   const target = zoneOf(bctx.zones, hiit ? 'vigorous' : 'moderate');
+  // M05 readiness: on a day the check says "less ready", high-intensity intervals wait; the rest stays at a moderate effort.
+  const reduced = input.readiness === 'reduced';
+  if (hiit && reduced) return unavailable('cardio.session.standalone', 'cardio.unavailable.readiness_reduced');
   if (hiit) {
     const gate = hiitGate(profile, input.history ?? [], nowMs, target.rpeMax);
     if (gate === 'safety.s1.hiit_not_allowed') return unavailable('cardio.session.standalone', 'cardio.unavailable.hiit_s1');
@@ -111,7 +114,7 @@ export function cardioSession(input: GenerateSessionInput, library: SessionLibra
     exercises: [],
     coolDown: null,
     cardio: built.plan,
-    reasonCodes: ['cardio.session.standalone', `cardio.protocol.${request.protocol}`],
+    reasonCodes: ['cardio.session.standalone', `cardio.protocol.${request.protocol}`, ...(reduced ? ['cardio.readiness.reduced'] : [])],
   };
   const events: SessionSafetyEvent[] = built.redBlocked ? [{ invariant: 'S2', reasonCode: 'substitution.joint_red', action: 'blocked', engineVersion: ENGINE_VERSION }] : [];
   return { status: 'ok', plan: SessionPlanSchema.parse(draft), safetyEvents: events };

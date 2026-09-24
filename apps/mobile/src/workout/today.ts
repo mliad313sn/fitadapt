@@ -1,5 +1,5 @@
 import { defaultEquipmentLoads, programDay, programSessionContext, type GenerateSessionInput } from '@fitadapt/engine';
-import type { CapacityModel, IntensityLock, IsoDate, JointFlags, Profile, ProgramRecord, ReflowRecord, SafetyProfile, SessionHistoryEntry } from '@fitadapt/shared';
+import type { CapacityModel, CardioRequest, HeartRateInfo, IntensityLock, IsoDate, JointFlags, Profile, ProgramRecord, ReflowRecord, SafetyProfile, SessionHistoryEntry } from '@fitadapt/shared';
 import type { StoredEquipmentProfile } from '../profile/profile-store';
 
 /**
@@ -27,8 +27,14 @@ export interface TodayFacts {
   readonly minutes: number | null;
   /** M05: today's readiness (a low check → 'reduced'; no check → no adjustment). */
   readonly readiness?: 'normal' | 'reduced';
-  /** M05: a standalone mobility and balance session instead of today's training. */
-  readonly mode?: 'training' | 'mobility_balance';
+  /** M05: a standalone mobility and balance session instead of today's training; M03: a cardio session. */
+  readonly mode?: 'training' | 'mobility_balance' | 'cardio';
+  /** M03: the cardio session chosen (mode 'cardio'). */
+  readonly cardio?: CardioRequest;
+  /** M03: resting heart rate from the heart-rate port (null: effort and talk test only). */
+  readonly heartRate?: HeartRateInfo | null;
+  /** M03: the user opted up from the low-impact default. */
+  readonly impactOptIn?: boolean;
 }
 
 export type TodayInput =
@@ -38,7 +44,9 @@ export type TodayInput =
 
 export function todayInput(f: TodayFacts): TodayInput {
   const mobility = f.mode === 'mobility_balance';
-  const day = f.program && !mobility ? programDay(f.program.program, f.reflows, f.today) : null;
+  const cardio = f.mode === 'cardio';
+  // A standalone session (mobility or cardio) replaces today's program session.
+  const day = f.program && !mobility && !cardio ? programDay(f.program.program, f.reflows, f.today) : null;
   const session = day?.sessions[0] ?? null;
   // A program exists for today's week but nothing is planned today: a rest day (no session is invented).
   if (day && !session) return { status: 'rest_day' };
@@ -55,11 +63,16 @@ export function todayInput(f: TodayFacts): TodayInput {
     programSession: day && session ? programSessionContext(day, session) : null,
     history: [...f.history],
     bodyweightKg: f.profile.biometrics.weightKg,
+    // M03: height for the BMI ≥ 35 low-impact default; heart-rate facts for the zones.
+    heightCm: f.profile.biometrics.heightCm,
+    ...(f.heartRate ? { heartRate: f.heartRate } : {}),
+    ...(f.impactOptIn ? { impactOptIn: true } : {}),
     birthDate: f.profile.birthDate,
     experience: f.profile.experience,
     intensityLock: f.intensityLock,
     ...(f.readiness && !mobility ? { readiness: f.readiness } : {}),
     ...(mobility ? { mode: 'mobility_balance' as const } : {}),
+    ...(cardio ? { mode: 'cardio' as const, cardio: f.cardio ?? { protocol: 'steady' as const } } : {}),
   };
   return { status: 'ready', input, placeId: place.id, fromProgram: session !== null };
 }

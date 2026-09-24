@@ -461,3 +461,12 @@ describe('every M03 reason code is a unique dotted code', () => {
     expect(M03_REASON_CODES.join(' ')).not.toMatch(/fat|lipoly/i);
   });
 });
+
+describe('readiness (M05) and cardio', () => {
+  it('a "less ready" day refuses high-intensity intervals and keeps the rest at a moderate effort', () => {
+    expect(generateSession(cardioInput('tabata', { readiness: 'reduced' }), CARDIO_LIBRARY, ctx())).toEqual({ status: 'unavailable', reasonCodes: ['cardio.session.standalone', 'cardio.unavailable.readiness_reduced'] });
+    const { plan, cardio } = run(cardioInput('steady', { readiness: 'reduced' }));
+    expect(plan.reasonCodes).toContain('cardio.readiness.reduced');
+    expect(cardio.hiit).toBe(false);
+  });
+});

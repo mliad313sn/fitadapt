@@ -1,9 +1,10 @@
-import { ENGINE_VERSION, createEngineContext, type GenerateSessionInput } from '@fitadapt/engine';
+import { ENGINE_VERSION, aerobicMinutesLedger, cardioDone, createEngineContext, hiitGate, ledgerEntriesFrom, lowImpactDefault, mondayOf, type GenerateSessionInput } from '@fitadapt/engine';
 import { autoregulateRemainingSets, generateSession, painAdjustments, replacementsFor } from '@fitadapt/exercise-library';
 import { formatMass, kgToLb, lbToKg, type MessageKey } from '@fitadapt/i18n';
 import { useI18n } from '@fitadapt/i18n/react';
 import { NOTICES, notice, noticesToShow, renderNotice } from '@fitadapt/legal';
-import { JOINTS, MEDICAL_REVIEW_STATEMENT_VERSION, RED_FLAG_SYMPTOMS, SESSION_MINUTES_OPTIONS, type Joint, type PerformedSet, type PlannedExercise, type PlannedSet, type RedFlagSymptom, type SessionPlan, type WorkoutSessionRecord } from '@fitadapt/shared';
+import { S2_RED_PAIN_SCORE } from '@fitadapt/safety';
+import { JOINTS, MEDICAL_REVIEW_STATEMENT_VERSION, RED_FLAG_SYMPTOMS, SESSION_MINUTES_OPTIONS, type CardioProtocol, type Joint, type PerformedSet, type PlannedExercise, type PlannedSet, type RedFlagSymptom, type SessionPlan, type WorkoutSessionRecord } from '@fitadapt/shared';
 import { Button, Card, Chip, Sheet, Stepper, useTheme } from '@fitadapt/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
@@ -14,6 +15,9 @@ import { localIsoDate, selectDeload, selectMorningCheck, selectPhysio, selectRea
 import { MorningCheck, PainCheck, ReadinessCheckCard, SeekCare, WarmUpDetails } from '../workout/RecoveryCards';
 import { useRestRemaining } from '../workout/rest-timer';
 import { seedFrom, todayInput } from '../workout/today';
+import { AerobicLedgerCard, CardioOptions, CardioSummary } from '../cardio/CardioCards';
+import { CardioRun, type CardioResult } from '../cardio/CardioRun';
+import { heartRateInfo, heartRateSource, useManualHeartRate } from '../cardio/heart-rate';
 
 export interface WorkoutScreenProps {
   onExit: () => void;
@@ -21,7 +25,7 @@ export interface WorkoutScreenProps {
   onOpenAssessment?: () => void;
 }
 
-type Phase = 'set' | 'rest' | 'done' | 'ended' | 'red_flag';
+type Phase = 'set' | 'rest' | 'cardio' | 'done' | 'ended' | 'red_flag';
 type SheetKind = 'swap' | 'pain' | 'stop' | null;
 
 interface Run {
@@ -34,6 +38,8 @@ interface Run {
   readonly restEndsAt: number | null;
   readonly logged: number;
   readonly skipped: readonly number[];
+  /** M03: the cardio block's minutes that counted (after it ran). */
+  readonly cardio?: { readonly moderateSeconds: number; readonly vigorousSeconds: number } | null;
 }
 
 const nowMs = () => clock.now().getTime();
@@ -89,7 +95,12 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
   const [painScore, setPainScore] = useState<number | null>(null);
   const [needReps, setNeedReps] = useState(false);
   // M05: session type, the optional checks, the two-step review confirmation and a red flag at the check-in.
-  const [mode, setMode] = useState<'training' | 'mobility_balance'>('training');
+  const [mode, setMode] = useState<'training' | 'mobility_balance' | 'cardio'>('training');
+  // M03: the cardio session chosen, the impact opt-up and a red pain rating that ends the cardio block.
+  const [cardioProtocol, setCardioProtocol] = useState<CardioProtocol>('steady');
+  const [impactOptIn, setImpactOptIn] = useState(false);
+  const [cardioEnd, setCardioEnd] = useState(false);
+  const restingBpm = useManualHeartRate((s) => s.restingBpm);
   const [readinessSkipped, setReadinessSkipped] = useState(false);
   const [readinessNote, setReadinessNote] = useState<string | null>(null);
   const [morningSkipped, setMorningSkipped] = useState(false);
@@ -107,7 +118,8 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
   // ---- Today's session (preview): the engine, on the device.
   const today = localIsoDate(clock.now());
   const readiness = selectReadiness(readinessChecks, today);
-  const facts = profile ? todayInput({ profile, safetyProfile, places, program, reflows, capacity, history, jointFlags, intensityLock, today, placeId, minutes, readiness, mode }) : null;
+  const heartRate = useMemo(() => heartRateInfo(heartRateSource()), [restingBpm]);
+  const facts = profile ? todayInput({ profile, safetyProfile, places, program, reflows, capacity, history, jointFlags, intensityLock, today, placeId, minutes, readiness, mode, cardio: { protocol: cardioProtocol }, heartRate, impactOptIn }) : null;
   // The facts object is rebuilt each render; its content is what matters.
   const factsKey = JSON.stringify(facts);
   const preview = useMemo(() => {
@@ -120,15 +132,19 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
   }, [factsKey, executionLogs, readinessChecks]);
   const physio = selectPhysio(executionLogs, clock.now());
   const morningJoints = selectMorningCheck(executionLogs, clock.now());
-  const pendingNotices = noticesToShow('workout.start', impressions, NOTICES);
+  // L3: the first-workout notice, and the intensity notice before the first high-intensity session (M03).
+  const hiitPlanned = preview?.result.status === 'ok' && preview.result.plan.cardio?.hiit === true;
+  const pendingNotices = [...noticesToShow('workout.start', impressions, NOTICES), ...(hiitPlanned ? noticesToShow('hiit.start', impressions, NOTICES) : [])];
+  // M03: the week's aerobic minutes (vigorous count double) against the WHO range.
+  const ledger = aerobicMinutesLedger(ledgerEntriesFrom(executionLogs.map((e) => e.data), (iso) => localIsoDate(new Date(iso))), mondayOf(today));
 
   // L3: record that the first-workout notice was shown (once per version until acknowledged).
   useEffect(() => {
     if (run) return;
-    for (const n of noticesToShow('workout.start', impressions, NOTICES)) {
+    for (const n of [...noticesToShow('workout.start', impressions, NOTICES), ...(hiitPlanned ? noticesToShow('hiit.start', impressions, NOTICES) : [])]) {
       if (!impressions.some((i) => i.noticeId === n.id && i.version === n.version && i.kind === 'shown')) recordNotice(n, 'shown', locale);
     }
-  }, [impressions, locale, recordNotice, run]);
+  }, [impressions, locale, recordNotice, run, hiitPlanned]);
 
   const restRemaining = useRestRemaining(run?.phase === 'rest' ? run.restEndsAt : null);
 
@@ -162,10 +178,25 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
     }
     const next = nextIndex(r, r.exercise, r.skipped);
     if (next < 0) {
-      end(r, 'completed', 'done');
+      afterStrength(r);
       return;
     }
     setRun({ ...r, exercise: next, set: 0, phase: rest !== null ? 'rest' : 'set', restEndsAt: rest !== null ? nowMs() + rest * 1000 : null });
+  };
+
+  /** After the last exercise: the M03 cardio finisher if the plan has one, else the end. */
+  const afterStrength = (r: Run) => {
+    if (r.plan.cardio && r.cardio === undefined) setRun({ ...r, phase: 'cardio', restEndsAt: null });
+    else end(r, 'completed', 'done');
+  };
+
+  /** M03: the cardio block ran (to its end, skipped or stopped by pain): its minutes go to the weekly ledger. */
+  const cardioFinished = (r: Run, result: CardioResult) => {
+    const block = r.plan.cardio!;
+    const done = cardioDone(block, result.spent);
+    logExecution({ kind: 'cardio_done', planId: r.plan.planId, protocol: block.protocol, ...done, rounds: result.rounds, endedEarly: result.endedEarly, at: clock.now().toISOString() });
+    setCardioEnd(false);
+    end({ ...r, cardio: { moderateSeconds: done.moderateSeconds, vigorousSeconds: done.vigorousSeconds } }, 'completed', 'done');
   };
 
   const start = () => {
@@ -173,11 +204,12 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
     const { plan, safetyEvents } = preview.result;
     const record = saveWorkout({ schemaVersion: 1, input: preview.input as WorkoutSessionRecord['input'], plan, safetyEvents: [...safetyEvents], startedAt: clock.now().toISOString(), jurisdiction, firstWorkout: workouts.length === 0 });
     // L11 on the device: the executed prescription and the safety gates it applied.
-    const codes = [...new Set([...plan.reasonCodes, ...plan.exercises.flatMap((e) => [...e.reasonCodes, ...e.sets.flatMap((x) => x.reasonCodes)])])];
+    const codes = [...new Set([...plan.reasonCodes, ...plan.exercises.flatMap((e) => [...e.reasonCodes, ...e.sets.flatMap((x) => x.reasonCodes)]), ...(plan.cardio ? [...plan.cardio.reasonCodes, ...plan.cardio.zones.reasonCodes] : [])])];
     logPrescription({ prescriptionId: plan.planId, engineVersion: plan.engineVersion, rulesVersion: plan.rulesVersion, reasonCodes: codes });
     for (const event of safetyEvents) logSafetyEvent(event);
     setMessage(null);
-    setRun({ record, plan, exercise: 0, set: 0, phase: 'set', restEndsAt: null, logged: 0, skipped: [] });
+    setCardioEnd(false);
+    setRun({ record, plan, exercise: 0, set: 0, phase: plan.exercises.length === 0 && plan.cardio ? 'cardio' : 'set', restEndsAt: null, logged: 0, skipped: [] });
   };
 
   const logSet = (rir: number) => {
@@ -213,7 +245,7 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
     setSheet(null);
     const skipped = [...r.skipped, r.exercise];
     const next = nextIndex(r, r.exercise, skipped);
-    if (next < 0) end({ ...r, skipped }, 'completed', 'done');
+    if (next < 0) afterStrength({ ...r, skipped });
     else setRun({ ...r, skipped, exercise: next, set: 0, phase: 'set', restEndsAt: null });
   };
 
@@ -232,6 +264,17 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
   const savePain = () => {
     if (!run || painJoint === null || painScore === null) return;
     logExecution({ kind: 'pain', planId: run.plan.planId, joint: painJoint, score: painScore, at: clock.now().toISOString(), phase: 'during' });
+    if (run.phase === 'cardio') {
+      // M03 (S2 now): a red rating during the cardio block ends the block; what was done is saved.
+      setPainJoint(null);
+      setPainScore(null);
+      setSheet(null);
+      if (painScore >= S2_RED_PAIN_SCORE) {
+        setMessage(t('cardio.run.painStop', { joint: t(`library.joint.${painJoint}` as MessageKey) }));
+        setCardioEnd(true);
+      } else setMessage(t('workout.pain.saved'));
+      return;
+    }
     // S2 now: a red joint (≥ 6) swaps or skips the rest of the session's exercises that load it.
     const changes = painAdjustments(run.record.input as GenerateSessionInput, run.plan, run.exercise, painJoint, painScore, nowMs());
     let next = run;
@@ -253,7 +296,7 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
     setMessage(notes.length > 0 ? notes.join(' ') : t('workout.pain.saved'));
     if (next.skipped.includes(next.exercise)) {
       const after = nextIndex(next, next.exercise, next.skipped);
-      if (after < 0) end(next, 'completed', 'done');
+      if (after < 0) afterStrength(next);
       else setRun({ ...next, exercise: after, set: 0, phase: 'set', restEndsAt: null });
     } else {
       setRun({ ...next, set: Math.min(next.set, next.plan.exercises[next.exercise]!.sets.length - 1) });
@@ -327,9 +370,19 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
             {run.phase === 'done' ? t('workout.done.title') : run.phase === 'ended' ? t('workout.ended.title') : t('workout.redFlag.title')}
           </Text>
           {run.phase === 'red_flag' ? <SeekCare after={t('workout.redFlag.body')} /> : null}
-          <Text style={text} testID="workout-summary">
-            {t('workout.done.summary', { done: run.logged })}
-          </Text>
+          {run.plan.exercises.length > 0 ? (
+            <Text style={text} testID="workout-summary">
+              {t('workout.done.summary', { done: run.logged })}
+            </Text>
+          ) : null}
+          {run.cardio ? (
+            <>
+              <Text style={text} testID="cardio-counted">
+                {t('cardio.done.counted', { minutes: Math.round((run.cardio.moderateSeconds + 2 * run.cardio.vigorousSeconds) / 60), vigorous: Math.round(run.cardio.vigorousSeconds / 60) })}
+              </Text>
+              <AerobicLedgerCard ledger={ledger} />
+            </>
+          ) : null}
           <Text style={muted}>{t('workout.done.saved')}</Text>
           {run.phase !== 'red_flag' && !painChecked ? (
             <PainCheck
@@ -347,6 +400,57 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
           ) : null}
           <Button label={t('workout.back')} variant="secondary" onPress={onExit} testID="workout-back" />
         </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  if (run && run.phase === 'cardio' && run.plan.cardio) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <ScrollView contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg }} testID="workout-phase-cardio">
+          {message ? (
+            <Text accessibilityLiveRegion="polite" style={text} testID="workout-message">
+              {message}
+            </Text>
+          ) : null}
+          <CardioRun
+            cardio={run.plan.cardio}
+            endRequested={cardioEnd}
+            onFinished={(result) => cardioFinished(run, result)}
+            controls={
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
+                <Text style={muted}>{t('cardio.run.title')}</Text>
+                <Button label={t('workout.pain')} hint={t('workout.painHint')} variant="secondary" onPress={() => setSheet('pain')} testID="workout-pain" />
+                {stopButton}
+              </View>
+            }
+          />
+          <Text style={muted}>{t('workout.draftNote')}</Text>
+        </ScrollView>
+        <Sheet visible={sheet === 'pain'} onClose={() => setSheet(null)} title={t('workout.pain.title')} testID="workout-sheet-pain">
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            {JOINTS.map((j) => (
+              <Chip key={j} label={t(`library.joint.${j}` as MessageKey)} selected={painJoint === j} onPress={() => setPainJoint(j)} testID={`workout-pain-joint-${j}`} />
+            ))}
+          </View>
+          <Text style={text}>{t('workout.pain.score')}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            {range(0, 10).map((n) => (
+              <Chip key={n} label={t('workout.pain.scoreChip', { score: n })} selected={painScore === n} onPress={() => setPainScore(n)} testID={`workout-pain-score-${n}`} />
+            ))}
+          </View>
+          <Button label={t('workout.pain.save')} disabled={painJoint === null || painScore === null} onPress={savePain} testID="workout-pain-save" />
+          <Button label={t('cardio.run.skipBlock')} hint={t('cardio.run.skipBlockHint')} variant="secondary" onPress={() => (setSheet(null), setCardioEnd(true))} testID="workout-sheet-skip" />
+          <Button label={t('workout.stop.end')} hint={t('workout.stopHint')} variant="danger" onPress={() => end(run, 'user_stop', 'ended')} testID="workout-sheet-stop" />
+        </Sheet>
+        <Sheet visible={sheet === 'stop'} onClose={() => setSheet(null)} title={t('workout.stop.title')} testID="workout-sheet-stop-menu">
+          <Text style={{ ...text, fontWeight: theme.fontWeight.bold }}>{t('workout.stop.unwell')}</Text>
+          {RED_FLAG_SYMPTOMS.map((s) => (
+            <Button key={s} label={t(`workout.stop.symptom.${s}` as MessageKey)} hint={t('workout.stop.symptomHint')} variant="danger" onPress={() => redFlag(s)} testID={`workout-stop-symptom-${s}`} />
+          ))}
+          <Button label={t('cardio.run.skipBlock')} hint={t('cardio.run.skipBlockHint')} variant="secondary" onPress={() => (setSheet(null), setCardioEnd(true))} testID="workout-sheet-skip" />
+          <Button label={t('workout.stop.end')} hint={t('workout.stopHint')} variant="danger" onPress={() => end(run, 'user_stop', 'ended')} testID="workout-sheet-stop" />
+        </Sheet>
       </SafeAreaView>
     );
   }
@@ -518,10 +622,21 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
           </Text>
         ) : null}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-          {(['training', 'mobility_balance'] as const).map((m) => (
-            <Chip key={m} label={t(m === 'training' ? 'recovery.mode.training' : 'recovery.mode.mobility')} hint={t('recovery.mode.hint')} selected={mode === m} onPress={() => setMode(m)} testID={`workout-mode-${m}`} />
+          {(['training', 'mobility_balance', 'cardio'] as const).map((m) => (
+            <Chip key={m} label={t(m === 'training' ? 'recovery.mode.training' : m === 'cardio' ? 'cardio.mode' : 'recovery.mode.mobility')} hint={t('recovery.mode.hint')} selected={mode === m} onPress={() => setMode(m)} testID={`workout-mode-${m}`} />
           ))}
         </View>
+        {mode === 'cardio' && facts?.status === 'ready' ? (
+          <CardioOptions
+            protocol={cardioProtocol}
+            onProtocol={setCardioProtocol}
+            locked={(['hiit', 'tabata'] as const).filter(() => readiness === 'reduced' || hiitGate(safetyProfile, history, nowMs(), 8) !== null)}
+            lowImpactDefault={lowImpactDefault({ profile: safetyProfile, jointFlags, bodyweightKg: facts.input.bodyweightKg, heightCm: facts.input.heightCm })}
+            impactOptIn={impactOptIn}
+            onImpactOptIn={setImpactOptIn}
+            wearable={heartRateSource().kind === 'wearable'}
+          />
+        ) : null}
         {pendingNotices.map((n) => {
           const rendered = renderNotice(n, locale, jurisdiction);
           return (
@@ -575,6 +690,9 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
             {result.plan.warmUp.content ? <WarmUpDetails plan={result.plan} name={exerciseName} mass={mass} /> : <Text style={muted}>{t('workout.warmUp', { minutes: result.plan.warmUp.minutes })}</Text>}
             <Text style={muted}>{t('workout.reserve', { rir: result.plan.targetRir })}</Text>
             {result.plan.conditioning ? <Text style={muted}>{t(result.plan.conditioning.placement === 'finisher' ? 'workout.conditioning.finisher' : 'workout.conditioning.session', { minutes: result.plan.conditioning.minutes })}</Text> : null}
+            {result.plan.cardio ? <CardioSummary cardio={result.plan.cardio} name={exerciseName} /> : null}
+            {result.plan.cardio ? <AerobicLedgerCard ledger={ledger} /> : null}
+            {result.plan.cardio?.hiit && pendingNotices.some((n) => n.id === 'first_hiit') ? <Text style={text} testID="cardio-hiit-notice-first">{t('cardio.first.hiitNotice')}</Text> : null}
             {result.plan.reasonCodes.map((code) => (
               <Text key={code} style={muted}>
                 {reason(code)}

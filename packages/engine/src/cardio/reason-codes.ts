@@ -19,7 +19,7 @@ export const M03_REASON_PARAMS: Readonly<Record<string, readonly string[]>> = Ob
   ...codes(['requested', 'venue_swap', 'requested_unavailable', 'machine', 'steady', 'any_easy', 'circuit', 'none', 'rotation'].map((m) => `cardio.movement.${m}`)),
   ...codes(['cardio.hiit.gates_passed', 'cardio.hiit.needs_consistent_training']),
   ...codes(['heart_rate_reserve', 'hr_max_estimated', 'perceived_exertion', 'no_resting_hr', 'no_age', 'reserve_too_small', 'talk_test'].map((z) => `cardio.zones.${z}`)),
-  ...codes(['cardio.session.standalone', 'cardio.unavailable.hiit_s1', 'cardio.unavailable.hiit_needs_consistent_training', 'cardio.unavailable.no_movement']),
+  ...codes(['cardio.session.standalone', 'cardio.unavailable.hiit_s1', 'cardio.unavailable.hiit_needs_consistent_training', 'cardio.unavailable.no_movement', 'cardio.unavailable.readiness_reduced', 'cardio.readiness.reduced']),
   ...codes(['below', 'within', 'above', 'vigorous_double', 'who_range'].map((l) => `cardio.ledger.${l}`)),
 });
 
