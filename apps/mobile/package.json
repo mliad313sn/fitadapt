@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",
+    "@fitadapt/coach": "workspace:*",
     "@fitadapt/engine": "workspace:*",
     "@fitadapt/exercise-library": "workspace:*",
     "@fitadapt/food-library": "workspace:*",

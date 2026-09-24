@@ -15,6 +15,8 @@ import { localIsoDate, selectDeload, selectMorningCheck, selectPhysio, selectRea
 import { MorningCheck, PainCheck, ReadinessCheckCard, SeekCare, WarmUpDetails } from '../workout/RecoveryCards';
 import { useRestRemaining } from '../workout/rest-timer';
 import { seedFrom, todayInput } from '../workout/today';
+import { adjustmentFor } from '../coach/adjustments';
+import { useCoachAdjustment } from '../coach/CoachProvider';
 import { AerobicLedgerCard, CardioOptions, CardioSummary } from '../cardio/CardioCards';
 import { CardioRun, type CardioResult } from '../cardio/CardioRun';
 import { heartRateInfo, heartRateSource, useManualHeartRate } from '../cardio/heart-rate';
@@ -84,7 +86,9 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
   const logSafetyAttested = useLegal((s) => s.logSafetyAttested);
 
   const [placeId, setPlaceId] = useState<string | null>(null);
-  const [minutes, setMinutes] = useState<number | null>(null);
+  // M11: a change the coach's engine proposed for today and the user chose (minutes, a lighter day) is today's default.
+  const coachAdjustment = adjustmentFor(useCoachAdjustment((s) => s.adjustment), localIsoDate(clock.now()));
+  const [minutes, setMinutes] = useState<number | null>(coachAdjustment?.minutes ?? null);
   const [why, setWhy] = useState<number | null>(null);
   const [run, setRun] = useState<Run | null>(null);
   const [sheet, setSheet] = useState<SheetKind>(null);
@@ -117,7 +121,7 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
 
   // ---- Today's session (preview): the engine, on the device.
   const today = localIsoDate(clock.now());
-  const readiness = selectReadiness(readinessChecks, today);
+  const readiness = coachAdjustment?.readiness ?? selectReadiness(readinessChecks, today);
   const heartRate = useMemo(() => heartRateInfo(heartRateSource()), [restingBpm]);
   const facts = profile ? todayInput({ profile, safetyProfile, places, program, reflows, capacity, history, jointFlags, intensityLock, today, placeId, minutes, readiness, mode, cardio: { protocol: cardioProtocol }, heartRate, impactOptIn }) : null;
   // The facts object is rebuilt each render; its content is what matters.

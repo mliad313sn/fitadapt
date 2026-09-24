@@ -29,6 +29,8 @@ import { apiBaseUrl, createDeviceSyncClient } from '../src/sync/device';
 import { openExpoDatabase } from '../src/sync/expo-db';
 import { createGuardrailInbox } from '../src/nutrition/guardrail-port';
 import { createNutritionStore } from '../src/nutrition/nutrition-store';
+import { createHttpCoachClient } from '../src/coach/coach-client';
+import { createCoachAdjustmentStore } from '../src/coach/adjustments';
 import { httpPhotoBackupApi } from '../src/progress/photo-backup';
 import { expoPhotoFiles, PhotoVault } from '../src/progress/photo-vault';
 import { createProgressStore } from '../src/progress/progress-store';
@@ -74,6 +76,8 @@ function GatedStack() {
         <Stack.Screen name="pair" />
         {/* M10: nutrition behind the same L2 gate (screening done, Terms, Privacy and health consent accepted); deficit set-up shows its own L3 notice. */}
         <Stack.Screen name="nutrition" />
+        {/* M11: the AI coach behind the same L2 gate; it opens with the AI disclosure (L5) and needs the ai_coach consent. */}
+        <Stack.Screen name="coach" />
       </Stack.Protected>
       <Stack.Protected guard={!passed}>
         <Stack.Screen name="age-gate" />
@@ -158,6 +162,9 @@ function AppRoot({ db }: { db: SyncSqliteDatabase }) {
       privacyClient: createHttpPrivacyClient({ baseUrl: apiBaseUrl(apiUrl), getAccessToken }),
       progress: { progress, nutrition, vault, randomBytes: getRandomBytes },
       photoBackupApi: httpPhotoBackupApi({ baseUrl: apiBaseUrl(apiUrl), getAccessToken }),
+      // M11: the coach's API client (the model runs behind the API; the app holds no provider key) and today's adjustments.
+      coachClient: createHttpCoachClient({ baseUrl: apiBaseUrl(apiUrl), getAccessToken }),
+      coachAdjustments: createCoachAdjustmentStore(kv),
       initialLocale: resolveLocale(locales.map((l) => l.languageTag)),
       privacy: {
         ageGate: createAgeGateStore(kv),
@@ -178,6 +185,8 @@ function AppRoot({ db }: { db: SyncSqliteDatabase }) {
   const privacy = useMemo(() => ({ ...app.privacy, client: signedIn ? app.privacyClient : undefined }), [app, signedIn]);
   // M04: the encrypted photo backup needs an account; without one no backup client exists at all.
   const progress = useMemo(() => ({ ...app.progress, backupApi: signedIn ? app.photoBackupApi : undefined }), [app, signedIn]);
+  // M11: signed out, the coach runs on the device only (offline mode).
+  const coach = useMemo(() => ({ client: signedIn ? app.coachClient : undefined, adjustments: app.coachAdjustments }), [app, signedIn]);
   return (
     <AppProviders
       syncClient={app.syncClient}
@@ -191,6 +200,7 @@ function AppRoot({ db }: { db: SyncSqliteDatabase }) {
       runSync={app.accountSync}
       pair={app.pair}
       nutrition={app.nutritionStore}
+      coach={coach}
     >
       <StatusBar style="auto" />
       <GatedStack />
