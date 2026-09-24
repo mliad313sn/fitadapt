@@ -315,6 +315,12 @@ describe('in-app export (goal condition 2)', () => {
     const created = await h.app.inject({ method: 'POST', url: '/v1/pair/sessions', headers: bearer(token), payload: { displayName: 'Mariam', scopes: [], jurisdiction: 'FR' } });
     expect(created.statusCode).toBe(201);
     await h.app.services.pair.append(userId, (created.json() as { pairSessionId: string }).pairSessionId, randomUUID(), { type: 'left' });
+    // M11: an AI-coach conversation with a tool call (the coach sections of the export).
+    expect((await consent(token, 'ai_coach', 'granted')).statusCode).toBe(201);
+    const convo = await h.app.inject({ method: 'POST', url: '/v1/coach/conversations', headers: bearer(token), payload: { locale: 'fr', jurisdiction: 'FR' } });
+    expect(convo.statusCode).toBe(201);
+    const said = await h.app.inject({ method: 'POST', url: `/v1/coach/conversations/${(convo.json() as { conversationId: string }).conversationId}/messages`, headers: bearer(token), payload: { text: 'J’ai mal au genou, 3 sur 10', context: { locale: 'fr', jurisdiction: 'FR', today: null, program: null } } });
+    expect(said.statusCode).toBe(200);
     const doc = (await exportData(token)).json() as Record<string, unknown>;
     for (const entry of DATA_INVENTORY) {
       if (!('section' in entry.export)) continue;

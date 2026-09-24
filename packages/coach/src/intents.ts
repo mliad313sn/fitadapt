@@ -29,14 +29,14 @@ const JOINT_WORDS: readonly (readonly [Joint, RegExp])[] = [
 ];
 const PAIN_WORDS = [/\b(hurt|hurts|hurting|pain|painful|sore|ache|aches|aching|twinge|tweak|tweaked)\b/, /\b(douleur|douleurs|mal|douloureux|douloureuse|fait mal|me lance)\b/];
 const SCORE = /\b(10|[0-9]) ?(\/ ?10|out of 10|sur 10)\b/;
-const BARE_SCORE = /^(10|[0-9])( ?(\/ ?10|out of 10|sur 10))?[.!]?$/;
+const BARE_SCORE = /^(10|[0-9])( \/10| \/ 10|\/10|\/ 10| out of 10| sur 10|)[.!]?$/;
 const TIME_WORDS = [/\b(shorter|short on time|less time|quick(er)? session|not much time|pressed for time|in a hurry|only have)\b/, /\b(plus court|plus courte|moins de temps|pas beaucoup de temps|peu de temps|seance courte|raccourci|presse|pressee)\b/];
 const MINUTES = /\b(\d{1,3}) ?(min|mins|minutes|mn|minute)\b/;
 const HOURS = /\b(an|one|1|une) (hour|heure)\b/;
 const LIGHTER = [/\b(lighter|easier|easy day|go easy|take it easy|tired|exhausted|deload|low energy|drained|wiped out|not feeling (it|great|good))\b/, /\b(plus leger|plus legere|plus facile|allege|alleger|fatigue|fatiguee|crevee?|epuisee?|pas en forme|doucement|tranquille|decharge)\b/];
 const SWAP = [/\b(swap|replace|switch|substitute|instead of|alternative|change the|change my|another exercise|different exercise|skip the)\b/, /\b(remplace|remplacer|echange|echanger|changer l|changer d|a la place|autre exercice|alternative)\b/];
 const EQUIPMENT = [/\b(no (bench|rack|bar|barbell|machine|cable|dumbbells?|pull-? ?up bar)|(bench|rack|machine|station) (is )?(taken|busy|occupied|broken)|don'?t have)\b/, /\b(pas de (banc|rack|barre|machine|poulie|halteres?)|(banc|rack|machine) (est )?(pris|occupee?|cassee?)|je n'ai pas)\b/];
-const RESCHEDULE = [/\b(can'?t|cannot|won'?t be able to|unable to|not able to) (train|make it|do (it|this|that|today|the session|my session)|work ?out|come)\b/, /\b(move|reschedule|push back|postpone) (my |the |today'?s )?(session|workout|training)\b/, /\b(another day|skip today|not today)\b/, /\b(je ne peux pas|je peux pas|impossible de) (m'entrainer|faire (la|ma) seance|venir|aujourd'hui)\b/, /\b(deplacer|reporter|decaler) (la |ma )?(seance|entrainement)\b/, /\b(pas aujourd'hui|un autre jour|pas possible aujourd'hui)\b/];
+const RESCHEDULE = [/\b(can'?t|cannot|won'?t be able to|unable to|not able to) (train|make it|do (it|this|that|today|the session|my session)|work ?out|come)\b/, /\b(move|reschedule|push back|postpone) (my |the |todays |today's )?(session|workout|training)\b/, /\b(another day|skip today|not today)\b/, /\b(je ne peux pas|je peux pas|impossible de) (m'entrainer|faire (la|ma) seance|venir|aujourd'hui)\b/, /\b(deplacer|reporter|decaler) (la |ma )?(seance|entrainement)\b/, /\b(pas aujourd'hui|un autre jour|pas possible aujourd'hui)\b/];
 const EXPLAIN = [/\b(why|explain|reason|how come|what does .{1,30} mean)\b/, /\b(pourquoi|explique|expliquer|raison|que veut dire)\b/];
 const PLAN_WORDS = [/\b(plan|session|workout|today|sets?|reps?|load|weight|kg|exercise|program|rest)\b/, /\b(plan|seance|aujourd'hui|series?|repetitions?|charge|poids|kg|exercice|programme|repos)\b/];
 const GREETING = /^(hi|hello|hey|good (morning|evening|afternoon)|bonjour|salut|bonsoir|coucou)\b[\s!.,]*$/;

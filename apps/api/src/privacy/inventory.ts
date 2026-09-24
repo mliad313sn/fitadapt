@@ -83,4 +83,22 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = Object.freeze([
     erase: 'cascade_from_users',
     personalData: 'events a participant sent to the partner (turns; reps and loads, body weight or score only with that scope) (M09); also erased on a partner_sharing withdrawal',
   },
+  {
+    table: 'coach_conversations',
+    export: { section: 'coach.conversations' },
+    erase: 'cascade_from_users',
+    personalData: 'AI-coach conversations: locale, jurisdiction, start and last-message times (M11); also erased when the ai_coach consent is withdrawn and after the retention period',
+  },
+  {
+    table: 'coach_messages',
+    export: { section: 'coach.conversations' },
+    erase: 'cascade_from_users',
+    personalData: 'health data: what the user typed to the AI coach and its replies (M11); same erasure as the conversation',
+  },
+  {
+    table: 'coach_tool_calls',
+    export: { section: 'coach.conversations' },
+    erase: 'cascade_from_users',
+    personalData: 'health data: each tool call of the AI coach with its input (e.g. a pain score) and the engine outcome (M11); same erasure as the conversation',
+  },
 ]);

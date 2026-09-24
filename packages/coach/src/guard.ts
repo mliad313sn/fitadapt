@@ -92,13 +92,13 @@ const PROMISES = [
   /\b(vous allez|tu vas|vous perdrez|tu perdras) (perdre|maigrir|voir des resultats|obtenir|atteindre)/,
 ];
 
-const NUMBER_UNIT = /(\d+(?:[.,]\d+)?) ?(kg|kgs|kilos?|kilogrammes?|lbs?|pounds|livres|kcal|calories|%|percent|pour ?cent|sets?|series|reps?|repetitions?|rounds?|rir|rpe)(?![a-z])/g;
+const NUMBER_UNIT = /(\d+[.,]\d+|\d+) ?(kg|kgs|kilos?|kilogrammes?|lbs?|pounds|livres|kcal|calories|%|percent|pour ?cent|sets?|series|reps?|repetitions?|rounds?|rir|rpe)(?![a-z])/g;
 const TIMES_PATTERN = /(\d+) ?[x×] ?(\d+)/g;
 const REF_PATTERN = /\[(?:ref|source|src)?:? ?((?:kb|exercise)\.[a-z][a-z0-9_]{1,63})\]/g;
 
 /** Numbers of a text, as the guard compares them (commas as decimal points). */
 export function numbersIn(text: string): number[] {
-  return [...fold(text).matchAll(/\d+(?:[.,]\d+)?/g)].map((m) => Number(m[0].replace(',', '.')));
+  return [...fold(text).matchAll(/\d+[.,]\d+|\d+/g)].map((m) => Number(m[0].replace(',', '.')));
 }
 
 export function guardModelText(raw: string, options: GuardOptions): GuardResult {

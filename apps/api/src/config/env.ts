@@ -10,6 +10,8 @@ const EnvSchema = z.object({
   AUTH_JWT_SECRET: z.string().min(32),
   AUTH_TOKEN_PEPPER: z.string().min(32),
   SENTRY_DSN: z.url().optional().or(z.literal('').transform(() => undefined)),
+  /** M11: the model provider key, server-side only (never on a device, never logged). Absent: the coach answers without a model. */
+  ANTHROPIC_API_KEY: z.string().min(20).optional().or(z.literal('').transform(() => undefined)),
 }).superRefine((env, ctx) => {
   // The .env.example values are public. A production process started with
   // them would sign tokens anyone can forge, so it must refuse to start.

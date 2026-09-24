@@ -91,7 +91,7 @@ function parsedRows<T>(list: { recordId: string; op: string; data: unknown }[], 
 }
 
 /** What the server stores about the user's execution: sessions, set logs, execution logs (in the order stored). */
-async function storedExecution(db: Database, userId: string) {
+export async function storedExecution(db: Database, userId: string) {
   const sessions = parsedRows(await rows(db, userId, SESSION_COLLECTIONS.workoutSessions), (d) => WorkoutSessionRecordSchema.safeParse(d)).map((r) => r.data);
   const setLogs: StoredSetLog[] = parsedRows(await rows(db, userId, SESSION_COLLECTIONS.setLogs), (d) => SetLogSchema.safeParse(d));
   const events: ExecutionLog[] = parsedRows(await rows(db, userId, SESSION_COLLECTIONS.executionLogs), (d) => ExecutionLogSchema.safeParse(d)).map((r) => r.data);

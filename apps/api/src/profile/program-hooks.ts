@@ -18,7 +18,7 @@ import type { PgServerTx } from '../sync/pg-store.js';
  * are written in the sync transaction (ADR-009).
  */
 
-async function latestRows(db: Database, userId: string, collection: string) {
+export async function latestRows(db: Database, userId: string, collection: string) {
   return db
     .select({ recordId: syncChanges.recordId, op: syncChanges.op, data: syncChanges.data, revision: syncChanges.revision })
     .from(syncChanges)
@@ -64,7 +64,7 @@ export async function validateProgram(db: Database, userId: string, data: unknow
   return null;
 }
 
-async function storedProgram(db: Database, userId: string, programId: string): Promise<ProgramRecord | null> {
+export async function storedProgram(db: Database, userId: string, programId: string): Promise<ProgramRecord | null> {
   for (const row of await latestRows(db, userId, PROGRAM_COLLECTIONS.programs)) {
     const parsed = ProgramRecordSchema.safeParse(row.data);
     if (parsed.success && parsed.data.program.programId === programId) return parsed.data;
@@ -86,7 +86,7 @@ export function orderedReflows(rows: readonly { recordId: string; op: string; da
   return orderChain(list, (r) => ({ id: r.id, supersedes: r.data.supersedes, at: r.data.decidedAt })).ordered.map((r) => r.data);
 }
 
-async function storedReflows(db: Database, userId: string, programId: string): Promise<ReflowRecord[]> {
+export async function storedReflows(db: Database, userId: string, programId: string): Promise<ReflowRecord[]> {
   return orderedReflows(await latestRows(db, userId, PROGRAM_COLLECTIONS.reflows), programId);
 }
 

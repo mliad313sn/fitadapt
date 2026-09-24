@@ -20,7 +20,9 @@
     "build:deps": "turbo run build --filter=@fitadapt/api^... --output-logs=errors-only"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.128.0",
     "@fastify/swagger": "9.9.0",
+    "@fitadapt/coach": "workspace:*",
     "@fitadapt/engine": "workspace:*",
     "@fitadapt/exercise-library": "workspace:*",
     "@fitadapt/food-library": "workspace:*",

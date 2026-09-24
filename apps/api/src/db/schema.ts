@@ -337,3 +337,65 @@ export const pairEvents = pgTable(
   },
   (t) => [primaryKey({ columns: [t.pairSessionId, t.seq] }), uniqueIndex('pair_events_client_idx').on(t.pairSessionId, t.fromUserId, t.clientEventId)],
 );
+
+// ------------------------------------------------------------------ M11 AI coach
+// Conversation content is health data (consent `ai_coach`): exported with the account, erased on withdrawal
+// and with the account (cascade), purged after `conversationRetentionDays` (ADR-024). Messages and tool calls
+// are append-only (a trigger rejects UPDATE).
+
+export const coachConversations = pgTable(
+  'coach_conversations',
+  {
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    locale: text('locale', { enum: ['fr', 'en'] }).notNull(),
+    jurisdiction: text('jurisdiction').notNull(),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+    lastMessageAt: timestamp('last_message_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('coach_conversations_user_idx').on(t.userId, t.lastMessageAt)],
+);
+
+export const coachMessages = pgTable(
+  'coach_messages',
+  {
+    id: uuid('id').primaryKey(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => coachConversations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    seq: integer('seq').notNull(),
+    role: text('role', { enum: ['disclosure', 'user', 'coach'] }).notNull(),
+    content: jsonb('content').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [uniqueIndex('coach_messages_seq_idx').on(t.conversationId, t.seq)],
+);
+
+export const coachToolCalls = pgTable(
+  'coach_tool_calls',
+  {
+    id: uuid('id').primaryKey(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => coachConversations.id, { onDelete: 'cascade' }),
+    messageId: uuid('message_id')
+      .notNull()
+      .references(() => coachMessages.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tool: text('tool').notNull(),
+    input: jsonb('input'),
+    status: text('status', { enum: ['applied', 'proposed', 'refused', 'invalid'] }).notNull(),
+    reasonCode: text('reason_code').notNull(),
+    reasonCodes: jsonb('reason_codes').notNull(),
+    engineVersion: text('engine_version').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('coach_tool_calls_conversation_idx').on(t.conversationId, t.createdAt)],
+);

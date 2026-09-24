@@ -18,6 +18,8 @@ export default defineConfig({
         'src/auth/tokens.ts',
         'src/config/**/*.ts',
         'src/observability/**/*.ts',
+        'src/ai-coach/anthropic-model.ts',
+        'src/ai-coach/prompts.ts',
       ],
       reporter: ['text-summary', 'lcov'],
       reportsDirectory: 'coverage/unit',

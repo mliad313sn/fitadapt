@@ -48,6 +48,7 @@ import {
   pairParticipants,
 } from '../db/schema.js';
 import type { BackupCatalog } from './backup-catalog.js';
+import { exportCoach } from '../ai-coach/store.js';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
@@ -244,6 +245,8 @@ export class PrivacyService {
       // M09: this person's participations in multi-device pair sessions and the events they sent (never the partner's).
       const pairRows = await tx.select().from(pairParticipants).where(eq(pairParticipants.userId, userId)).orderBy(asc(pairParticipants.joinedAt));
       const pairEventRows = await tx.select().from(pairEvents).where(eq(pairEvents.fromUserId, userId)).orderBy(asc(pairEvents.createdAt), asc(pairEvents.seq));
+      // M11: AI-coach conversations (health data), their messages and every tool call.
+      const coach = await exportCoach(tx, userId);
 
       return {
         format: DATA_EXPORT_FORMAT,
@@ -282,6 +285,7 @@ export class PrivacyService {
           participations: pairRows.map((p) => ({ pairSessionId: p.pairSessionId, slot: p.slot, displayName: p.displayName, scopes: p.scopes as ('performance' | 'bodyweight' | 'challenge')[], consentVersion: p.consentVersion, joinedAt: iso(p.joinedAt) })),
           events: pairEventRows.map((e) => ({ pairSessionId: e.pairSessionId, seq: e.seq, clientEventId: e.clientEventId, event: e.event as Record<string, unknown>, createdAt: iso(e.createdAt) })),
         },
+        coach,
       };
     });
   }

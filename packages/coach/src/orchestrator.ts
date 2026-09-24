@@ -206,8 +206,8 @@ export async function runCoachTurn(input: CoachTurnInput): Promise<CoachTurnOutp
 
   // 3. The model.
   const knowledgeOnly = toolIntents.length === 0 && retrieved.length > 0 && !mentionsOwnPlan(input.text);
-  const tier: ModelTier = knowledgeOnly && (input.history?.length ?? 0) < 2 ? 'small' : 'main';
-  // A general question is sent without the user's context (data minimisation), so its answer may be cached.
+  // A general question goes to the smaller model, alone: without the user's context or the conversation (data minimisation), so its answer may be cached.
+  const tier: ModelTier = knowledgeOnly ? 'small' : 'main';
   const promptContext: CoachContext = knowledgeOnly ? { ...context, today: null, program: null } : context;
   const cacheKey = knowledgeOnly ? `${context.locale}:${tier}:${retrieved.map((r) => r.id).join(',')}:${fold(input.text)}` : null;
   if (cacheKey && input.cache) {
@@ -215,7 +215,7 @@ export async function runCoachTurn(input: CoachTurnInput): Promise<CoachTurnOutp
     if (hit) return output(turn, { ...hit, source: 'cache' }, { modelTier: tier });
   }
   const systemTurn = turnPrompt(promptContext, retrieved);
-  const history: ModelMessage[] = (input.history ?? []).slice(-coachValue('historyMessages')).map((m) => (m.role === 'user' ? { role: 'user', text: m.text } : { role: 'assistant', text: m.text, toolCalls: [] }));
+  const history: ModelMessage[] = (knowledgeOnly ? [] : (input.history ?? [])).slice(-coachValue('historyMessages')).map((m) => (m.role === 'user' ? { role: 'user', text: m.text } : { role: 'assistant', text: m.text, toolCalls: [] }));
   const messages: ModelMessage[] = [...history, { role: 'user', text: input.text }];
   let finalText: string | null = null;
   let rounds = 0;

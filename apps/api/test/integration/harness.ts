@@ -40,6 +40,8 @@ export interface HarnessOptions {
   consentPolicies?: AppDeps['consentPolicies'];
   withdrawalHandlers?: AppDeps['withdrawalHandlers'];
   legalRegistry?: AppDeps['legalRegistry'];
+  coachModel?: AppDeps['coachModel'];
+  coachTierOf?: AppDeps['coachTierOf'];
 }
 
 export async function createHarness(options: HarnessOptions = {}): Promise<Harness> {
@@ -99,7 +101,7 @@ async function clearRedis(redis: Redis, prefix: string) {
 export async function truncateAll(h: Harness) {
   await clearRedis(h.redis, h.redisPrefix);
   await h.database.db.execute(
-    sql`TRUNCATE users, devices, otp_codes, auth_sessions, refresh_tokens, sync_heads, sync_changes, sync_mutations, consent_records, data_requests, audit_entries, legal_acceptances, notice_impressions, defensibility_events, photo_backup_keys, photo_backups, pair_sessions, pair_participants, pair_events CASCADE`,
+    sql`TRUNCATE users, devices, otp_codes, auth_sessions, refresh_tokens, sync_heads, sync_changes, sync_mutations, consent_records, data_requests, audit_entries, legal_acceptances, notice_impressions, defensibility_events, photo_backup_keys, photo_backups, pair_sessions, pair_participants, pair_events, coach_conversations, coach_messages, coach_tool_calls CASCADE`,
   );
 }
 
