@@ -72,6 +72,7 @@ function keyFile() {
 export async function integration(api) {
   let key = process.env.MERIDIAN_KEY;
   const { dir, file } = keyFile();
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- fixed key file under $XDG_STATE_HOME/fitadapt-meridian, host part sanitised in keyFile()
   if (!key && existsSync(file)) key = readFileSync(file, "utf8").trim();
   const v1 = (k) => async (method, path, body) => (await request(method, path, body, { authorization: `Bearer ${k}` })).json;
   if (key) {
@@ -95,8 +96,13 @@ export async function integration(api) {
       });
   key = out.key ?? out.plain ?? out.apiKey;
   if (!key) throw new Error("Meridian did not return the integration key: " + JSON.stringify(Object.keys(out)));
+  /* dir and file come from keyFile(): a fixed directory under XDG_STATE_HOME
+     and a host name reduced to [A-Za-z0-9.-]. */
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- fixed key directory (keyFile)
   mkdirSync(dir, { recursive: true });
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- fixed key file (keyFile), written 0600
   writeFileSync(file, key + "\n", { mode: 0o600 });
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- same key file
   chmodSync(file, 0o600);
   console.log(`integration "${INTEGRATION_NAME}" ${mine ? "key rotated" : "created"}; key kept in ${file}`);
   return v1(key);

@@ -49,7 +49,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { PHASES, LADDER, DOCS as BOOK_DOCS, readGoals } from "./build-book.mjs";
 import { session, integration, BASE } from "./meridian-client.mjs";
@@ -67,7 +67,18 @@ const MERIDIAN_HOME = resolve(process.env.MERIDIAN_HOME ?? join(ROOT, "..", "mer
 /* ── repository truth (pure reads) ─────────────────────────────────── */
 
 const git = (...args) => execFileSync("git", ["-C", ROOT, ...args], { encoding: "utf8", maxBuffer: 64 << 20 }).trim();
-const read = (p) => readFileSync(join(ROOT, p), "utf8");
+/* Every repository read goes through inRepo(): paths come from GOALS.md,
+   status files and ADR names, i.e. repository content, and must never
+   resolve outside the checkout (SAST detect-non-literal-fs-filename). */
+const inRepo = (p) => {
+  const abs = resolve(ROOT, p);
+  if (abs !== ROOT && !abs.startsWith(ROOT + sep)) throw new Error(`refusing a path outside the repository: ${p}`);
+  return abs;
+};
+// eslint-disable-next-line security/detect-non-literal-fs-filename -- path confined to the repository by inRepo()
+const read = (p) => readFileSync(inRepo(p), "utf8");
+// eslint-disable-next-line security/detect-non-literal-fs-filename -- path confined to the repository by inRepo()
+const inRepoExists = (p) => existsSync(inRepo(p));
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
 const day = (isoTs) => isoTs.slice(0, 10);
 
@@ -96,8 +107,15 @@ const commitUrl = (sha) => `https://github.com/${REPO}/commit/${sha}`;
 /** Every commit, oldest first: { sha, at, subject, scopes: ["m06", …] }. */
 const COMMITS = git("log", "--reverse", "--format=%H%x09%aI%x09%s").split("\n").filter(Boolean).map((l) => {
   const [sha, at, subject] = l.split("\t");
-  const m = /^[a-z]+(?:\(([^)]+)\))?!?:/.exec(subject);
-  return { sha, at, subject, scopes: m?.[1] ? m[1].split(",").map((s) => s.trim().toLowerCase()) : [] };
+  /* Conventional-commit header "type(scope,scope)!: …", parsed without a
+     nested-quantifier regex (SAST detect-unsafe-regex). */
+  const colon = subject.indexOf(":");
+  const header = colon > 0 ? subject.slice(0, colon) : "";
+  const open = header.indexOf("("), close = header.indexOf(")");
+  const type = open >= 0 ? header.slice(0, open) : header.replace(/!$/, "");
+  const scopeText = open >= 0 && close > open ? header.slice(open + 1, close) : "";
+  const conventional = /^[a-z]+$/.test(type);
+  return { sha, at, subject, scopes: conventional && scopeText ? scopeText.split(",").map((s) => s.trim().toLowerCase()) : [] };
 });
 
 /** A markdown section by its heading prefix, up to the next heading of the same level. */
@@ -122,7 +140,7 @@ function readModule(key, planOwner, phase) {
   const commits = COMMITS.filter((c) => c.scopes.includes(scope));
   const statusPath = `docs/status/${id}.md`;
   // M17's status file is the Phase 0 baseline; the Phase 4 completion (M17b) has none yet.
-  const hasStatus = key !== "M17b" && existsSync(join(ROOT, statusPath));
+  const hasStatus = key !== "M17b" && inRepoExists(statusPath);
   const mod = { key, id, phase, owner: planOwner, commits: commits.length, statusPath: hasStatus ? statusPath : null };
   if (commits.length) {
     mod.firstSha = commits[0].sha; mod.start = day(commits[0].at);
@@ -410,8 +428,10 @@ const M = pathToFileURL(join(MERIDIAN_HOME, "shared") + "/").href;
 const { Engine } = await import(M + "engine.js");
 const { programmeSchedule } = await import(M + "programme.js");
 const health = api.health;
-if (!existsSync(join(MERIDIAN_HOME, "package.json")) ||
-    JSON.parse(readFileSync(join(MERIDIAN_HOME, "package.json"), "utf8")).version !== health.version) {
+const meridianPkg = join(MERIDIAN_HOME, "package.json");
+// eslint-disable-next-line security/detect-non-literal-fs-filename -- the operator's own Meridian checkout (MERIDIAN_HOME), read-only
+const meridianVersion = existsSync(meridianPkg) ? JSON.parse(readFileSync(meridianPkg, "utf8")).version : null;
+if (meridianVersion !== health.version) {
   console.warn(`warning: ${MERIDIAN_HOME} is not Meridian ${health.version}; its engine may compute differently from the server's`);
 }
 
@@ -491,9 +511,14 @@ P();
 P("## Headline");
 P();
 const g0 = gates[0];
-const delivered = MODULES.filter((m) => m.state === "done");
+const done = MODULES.filter((m) => m.state === "done");
+/* "Delivered and pushed" must be true: a module whose last commit is not yet
+   on a remote branch is done locally, not delivered. */
+const delivered = done.filter((m) => m.lastSha && pushed(m.lastSha));
+const doneLocally = done.filter((m) => !delivered.includes(m));
 const building = MODULES.filter((m) => m.state === "in progress");
 P(`- **Delivery:** ${delivered.length} module stages delivered and pushed (${delivered.map((m) => m.key === "M17a" ? "M17 baseline" : m.id).join(", ")}); ` +
+  `${doneLocally.length ? doneLocally.map((m) => m.id).join(", ") + " done but not yet pushed; " : ""}` +
   `${building.length ? building.map((m) => m.id).join(", ") + " in progress" : "nothing in progress"}; ` +
   `${MODULES.filter((m) => m.state === "not started").length} not started.`);
 P(`- **Governance:** no gate is passed. The programme is formally at **${g0.name}** (${g0.st.state}), held by ` +
