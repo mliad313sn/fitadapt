@@ -213,13 +213,13 @@ describe('M05 red flags on the server (goal condition 7)', () => {
     expect(await push(r.s, [insert('workout_sessions', workout(sessionInput(r)))])).toEqual(['applied']);
   });
 
-  it('MOB-08: a lock already lifted leaves nothing behind a health-consent withdrawal; migration 0010 carries earlier S3 facts', async () => {
+  it('MOB-08: a lock already lifted leaves nothing behind a health-consent withdrawal; migration 0011 carries earlier S3 facts', async () => {
     const r = await ready();
     const flag: ExecutionLog = { kind: 'red_flag', planId: null, symptom: 'fainting', at: at(MON - 3_600_000) };
     expect(await push(r.s, [insert('execution_logs', flag)])).toEqual(['applied']);
     // As if stored before the table existed: the migration's backfill re-creates the fact from the log.
     await h.database.db.delete(safetyLocks).where(eq(safetyLocks.userId, r.s.userId));
-    const migration = readFileSync(fileURLToPath(new URL('../../drizzle/0010_fix_s3_lock_survives_withdrawal.sql', import.meta.url)), 'utf8');
+    const migration = readFileSync(fileURLToPath(new URL('../../drizzle/0011_fix_s3_lock_survives_withdrawal.sql', import.meta.url)), 'utf8');
     await h.database.db.execute(sql.raw(migration.split('--> statement-breakpoint').at(-1)!));
     expect((await h.database.db.select().from(safetyLocks).where(eq(safetyLocks.userId, r.s.userId))).map((l) => [l.kind, l.at])).toEqual([['red_flag', flag.at]]);
     // Attested, then withdrawn: nothing about the lock is kept.

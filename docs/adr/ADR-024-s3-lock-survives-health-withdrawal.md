@@ -13,7 +13,7 @@ On the server the lock was derived only from `execution_logs` (`intensityLockSta
 
 ## Decision
 
-1. **A separate, minimal lock record.** Table `safety_locks` (migration `0010_fix_s3_lock_survives_withdrawal`) keeps, per user, only what S3's lock rule reads:
+1. **A separate, minimal lock record.** Table `safety_locks` (migration `0011_fix_s3_lock_survives_withdrawal`) keeps, per user, only what S3's lock rule reads:
    - whether a row is a red flag or a medical-review attestation;
    - its device time, as recorded;
    - the ADR-023 causal ids: the flag's id, and the flags an attestation names.

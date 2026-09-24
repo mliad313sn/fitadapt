@@ -244,11 +244,11 @@ describe('API-3: the idempotency ledger keeps no copy of a record', () => {
     expect(exported.body).not.toContain('birthDate');
   });
 
-  it('migration 0009 scrubs the record copies stored in the ledger before the fix', async () => {
+  it('migration 0010 scrubs the record copies stored in the ledger before the fix', async () => {
     const s = await session();
     const legacy = { mutationId: randomUUID(), status: 'conflict', current: { revision: 1, collection: 'profile', recordId: PROFILE_RECORD_ID, op: 'upsert', data: { birthDate: ADULT }, originDeviceId: s.deviceId } };
     await h.database.db.insert(syncMutations).values({ userId: s.userId, mutationId: legacy.mutationId, result: legacy });
-    const migration = readFileSync(fileURLToPath(new URL('../../drizzle/0009_fix_ledger_no_record_copy.sql', import.meta.url)), 'utf8');
+    const migration = readFileSync(fileURLToPath(new URL('../../drizzle/0010_fix_ledger_no_record_copy.sql', import.meta.url)), 'utf8');
     await h.database.db.execute(sql.raw(migration));
     const [row] = await h.database.db.select().from(syncMutations).where(eq(syncMutations.mutationId, legacy.mutationId));
     expect(row!.result).toEqual({ mutationId: legacy.mutationId, status: 'conflict', currentRef: { collection: 'profile', recordId: PROFILE_RECORD_ID } });

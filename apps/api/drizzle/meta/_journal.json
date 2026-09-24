@@ -66,17 +66,17 @@
       "breakpoints": true
     },
     {
-      "idx": 9,
+      "idx": 10,
       "version": "7",
       "when": 1790239399040,
-      "tag": "0009_fix_ledger_no_record_copy",
+      "tag": "0010_fix_ledger_no_record_copy",
       "breakpoints": true
     },
     {
-      "idx": 10,
+      "idx": 11,
       "version": "7",
       "when": 1790240469849,
-      "tag": "0010_fix_s3_lock_survives_withdrawal",
+      "tag": "0011_fix_s3_lock_survives_withdrawal",
       "breakpoints": true
     }
   ]
