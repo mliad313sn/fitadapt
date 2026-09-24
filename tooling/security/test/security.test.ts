@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { ESLint } from 'eslint';
 import { describe, expect, it } from 'vitest';
 import { evaluateAudit, formatAudit } from '../lib/audit.mjs';
+import { RULE_ID, suppressionProcessor, unjustifiedDirectives } from '../lib/directives.mjs';
 import { gitleaksAsset, GITLEAKS_SHA256, interpretGitleaksExit } from '../lib/gitleaks.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -80,6 +81,45 @@ describe('static analysis gate (goal condition 4)', () => {
   it('accepts ordinary code', async () => {
     const [clean] = await eslint.lintFiles([join(here, 'fixtures/sast/clean.ts')]);
     expect(clean!.messages).toEqual([]);
+  });
+
+  it('a bare, unjustified or inline-config suppression fails the gate and cannot silence itself (PKG-09)', async () => {
+    const results = await eslint.lintFiles(['bare-disable.ts', 'unjustified-disable.ts', 'inline-config.ts', 'justified-disable.ts'].map((f) => join(here, 'fixtures/sast', f)));
+    const byFile = Object.fromEntries(results.map((r) => [r.filePath.split('/').pop(), r.messages.filter((m) => m.ruleId === RULE_ID).map((m) => [m.line, m.severity])]));
+    expect(byFile).toEqual({ 'bare-disable.ts': [[1, 2]], 'unjustified-disable.ts': [[1, 2]], 'inline-config.ts': [[1, 2]], 'justified-disable.ts': [] });
+    // The bare disable hides the eval finding, but the gate still fails on the directive.
+    expect(results[0]!.errorCount).toBe(1);
+    const cli = spawnSync(process.execPath, [join(root, 'node_modules/eslint/bin/eslint.js'), '--no-config-lookup', '-c', 'tooling/security/eslint.security.config.mjs', '--no-ignore', 'tooling/security/test/fixtures/sast/bare-disable.ts'], { cwd: root, encoding: 'utf8' });
+    expect(cli.status).toBe(1);
+  });
+
+  it('the processor lints the text unchanged and appends directive errors after suppression', () => {
+    const processor = suppressionProcessor();
+    expect(processor.preprocess!('/* eslint-disable */\nx;', 'a.ts')).toEqual(['/* eslint-disable */\nx;']);
+    const kept = { ruleId: 'no-eval', severity: 2 as const, message: 'm', line: 2, column: 1 };
+    const out = processor.postprocess!([[kept]], 'a.ts');
+    expect(out.map((m) => m.ruleId)).toEqual(['no-eval', RULE_ID]);
+    // Unknown file (never preprocessed): nothing added.
+    expect(processor.postprocess!([[kept]], 'b.ts')).toEqual([kept]);
+    expect(unjustifiedDirectives('/* eslint */')).toEqual([]);
+  });
+
+  it('parses directives: rule names and a reason are required; enable and ordinary comments pass', () => {
+    const src = [
+      '// eslint-disable-line',
+      '// eslint-disable-next-line no-eval -- reviewed',
+      '/* eslint-disable no-eval, no-new-func -- reviewed in ADR-007 */',
+      '/* eslint-enable */',
+      '// eslint-disable-next-line no-eval --',
+      '/* eslint no-eval: off */',
+      '// this mentions eslint-disable in prose',
+      '/* eslint-env node */',
+    ].join('\n');
+    expect(unjustifiedDirectives(src).map((d) => [d.line, d.column])).toEqual([
+      [1, 1],
+      [5, 1],
+      [6, 1],
+    ]);
   });
 });
 

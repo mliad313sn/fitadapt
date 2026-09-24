@@ -5,7 +5,7 @@ import { LOCAL_SCHEMA_SQL, syncOutbox, syncRecords, syncState } from './schema.j
 import type { LocalRecord, LocalStore, LocalTx } from './types.js';
 
 // Works with any synchronous Drizzle SQLite driver: expo-sqlite on device, sql.js in tests.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the driver result and schema types differ per driver; the store only uses the typed tables below
 export type SyncSqliteDatabase = BaseSQLiteDatabase<'sync', any, any>;
 
 /** Reserved sync_state key; other keys are free for callers. */
