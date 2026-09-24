@@ -131,6 +131,10 @@ const LEADING_PUNCTUATION = /^[("«“‘']+/u;
 const TRAILING_PUNCTUATION = /[)"»”’',.;:!?]+$/u;
 const ENDS_A_NAME = /[,.;:!?)]$/u;
 const NAME_JOINERS = /[-'’]/u;
+/** Same leading punctuation as LEADING_PUNCTUATION, then a capital: the one shape every name word has. */
+const NAME_START = /^[("«“‘']*\p{Lu}/u;
+const SIMPLE_NAME_WORD = /^\p{Lu}\p{Ll}+$/u;
+const ANY_CAPITAL = /\p{Lu}/u;
 
 /**
  * One capitalised name word, tokenised rather than matched by one nested
@@ -141,6 +145,10 @@ const NAME_JOINERS = /[-'’]/u;
  * word unless it is part of a run with another name word (see `nameRuns`).
  */
 function nameWordKind(raw: string): 'word' | 'capitals' | null {
+  // Every name word starts with a capital once leading punctuation is stripped: reject the rest cheaply.
+  if (!NAME_START.test(raw)) return null;
+  // The common case ("Jeanne"): one capital then lower case, no punctuation or joiner. Same answer as below, cheaper.
+  if (SIMPLE_NAME_WORD.test(raw)) return 'word';
   const token = raw.replace(LEADING_PUNCTUATION, '').replace(TRAILING_PUNCTUATION, '');
   if (token.length < 2) return null;
   const parts = token.split(NAME_JOINERS);
@@ -157,9 +165,9 @@ function nameWordKind(raw: string): 'word' | 'capitals' | null {
  * all-capitals words and one of them is shorter than 4 letters: "JEANNE
  * TESTEUR" is a name, "HTTP GET" and "S3 BLOCK" are not.
  */
-function plausibleName(words: readonly string[]): boolean {
+function plausibleName(words: readonly string[], known?: ReadonlyArray<'word' | 'capitals' | null>): boolean {
   if (words.length < 2) return false;
-  const kinds = words.map(nameWordKind);
+  const kinds = known ?? words.map(nameWordKind);
   if (kinds.some((k) => k === null)) return false;
   return kinds.some((k) => k === 'word') || words.every((w) => w.replace(LEADING_PUNCTUATION, '').replace(TRAILING_PUNCTUATION, '').length >= 4);
 }
@@ -167,21 +175,27 @@ function plausibleName(words: readonly string[]): boolean {
 /** [start, end) ranges of runs of two or more name words in free text ("invite sent to Jeanne Testeur"), ending at punctuation. */
 function nameRuns(value: string): Array<[number, number]> {
   const ranges: Array<[number, number]> = [];
-  const words = [...value.matchAll(/\S+/gu)];
+  // No capital letter, no name word: skip the tokenisation.
+  if (!ANY_CAPITAL.test(value)) return ranges;
+  // Each word's kind is computed once and reused for the run (the scan stays linear and cheap on hostile input).
   let run: RegExpMatchArray[] = [];
+  let kinds: Array<'word' | 'capitals'> = [];
   const close = () => {
-    if (plausibleName(run.map((w) => w[0]))) {
+    if (plausibleName(run.map((w) => w[0]), kinds)) {
       const last = run[run.length - 1]!;
       ranges.push([run[0]!.index!, last.index! + last[0].length]);
     }
     run = [];
+    kinds = [];
   };
-  for (const w of words) {
-    if (nameWordKind(w[0]) === null) {
+  for (const w of value.matchAll(/\S+/gu)) {
+    const kind = nameWordKind(w[0]);
+    if (kind === null) {
       close();
       continue;
     }
     run.push(w);
+    kinds.push(kind);
     if (ENDS_A_NAME.test(w[0])) close();
   }
   close();
@@ -194,10 +208,12 @@ function emailRanges(value: string): Array<[number, number]> {
   for (const sign of value.matchAll(reset(AT_SIGNS))) {
     const at = sign.index;
     const after = at + sign[0].length;
+    // The domain first: it fails at once on most hostile input, and the local-part scan is then skipped.
+    const domain = DOMAIN_AT_START.exec(value.slice(after, after + DOMAIN_MAX));
+    if (!domain) continue;
     let start = at;
     while (start > 0 && at - start < LOCAL_PART_MAX && LOCAL_CHAR.test(value.charAt(start - 1))) start -= 1;
-    const domain = DOMAIN_AT_START.exec(value.slice(after, after + DOMAIN_MAX));
-    if (start < at && domain) ranges.push([start, after + domain[0].length]);
+    if (start < at) ranges.push([start, after + domain[0].length]);
   }
   return ranges;
 }
