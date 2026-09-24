@@ -121,6 +121,7 @@ export function PairScreen({ onExit }: PairScreenProps) {
   const [minutes, setMinutes] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [showEach, setShowEach] = useState(false);
   const [people, setPeople] = useState<{ a: Person; b: Person } | null>(null);
   const [session, setSession] = useState<PairSession | null>(null);
   const [togetherDone, setTogetherDone] = useState<string[]>([]);
@@ -625,11 +626,19 @@ export function PairScreen({ onExit }: PairScreenProps) {
           {t('pair.done.title')}
         </Text>
         {seekCare ? <PairSeekCare legal={seekCare === 'a' ? null : guestLedgers!.legal} name={nameOf(seekCare)} /> : null}
-        {(['a', 'b'] as const).map((who) => (
-          <Text key={who} style={text} testID={`pair-done-${who}`}>
-            {t('pair.done.person', { name: people[who].name, sets: people[who].sets.filter((s) => s.set.status === 'done').length })}
-          </Text>
-        ))}
+        {/* A6 pre-review (fix-queue): a cooperative summary by default; each person's own count only if they choose to see it. */}
+        <Text style={text} testID="pair-done-together">
+          {t('pair.done.together', { count: (['a', 'b'] as const).reduce((n, who) => n + people[who].sets.filter((s) => s.set.status === 'done').length, 0) })}
+        </Text>
+        {showEach ? (
+          (['a', 'b'] as const).map((who) => (
+            <Text key={who} style={text} testID={`pair-done-${who}`}>
+              {t('pair.done.person', { name: people[who].name, sets: people[who].sets.filter((s) => s.set.status === 'done').length })}
+            </Text>
+          ))
+        ) : (
+          <Button label={t('pair.done.showEach')} hint={t('pair.done.showEachHint')} variant="secondary" onPress={() => setShowEach(true)} testID="pair-done-show-each" />
+        )}
         {session?.challenge ? (
           challengeComparable(sa, sb) ? (
             (['a', 'b'] as const).map((who) => (

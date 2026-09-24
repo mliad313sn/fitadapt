@@ -235,6 +235,22 @@ describe('consent (goal condition 7): each person’s own L2 documents and shari
     expect(screen.getByTestId('pair-score-a').props.children).toBe(tr('en').t('pair.done.score', { name: 'Ibrahima', points: 100 }));
     expect(screen.getByTestId('pair-score-b').props.children).toBe(tr('en').t('pair.done.score', { name: 'Awa', points: 100 }));
   });
+
+  it('A6: the end of a session shows a cooperative summary by default; each person’s count only on request', () => {
+    const d = device();
+    start(d);
+    for (let guard = 0; guard < 80 && !screen.queryByTestId('pair-done'); guard++) {
+      if (screen.queryByTestId('pair-together')) press('pair-together-done');
+      else logTurn();
+    }
+    const done = d.pair.getState().guest(d.awa.id)!.setLogs.length + outbox(d, 'set_logs').length;
+    expect(screen.getByTestId('pair-done-together').props.children).toBe(tr('en').t('pair.done.together', { count: done }));
+    expect(screen.queryByTestId('pair-done-a')).toBeNull();
+    expect(screen.queryByTestId('pair-done-b')).toBeNull();
+    press('pair-done-show-each');
+    expect(screen.getByTestId('pair-done-a')).toBeTruthy();
+    expect(screen.getByTestId('pair-done-b')).toBeTruthy();
+  });
 });
 
 describe('the S7 / M17 age gate applies to the partner too', () => {
