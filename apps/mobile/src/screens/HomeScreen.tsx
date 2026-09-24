@@ -18,6 +18,8 @@ export interface HomeScreenProps {
   onOpenCalendar?: () => void;
   /** M02: today's session (execution, offline). */
   onOpenWorkout?: () => void;
+  /** M04: the progress dashboard (history, body trends, milestones, photos, export). */
+  onOpenProgress?: () => void;
   onReviewLegal?: (missing: readonly string[]) => void;
   onRescreen?: (reason: 'annual' | 'new_condition') => void;
   onOpenEquipment?: () => void;
@@ -25,7 +27,7 @@ export interface HomeScreenProps {
 }
 
 /** The entries are wired by the route (app/index.tsx); without their callbacks they are hidden. */
-export function HomeScreen({ onOpenPrivacy, onOpenLibrary, onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, onOpenCalendar, onOpenWorkout, onReviewLegal, onRescreen, onOpenEquipment, onSignIn }: HomeScreenProps = {}) {
+export function HomeScreen({ onOpenPrivacy, onOpenLibrary, onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, onOpenCalendar, onOpenWorkout, onOpenProgress, onReviewLegal, onRescreen, onOpenEquipment, onSignIn }: HomeScreenProps = {}) {
   const theme = useTheme();
   const { t, locale, setLocale, unitSystem, setUnitSystem } = useI18n();
   const { pendingCount } = useSync();
@@ -69,6 +71,7 @@ export function HomeScreen({ onOpenPrivacy, onOpenLibrary, onStartOnboarding, on
           onPress={() => setUnitSystem(unitSystem === 'metric' ? 'imperial' : 'metric')}
           testID="toggle-units"
         />
+        {onOpenProgress && onStartOnboarding ? <Button label={t('home.progress.open')} hint={t('home.progress.openHint')} variant="secondary" onPress={onOpenProgress} testID="open-progress" /> : null}
         {onOpenLibrary ? <Button label={t('library.open')} hint={t('library.openHint')} variant="secondary" onPress={onOpenLibrary} testID="open-library" /> : null}
         {onOpenPrivacy ? (
           <Button label={t('home.privacy.open')} hint={t('home.privacy.openHint')} variant="secondary" onPress={onOpenPrivacy} testID="open-privacy" />

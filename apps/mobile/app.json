@@ -6,7 +6,10 @@
     "version": "0.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "dev.companion.app"
@@ -18,13 +21,24 @@
     "plugins": [
       "expo-router",
       "expo-localization",
-      "expo-sqlite",
+      [
+        "expo-sqlite",
+        {
+          "useSQLCipher": true
+        }
+      ],
       [
         "expo-audio",
         {
           "microphonePermission": false,
           "recordAudioAndroid": false,
           "enableBackgroundPlayback": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "microphonePermission": false
         }
       ]
     ],

@@ -18,6 +18,10 @@ import { clock } from './clock';
 import { createLegalStore, type LegalStore } from './legal/legal-store';
 import { createProfileStore, type ProfileStore } from './profile/profile-store';
 import { ProfileProvider } from './profile/ProfileProvider';
+import { getRandomBytes } from 'expo-crypto';
+import { createGuardrailInbox } from './nutrition/guardrail-port';
+import { createProgressStore } from './progress/progress-store';
+import { ProgressProvider, type ProgressProviderProps } from './progress/ProgressProvider';
 
 export interface AppProvidersProps {
   syncClient: SyncClient;
@@ -31,6 +35,8 @@ export interface AppProvidersProps {
   profile?: ProfileStore;
   legal?: LegalStore;
   session?: SessionStore;
+  /** M04 body data, encrypted photos and their backup; defaults to in-memory state without photos. */
+  progress?: Omit<ProgressProviderProps, 'children'>;
   /** Replaces the plain sync on reconnect (M01: upload the device ledgers first). */
   runSync?: () => Promise<unknown>;
   children?: ReactNode;
@@ -69,10 +75,23 @@ function useDefaultM01(syncClient: SyncClient, profile?: ProfileStore, legal?: L
   }, [syncClient, profile, legal]);
 }
 
-export function AppProviders({ syncClient, initialLocale, initialUnitSystem = 'metric', privacy, library, profile, legal, session, runSync, children }: AppProvidersProps) {
+function useDefaultProgress(syncClient: SyncClient, provided?: Omit<ProgressProviderProps, 'children'>): Omit<ProgressProviderProps, 'children'> {
+  return useMemo(() => {
+    if (provided) return provided;
+    const kv = new MemoryKeyValueStore();
+    const nutrition = createGuardrailInbox(kv);
+    return { progress: createProgressStore({ sync: syncClient, kv, now: clock.now, nutrition }), nutrition, vault: null, randomBytes: getRandomBytes };
+  }, [syncClient, provided]);
+}
+
+export function AppProviders({ syncClient, initialLocale, initialUnitSystem = 'metric', privacy, library, profile, legal, session, progress, runSync, children }: AppProvidersProps) {
   const privacyProps = useDefaultPrivacy(privacy);
   const m01 = useDefaultM01(syncClient, profile, legal);
-  const onSynced = useCallback(() => m01.profile.getState().reload(), [m01]);
+  const progressProps = useDefaultProgress(syncClient, progress);
+  const onSynced = useCallback(() => {
+    m01.profile.getState().reload();
+    progressProps.progress.getState().reload();
+  }, [m01, progressProps]);
   return (
     <SafeAreaProvider>
       <I18nProvider initialLocale={initialLocale} initialUnitSystem={initialUnitSystem}>
@@ -80,7 +99,9 @@ export function AppProviders({ syncClient, initialLocale, initialUnitSystem = 'm
           <SyncProvider client={syncClient} runSync={runSync} onSynced={onSynced}>
             <LibraryProvider store={library ?? null}>
               <ProfileProvider profile={m01.profile} legal={m01.legal} session={session}>
-                <ThemedApp>{children}</ThemedApp>
+                <ProgressProvider {...progressProps}>
+                  <ThemedApp>{children}</ThemedApp>
+                </ProgressProvider>
               </ProfileProvider>
             </LibraryProvider>
           </SyncProvider>

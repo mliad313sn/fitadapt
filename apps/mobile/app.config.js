@@ -11,11 +11,25 @@
  */
 const { assertLegalReleaseReady, buildProfileFrom } = require('@fitadapt/legal');
 const { assertLibraryReleaseReady, SEED_EXERCISES } = require('@fitadapt/exercise-library');
+const { en, fr } = require('@fitadapt/i18n');
+
+/**
+ * M04: the camera and photo-library permission texts come from packages/i18n
+ * (CLAUDE.md rule 5): English in the plugin, English and French in the iOS
+ * InfoPlist.strings (`locales`). No microphone (the picker records no video).
+ */
+const permissionTexts = (catalogue) => ({ NSCameraUsageDescription: catalogue['photos.permission.camera'], NSPhotoLibraryUsageDescription: catalogue['photos.permission.library'] });
 
 /** @param {{ config: Record<string, unknown> }} context */
 module.exports = ({ config }) => {
   const profile = buildProfileFrom(process.env);
   assertLegalReleaseReady(profile);
   assertLibraryReleaseReady({ production: profile === 'production' }, SEED_EXERCISES);
+  for (const plugin of Array.isArray(config.plugins) ? config.plugins : []) {
+    if (Array.isArray(plugin) && plugin[0] === 'expo-image-picker') {
+      plugin[1] = { ...plugin[1], cameraPermission: en['photos.permission.camera'], photosPermission: en['photos.permission.library'] };
+    }
+  }
+  config.locales = { ...(config.locales ?? {}), en: permissionTexts(en), fr: permissionTexts(fr) };
   return config;
 };

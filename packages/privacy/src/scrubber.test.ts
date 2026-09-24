@@ -186,6 +186,17 @@ describe('analytics allowlist', () => {
     expect(validateAnalyticsEvent({ event: 'sync_completed', props: { pushed: countBucket(3), pulled: countBucket(0) } }).ok).toBe(true);
   });
 
+  it('M04: dashboard, export and photo-backup events carry only enums and yes/no — body values, dates and photo data are refused', () => {
+    expect(validateAnalyticsEvent({ event: 'screen_viewed', props: { screen: 'progress' } }).ok).toBe(true);
+    expect(validateAnalyticsEvent({ event: 'screen_viewed', props: { screen: 'photos' } }).ok).toBe(true);
+    expect(validateAnalyticsEvent({ event: 'progress_export_requested', props: { format: 'csv', withPhotos: false } }).ok).toBe(true);
+    expect(validateAnalyticsEvent({ event: 'photo_backup_toggled', props: { enabled: true } }).ok).toBe(true);
+    expect(validateAnalyticsEvent({ event: 'progress_export_requested', props: { format: 'csv', withPhotos: false, weightKg: 60.4 } })).toMatchObject({ ok: false, reason: 'personal_data' });
+    expect(validateAnalyticsEvent({ event: 'progress_export_requested', props: { format: 'xlsx', withPhotos: false } })).toEqual({ ok: false, reason: 'invalid_props' });
+    expect(validateAnalyticsEvent({ event: 'photo_backup_toggled', props: { enabled: true, photos: 3 } })).toEqual({ ok: false, reason: 'invalid_props' });
+    expect(validateAnalyticsEvent({ event: 'bodyweight_logged', props: {} })).toEqual({ ok: false, reason: 'unknown_event' });
+  });
+
   it('rejects unknown events and properties', () => {
     expect(validateAnalyticsEvent({ event: 'weight_logged', props: {} })).toEqual({ ok: false, reason: 'unknown_event' });
     expect(validateAnalyticsEvent({ event: 'app_opened', props: { extra: 1 } })).toEqual({ ok: false, reason: 'invalid_props' });

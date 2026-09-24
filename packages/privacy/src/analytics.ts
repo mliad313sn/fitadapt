@@ -14,7 +14,7 @@ const bucket = z.enum(['0', '1', '2-5', '6-20', '21+']);
 
 export const ANALYTICS_EVENTS = {
   app_opened: z.strictObject({}),
-  screen_viewed: z.strictObject({ screen: z.enum(['home', 'privacy', 'age_gate']) }),
+  screen_viewed: z.strictObject({ screen: z.enum(['home', 'privacy', 'age_gate', 'progress', 'photos']) }),
   language_changed: z.strictObject({ locale: LocaleSchema }),
   units_changed: z.strictObject({ unitSystem: z.enum(['metric', 'imperial']) }),
   gym_mode_toggled: z.strictObject({ enabled: z.boolean() }),
@@ -22,6 +22,9 @@ export const ANALYTICS_EVENTS = {
   data_export_requested: z.strictObject({}),
   account_deletion_requested: z.strictObject({}),
   sync_completed: z.strictObject({ pushed: bucket, pulled: bucket }),
+  // M04 KPIs (export usage, photo backup opt-in): the format and a yes/no only — never a body value, a date or a count of photos.
+  progress_export_requested: z.strictObject({ format: z.enum(['json', 'csv']), withPhotos: z.boolean() }),
+  photo_backup_toggled: z.strictObject({ enabled: z.boolean() }),
 } as const;
 
 export type AnalyticsEventName = keyof typeof ANALYTICS_EVENTS;

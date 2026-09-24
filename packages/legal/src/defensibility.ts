@@ -34,8 +34,11 @@ export const DefensibilityPayloads = {
   'safety.event': z.strictObject({
     invariant: z.enum(['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7']),
     reasonCode: code,
-    /** M05 adds joint_flagged: a pain report made a joint red (S2), logged with the report. */
-    action: z.enum(['blocked', 'substituted', 'session_ended', 'intensity_locked', 'capped', 'joint_flagged']),
+    /**
+     * M05 adds joint_flagged: a pain report made a joint red (S2), logged with the report.
+     * M04 adds handed_off: a sustained body-weight loss was handed to the nutrition guardrails (S4, M10) with a supportive notice.
+     */
+    action: z.enum(['blocked', 'substituted', 'session_ended', 'intensity_locked', 'capped', 'joint_flagged', 'handed_off']),
     engineVersion,
   }),
   /** M02: a session the user started (the executed prescription): engine and session-rules versions and every reason code it carries. */

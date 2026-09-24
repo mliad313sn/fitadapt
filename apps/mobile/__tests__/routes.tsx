@@ -18,6 +18,8 @@ import Terms from '../app/onboarding/terms';
 import Privacy from '../app/privacy';
 import SignIn from '../app/sign-in';
 import Workout from '../app/workout';
+import Progress from '../app/progress';
+import Photos from '../app/photos';
 
 /** M01 routes declared by the root layout (the map every router test passes to renderRouter), plus the M07 assessment the M08 calendar and the M02 workout behind the same gate. */
 export const m01Routes = {
@@ -25,6 +27,8 @@ export const m01Routes = {
   assessment: Assessment,
   calendar: Calendar,
   workout: Workout,
+  progress: Progress,
+  photos: Photos,
   equipment: Equipment,
   'first-workout': FirstWorkout,
   'onboarding/goals': Goals,

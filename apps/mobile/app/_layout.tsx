@@ -1,6 +1,6 @@
 import { resolveLocale } from '@fitadapt/i18n';
 import { resolveJurisdiction } from '@fitadapt/privacy';
-import { randomUUID } from 'expo-crypto';
+import { getRandomBytes, randomUUID } from 'expo-crypto';
 import { getLocales } from 'expo-localization';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -26,6 +26,11 @@ import { useFirstWorkoutAccess } from '../src/profile/ProfileProvider';
 import { SqliteKeyValueStore, wipeLocalDatabase } from '../src/storage/app-state';
 import { apiBaseUrl, createDeviceSyncClient } from '../src/sync/device';
 import { openExpoDatabase } from '../src/sync/expo-db';
+import { createGuardrailInbox } from '../src/nutrition/guardrail-port';
+import { httpPhotoBackupApi } from '../src/progress/photo-backup';
+import { expoPhotoFiles, PhotoVault } from '../src/progress/photo-vault';
+import { createProgressStore } from '../src/progress/progress-store';
+import { secureDeviceKeyStore } from '../src/storage/device-keys';
 
 /**
  * S7 age gate: until the user has passed it, the only reachable screen is the
@@ -46,6 +51,9 @@ function GatedStack() {
         <Stack.Screen name="library" />
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="equipment" />
+        {/* M04: the dashboard and progress photos read health data only with the consents (fail closed). */}
+        <Stack.Screen name="progress" />
+        <Stack.Screen name="photos" />
         {ONBOARDING_STEPS.map((step) => (
           <Stack.Screen key={step} name={`onboarding/${step}`} />
         ))}
@@ -86,12 +94,17 @@ export default function RootLayout() {
     const consents = createConsentStore({ kv, newId: randomUUID, jurisdiction });
     const legal = createLegalStore({ kv, newId: randomUUID, now: clock.now, jurisdiction });
     const profile = createProfileStore({ sync: syncClient, kv, now: clock.now });
+    // M04: body data (sync records in the encrypted database), the M10 guardrail inbox and the encrypted photo vault.
+    const nutrition = createGuardrailInbox(kv);
+    const progress = createProgressStore({ sync: syncClient, kv, now: clock.now, nutrition });
+    const vault = new PhotoVault({ db, files: expoPhotoFiles(), keys: secureDeviceKeyStore, randomBytes: getRandomBytes, newId: randomUUID, now: clock.now });
     const accountApi = createAccountApi(post, getAccessToken);
     const ledger = new UploadLedger(kv);
     const accountSync = async () => {
       if (sessionRef.current?.getState().status !== 'signed_in') return;
       await runAccountSync({ api: accountApi, ledger, consents: consents.getState().records, acceptances: legal.getState().acceptances, notices: legal.getState().notices, sync: syncClient });
       profile.getState().reload();
+      progress.getState().reload();
     };
     const session = createSessionStore({
       api: createAuthApi(post),
@@ -110,11 +123,14 @@ export default function RootLayout() {
       profile,
       accountSync,
       privacyClient: createHttpPrivacyClient({ baseUrl: apiBaseUrl(apiUrl), getAccessToken }),
+      progress: { progress, nutrition, vault, randomBytes: getRandomBytes },
+      photoBackupApi: httpPhotoBackupApi({ baseUrl: apiBaseUrl(apiUrl), getAccessToken }),
       initialLocale: resolveLocale(locales.map((l) => l.languageTag)),
       privacy: {
         ageGate: createAgeGateStore(kv),
         consents,
         wipeLocalData: () => {
+          vault.wipe();
           wipeLocalDatabase(db);
           legal.getState().clear();
           profile.getState().reload();
@@ -126,6 +142,8 @@ export default function RootLayout() {
   // Export and deletion need a signed-in session (M17 deferred them to M01).
   const signedIn = useStore(app.session, (s) => s.status === 'signed_in');
   const privacy = useMemo(() => ({ ...app.privacy, client: signedIn ? app.privacyClient : undefined }), [app, signedIn]);
+  // M04: the encrypted photo backup needs an account; without one no backup client exists at all.
+  const progress = useMemo(() => ({ ...app.progress, backupApi: signedIn ? app.photoBackupApi : undefined }), [app, signedIn]);
   return (
     <AppProviders
       syncClient={app.syncClient}
@@ -135,6 +153,7 @@ export default function RootLayout() {
       profile={app.profile}
       legal={app.legal}
       session={app.session}
+      progress={progress}
       runSync={app.accountSync}
     >
       <StatusBar style="auto" />

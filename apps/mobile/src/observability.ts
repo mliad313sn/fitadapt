@@ -4,7 +4,7 @@
  * accepted: never pass user data, health data or free text.
  */
 export interface ErrorContext {
-  area: 'sync' | 'auth' | 'ui';
+  area: 'sync' | 'auth' | 'ui' | 'storage' | 'photos';
 }
 
 type Reporter = (error: unknown, context: ErrorContext) => void;
