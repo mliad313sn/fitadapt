@@ -8,3 +8,4 @@ export * from './session/index.js';
 export * from './config/index.js';
 export * from './program/index.js';
 export * from './recovery/index.js';
+export * from './cardio/index.js';

@@ -41,6 +41,7 @@ import { evaluateProgression } from './progression.js';
 import { fitToTime, planSeconds, type WorkExercise } from './timebox.js';
 import { applyTriggeredDeload } from '../recovery/deload.js';
 import { amberHints, buildCoolDown, buildWarmUp, type WarmupContext } from '../recovery/warmup.js';
+import { cardioBlock, programIntervalsGate } from '../cardio/session.js';
 import type { GenerateSessionInput, GenerateSessionResult, SessionSafetyEvent } from './types.js';
 
 /**
@@ -582,19 +583,37 @@ export function programSession(input: GenerateSessionInput, library: SessionLibr
     planReasons.push('session.conditioning.intervals_not_allowed');
     events.push({ invariant: 'S1', reasonCode: 'safety.s1.hiit_not_allowed', action: 'capped', engineVersion: ENGINE_VERSION });
   }
+  // M03: intervals also need ≥ 2 weeks of consistent logged training; otherwise the block is steady.
+  const historyGate = conditioning?.kind === 'intervals' ? programIntervalsGate(input, nowMs) : null;
+  if (conditioning && historyGate) {
+    conditioning = { ...conditioning, kind: 'steady' };
+    planReasons.push(historyGate);
+  }
   if (conditioning) planReasons.push(`session.conditioning.${conditioning.kind}_${conditioning.placement}`);
 
   const fit = fitToTime(triggered ? applyTriggeredDeload(work) : work, sessionValue('warmUp.minutes'), conditioning, input.minutesAvailable);
   if (!fit) return { status: 'unavailable', reasonCodes: [...new Set([...planReasons, 'session.unavailable.no_time'])] };
   if (fit.reasonCodes.length > 0) planReasons.push('session.time.trimmed', ...fit.reasonCodes);
   if (fit.exercises.length === 0 && fit.conditioning === null) return { status: 'unavailable', reasonCodes: [...new Set([...planReasons, 'session.unavailable.no_exercise'])] };
+  // M03: the conditioning block as the device runs it (protocol, movements, zones, timeline), once time-boxing has set its minutes.
+  let finalConditioning = fit.conditioning;
+  let cardio = null;
+  if (finalConditioning) {
+    const block = cardioBlock(input, library, nowMs, finalConditioning, fit.warmUpMinutes);
+    if (block) {
+      cardio = block.plan;
+      finalConditioning = block.conditioning;
+      if (block.fellBack) planReasons.push('cardio.movement.none', `session.conditioning.steady_${block.conditioning.placement}`);
+      events.push(...block.events);
+    }
+  }
 
   // Safety events for exercises that were dropped by time-boxing still happened (the engine decided them): keep them all, once each.
   // M05: what the warm-up is (general, ramp-up before the first heavy lift, mobility for today's patterns), amber-joint variant hints, and a cool-down if time is left.
   const warm: WarmupContext = { library, equipment: c.equipment, loads: c.loads, legacyStep: c.legacyStep, jointFlags: c.jointFlags, profile };
   const exercises = amberHints(warm, fit.exercises);
   const warmUp = { minutes: fit.warmUpMinutes, minimumMinutes: sessionValue('warmUp.minimumMinutes'), content: buildWarmUp(warm, exercises, fit.warmUpMinutes) };
-  const coolDown = buildCoolDown(warm, exercises, input.minutesAvailable * 60 - planSeconds({ warmUp, conditioning: fit.conditioning, exercises }));
+  const coolDown = buildCoolDown(warm, exercises, input.minutesAvailable * 60 - planSeconds({ warmUp, conditioning: finalConditioning, exercises }));
   if (coolDown) planReasons.push('cooldown.after_session');
 
   const s = stamp(ctx);
@@ -612,9 +631,10 @@ export function programSession(input: GenerateSessionInput, library: SessionLibr
     minutesAvailable: input.minutesAvailable,
     estimatedMinutes: 0,
     warmUp,
-    conditioning: fit.conditioning,
+    conditioning: finalConditioning,
     exercises,
     coolDown,
+    cardio,
     reasonCodes: [...new Set(planReasons)],
   };
   const seconds = planSeconds(draft);

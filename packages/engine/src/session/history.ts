@@ -47,7 +47,11 @@ export function buildSessionHistory(sessions: readonly WorkoutSessionRecord[], s
     // M05: a triggered-deload session does not count toward progression either (like M08 deload weeks).
     const triggeredDeload = plan.reasonCodes.some((c) => c.startsWith('session.deload.triggered.'));
     const counts = (plan.kind === 'first_session' || plan.program?.microcycleKind === 'accumulation') && ended?.kind !== 'red_flag' && !triggeredDeload;
-    return { planId: plan.planId, prescribedAt: plan.generatedAt, startedAt: record.startedAt, countsForProgression: counts, exercises: exercises.slice(0, 20) };
+    // M03: a cardio block that was run counts as logged training (the HIIT gate reads it).
+    const cardio = events.filter((e): e is Extract<ExecutionLog, { kind: 'cardio_done' }> => e.kind === 'cardio_done' && e.planId === plan.planId);
+    const entry = { planId: plan.planId, prescribedAt: plan.generatedAt, startedAt: record.startedAt, countsForProgression: counts, exercises: exercises.slice(0, 20) };
+    if (cardio.length === 0) return entry;
+    return { ...entry, cardioSeconds: Math.min(10_800, cardio.reduce((s, c) => s + c.moderateSeconds + c.vigorousSeconds, 0)) };
   });
 }
 

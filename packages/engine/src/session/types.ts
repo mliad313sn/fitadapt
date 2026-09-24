@@ -1,6 +1,8 @@
 import type {
   CalendarDateValue,
   CapacityModel,
+  CardioRequest,
+  HeartRateInfo,
   DeloadEvent,
   EquipmentId,
   EquipmentLoads,
@@ -52,7 +54,15 @@ export interface GenerateSessionInput {
   /** M05 triggered deload (recovery deloadStatus) → volume −40–50 %, no progression. */
   readonly deload?: DeloadEvent | null;
   /** M05: 'mobility_balance' → a standalone mobility and balance session. */
-  readonly mode?: 'training' | 'mobility_balance';
+  readonly mode?: 'training' | 'mobility_balance' | 'cardio';
+  /** M03: the cardio session the user chose (mode 'cardio'). */
+  readonly cardio?: CardioRequest | null;
+  /** M03: resting heart rate and its source (heart-rate-reserve zones); absent → effort and talk test. */
+  readonly heartRate?: HeartRateInfo | null;
+  /** M03: height for the BMI ≥ 35 low-impact default (with bodyweightKg). */
+  readonly heightCm?: number | null;
+  /** M03: opted up from the low-impact default (never above the SafetyProfile ceiling, never on a red joint). */
+  readonly impactOptIn?: boolean;
 }
 
 export interface SessionSafetyEvent {

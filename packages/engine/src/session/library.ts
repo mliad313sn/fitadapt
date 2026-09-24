@@ -17,6 +17,11 @@ export interface SessionLibrary extends CapacityLibrary {
   readonly bodyweightLoad?: (exerciseId: string) => number | null;
   /** M05: warm-up / cool-down drills that prepare a movement pattern (M06 content, best first). Absent → the pattern's warm_up/mobility exercises. */
   readonly warmUpDrills?: (pattern: MovementPattern) => readonly string[];
+  /** M03: steady-state modalities in order of preference, and venue swaps (e.g. step-ups ↔ stair climber); M06 seed content. Absent → none listed. */
+  readonly cardio?: {
+    readonly steady: readonly string[];
+    readonly swaps: (exerciseId: string) => readonly string[];
+  };
 }
 
 export const tagsOf = (library: SessionLibrary, id: string): readonly ExerciseTag[] => library.tags?.(id) ?? [];

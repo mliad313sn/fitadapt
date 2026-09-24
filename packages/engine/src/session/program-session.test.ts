@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { FULL_GYM, P1_HOME, profileFrom } from '../__fixtures__/library.js';
 import { GYM_ID, GYM_LOADS, HOME_ID, HOME_LOADS, SESSION_LIBRARY, programContext, slot } from '../__fixtures__/session.js';
 import { Diary, atTop, belowRange } from '../__fixtures__/simulate.js';
+import { trainedHistory } from '../__fixtures__/cardio.js';
 import { fixedClock } from '../clock.js';
 import { SESSION_RULES_VERSION } from '../config/session.js';
 import { createEngineContext } from '../context.js';
@@ -82,8 +83,12 @@ describe('program session from the M08 session of the day (ADR-015 API)', () => 
     expect(plan(gymInput({ safetyProfile: tampered })).targetRir).toBe(4);
     const impossible = SafetyProfileSchema.parse({ ...profileFrom(), maxRPE: 4.5 });
     expect(generateSession(gymInput({ safetyProfile: impossible }), SESSION_LIBRARY, ctxAt(MON))).toEqual({ status: 'unavailable', reasonCodes: ['session.unavailable.effort_cap'] });
-    // Cleared: intervals stay intervals.
-    expect(plan(gymInput({ programSession: programContext({ conditioning: { kind: 'intervals', placement: 'finisher', minutes: 10 } }) })).conditioning).toMatchObject({ kind: 'intervals' });
+    // Cleared (and, since M03, with ≥ 2 weeks of consistent logged training): intervals stay intervals.
+    expect(plan(gymInput({ history: trainedHistory(MON), programSession: programContext({ conditioning: { kind: 'intervals', placement: 'finisher', minutes: 10 } }) })).conditioning).toMatchObject({ kind: 'intervals' });
+    // M03: cleared but without two weeks of logged training, the intervals become steady and the plan says why.
+    const untrained = plan(gymInput({ programSession: programContext({ conditioning: { kind: 'intervals', placement: 'finisher', minutes: 10 } }) }));
+    expect(untrained.conditioning).toMatchObject({ kind: 'steady' });
+    expect(untrained.reasonCodes).toContain('cardio.hiit.needs_consistent_training');
   });
 
   it('S2: a red joint substitutes every exercise that loads it at medium or high level, and the plan says why', () => {
