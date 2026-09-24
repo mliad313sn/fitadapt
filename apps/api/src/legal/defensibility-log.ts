@@ -1,18 +1,20 @@
 import { randomUUID } from 'node:crypto';
 import {
+  GENESIS_HASH,
   GLOBAL_CHAIN,
   chainEvent,
   legalValue,
   sha256Hex,
   verifyChain,
+  type ChainHead,
   type ChainVerification,
   type DefensibilityEvent,
   type DefensibilityEventInput,
   type DefensibilityEventType,
 } from '@fitadapt/legal';
-import { and, asc, desc, eq, inArray, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
-import { defensibilityEvents } from '../db/schema.js';
+import { defensibilityEvents, defensibilityHeads } from '../db/schema.js';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 type Executor = Tx | Database;
@@ -57,8 +59,26 @@ export class DefensibilityLog {
     return rows.map(toEvent);
   }
 
+  /**
+   * The anchored head of a chain (PKG-01): the `defensibility_heads` row the
+   * insert trigger advances in the append transaction. A chain never written
+   * has the empty head; a purged chain has length 0 (its tombstone keeps the
+   * purged length and hash).
+   */
+  async head(chain: string, executor: Executor = this.db): Promise<ChainHead> {
+    const [row] = await executor.select().from(defensibilityHeads).where(eq(defensibilityHeads.chain, chain));
+    return row ? { length: row.length, head: row.headHash } : { length: 0, head: GENESIS_HASH };
+  }
+
+  /** Events and anchored head read from one snapshot, so a concurrent append is never mistaken for a truncation. */
+  async snapshot(chain: string): Promise<{ events: DefensibilityEvent[]; head: ChainHead }> {
+    return this.db.transaction(async (tx) => ({ events: await this.chain(chain, tx), head: await this.head(chain, tx) }), { isolationLevel: 'repeatable read', accessMode: 'read only' });
+  }
+
+  /** Verifies the chain against its anchored head: an edit, a removed middle event, a removed tail or a removed chain all fail. */
   async verify(chain: string): Promise<ChainVerification> {
-    return verifyChain(await this.chain(chain));
+    const { events, head } = await this.snapshot(chain);
+    return verifyChain(events, head);
   }
 
   /** True while the chain has a legal hold placed and not released. */
@@ -98,9 +118,9 @@ export class DefensibilityLog {
         const events = await this.chain(chain, tx);
         const head = events[events.length - 1];
         if (!head || head.occurredAt >= cutoff) return;
-        await tx.execute(sql`SET LOCAL app.defensibility_purge = 'on'`);
-        await tx.delete(defensibilityEvents).where(and(eq(defensibilityEvents.chain, chain), lt(defensibilityEvents.occurredAt, cutoff)));
-        await tx.execute(sql`SET LOCAL app.defensibility_purge = 'off'`);
+        // The only deletion path (ADR-024): the database function removes the whole chain, refuses a held or
+        // unexpired one, and the commit fails unless the retention.purged event below matches the tombstone.
+        await tx.execute(sql`SELECT defensibility_purge_chain(${chain}, ${cutoff})`);
         await this.append(tx, {
           type: 'retention.purged',
           chain: GLOBAL_CHAIN,

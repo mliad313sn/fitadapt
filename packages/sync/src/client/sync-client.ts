@@ -1,5 +1,6 @@
 import {
   MAX_MUTATIONS_PER_PUSH,
+  SyncMutationSchema,
   type Change,
   type OutboxItem,
   type PushResult,
@@ -7,8 +8,10 @@ import {
   type SyncMutation,
 } from '@fitadapt/shared';
 import { policyFor, SYNC_COLLECTIONS, type CollectionRegistry } from '../collections.js';
+import { syncValue } from '../config.js';
 import { OfflineError, SyncPolicyError } from '../errors.js';
 import type { LocalRecord, LocalStore, LocalTx } from '../local/types.js';
+import { HttpError } from '../transport/http.js';
 import type { SyncTransport } from '../transport/types.js';
 
 export interface SyncClientOptions {
@@ -20,6 +23,51 @@ export interface SyncClientOptions {
   now?: () => Date;
   /** Injected id generator; on React Native pass expo-crypto's randomUUID. */
   newId?: () => string;
+  /** Byte budget of one push request (PKG-02); defaults to syncConfig.pushBatchMaxBytes. */
+  pushBatchMaxBytes?: number;
+}
+
+/**
+ * A mutation the server refused for good (validation, safety re-check,
+ * consent, size), with the data the device had written. Its record was
+ * taken out of `get`/`list` (PKG-03); the UI tells the user.
+ */
+export interface RejectedMutation {
+  readonly mutationId: string;
+  readonly collection: string;
+  readonly recordId: string;
+  readonly op: SyncMutation['op'];
+  readonly data: RecordData | null;
+  /** The server's reason code (e.g. screening.profile_mismatch, privacy.consent_required, http_413). */
+  readonly reason: string;
+  readonly createdAt: string;
+}
+
+/** Outbox `lastError` values that are not a server rejection of the mutation itself. */
+const NOT_A_REJECTION = new Set(['conflict']);
+
+/**
+ * HTTP statuses that refuse the request itself (bad schema, too large):
+ * retrying the same batch can never succeed, so the batch is split until
+ * the offending mutation is alone, then that one is quarantined (PKG-02).
+ * 401 (sign-in), 403 (account state), 408 and 429 (transient) and 5xx are
+ * retried as before.
+ */
+const REQUEST_REJECTIONS = new Set([400, 404, 409, 413, 414, 415, 422]);
+const isRequestRejection = (error: unknown): error is HttpError => error instanceof HttpError && REQUEST_REJECTIONS.has(error.status);
+
+/** UTF-8 size of the JSON of a value (no TextEncoder on older Hermes). */
+function byteLength(value: unknown): number {
+  const json = JSON.stringify(value);
+  let bytes = 0;
+  for (let i = 0; i < json.length; i++) {
+    const c = json.charCodeAt(i);
+    if (c < 0x80) bytes += 1;
+    else if (c < 0x800) bytes += 2;
+    else if (c >= 0xd800 && c < 0xdc00) bytes += 4; // high surrogate: the pair is 4 bytes
+    else if (c < 0xdc00 || c >= 0xe000) bytes += 3; // low surrogates were counted with their pair
+  }
+  return bytes;
 }
 
 export interface PushOutcome {
@@ -40,14 +88,19 @@ export interface PullOutcome {
  * At most one mutation per record per round, in outbox order, so a later edit is
  * never sent before the earlier one is acknowledged and it can be rebased.
  */
-function nextBatch(pending: OutboxItem[]): OutboxItem[] {
+function nextBatch(pending: OutboxItem[], maxBytes: number): OutboxItem[] {
   const seen = new Set<string>();
   const batch: OutboxItem[] = [];
+  let bytes = 0;
   for (const item of pending) {
     const key = `${item.mutation.collection}/${item.mutation.recordId}`;
     if (seen.has(key)) continue;
+    // PKG-02: a byte budget as well as a count; a single larger mutation still goes alone.
+    const size = byteLength(item.mutation) + 1;
+    if (batch.length > 0 && bytes + size > maxBytes) break;
     seen.add(key);
     batch.push(item);
+    bytes += size;
     if (batch.length === MAX_MUTATIONS_PER_PUSH) break;
   }
   return batch;
@@ -73,6 +126,7 @@ export class SyncClient {
   private readonly collections: CollectionRegistry;
   private readonly now: () => Date;
   private readonly newId: () => string;
+  private readonly pushBatchMaxBytes: number;
   private running: Promise<unknown> | null = null;
 
   constructor(options: SyncClientOptions) {
@@ -82,6 +136,7 @@ export class SyncClient {
     this.collections = options.collections ?? SYNC_COLLECTIONS;
     this.now = options.now ?? (() => new Date());
     this.newId = options.newId ?? defaultNewId;
+    this.pushBatchMaxBytes = options.pushBatchMaxBytes ?? syncValue('pushBatchMaxBytes');
   }
 
   /** A fresh record id from the injected generator (a record that must name itself, ADR-023, uses it for both). */
@@ -123,6 +178,28 @@ export class SyncClient {
     return this.outbox('pending').length;
   }
 
+  /**
+   * Mutations the server rejected (not conflicts), oldest first (PKG-03). Their
+   * records no longer appear in `get`/`list`; the UI should say so.
+   */
+  rejectedMutations(): RejectedMutation[] {
+    return this.outbox('rejected')
+      .filter((item) => !NOT_A_REJECTION.has(item.lastError ?? ''))
+      .map((item) => ({
+        mutationId: item.id,
+        collection: item.mutation.collection,
+        recordId: item.mutation.recordId,
+        op: item.mutation.op,
+        data: item.mutation.data,
+        reason: item.lastError ?? 'rejected',
+        createdAt: item.createdAt,
+      }));
+  }
+
+  rejectedCount(): number {
+    return this.rejectedMutations().length;
+  }
+
   cursor(): number {
     return this.store.transaction((tx) => tx.getCursor());
   }
@@ -153,33 +230,61 @@ export class SyncClient {
   async push(): Promise<PushOutcome> {
     const outcome: PushOutcome = { offline: false, sent: 0, acked: 0, conflicts: 0, rejected: 0 };
     for (;;) {
-      const batch = this.store.transaction((tx) => nextBatch(tx.listOutbox('pending')));
+      const batch = this.store.transaction((tx) => nextBatch(tx.listOutbox('pending'), this.pushBatchMaxBytes));
       if (batch.length === 0) return outcome;
-      let results: PushResult[];
-      try {
-        ({ results } = await this.transport.push({ deviceId: this.deviceId, mutations: batch.map((i) => i.mutation) }));
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'push failed';
-        this.store.transaction((tx) => {
-          for (const item of batch) tx.updateOutbox(item.id, { attempts: item.attempts + 1, lastError: message });
-        });
-        if (error instanceof OfflineError) return { ...outcome, offline: true };
-        throw error;
-      }
-      outcome.sent += batch.length;
-      const settled = this.store.transaction((tx) => {
-        let count = 0;
-        for (const result of results) {
-          const item = batch.find((i) => i.id === result.mutationId);
-          if (!item) continue;
-          this.applyPushResult(tx, item, result, outcome);
-          count += 1;
-        }
-        return count;
-      });
+      const settled = await this.pushItems(batch, outcome);
+      if (settled === 'offline') return { ...outcome, offline: true };
       // A server that answers without settling anything would otherwise loop forever.
       if (settled === 0) return outcome;
     }
+  }
+
+  /**
+   * Sends `items` and settles the results. A request-level refusal (PKG-02)
+   * splits the items in halves, in order, until the offending mutation is
+   * alone; that one is settled as rejected (`http_<status>`) and the others
+   * go through, so one bad mutation never blocks the outbox.
+   */
+  private async pushItems(items: OutboxItem[], outcome: PushOutcome): Promise<number | 'offline'> {
+    let results: PushResult[];
+    try {
+      ({ results } = await this.transport.push({ deviceId: this.deviceId, mutations: items.map((i) => i.mutation) }));
+    } catch (error) {
+      if (isRequestRejection(error)) {
+        if (items.length === 1) {
+          outcome.sent += 1;
+          return this.settle(items, [{ mutationId: items[0]!.id, status: 'rejected', reason: `http_${error.status}` }], outcome);
+        }
+        const middle = Math.ceil(items.length / 2);
+        const first = await this.pushItems(items.slice(0, middle), outcome);
+        if (first === 'offline') return first;
+        const second = await this.pushItems(items.slice(middle), outcome);
+        // What the first half settled is already stored; the outcome keeps its counts.
+        if (second === 'offline') return second;
+        return first + second;
+      }
+      const message = error instanceof Error ? error.message : 'push failed';
+      this.store.transaction((tx) => {
+        for (const item of items) tx.updateOutbox(item.id, { attempts: item.attempts + 1, lastError: message });
+      });
+      if (error instanceof OfflineError) return 'offline';
+      throw error;
+    }
+    outcome.sent += items.length;
+    return this.settle(items, results, outcome);
+  }
+
+  private settle(items: OutboxItem[], results: PushResult[], outcome: PushOutcome): number {
+    return this.store.transaction((tx) => {
+      let count = 0;
+      for (const result of results) {
+        const item = items.find((i) => i.id === result.mutationId);
+        if (!item) continue;
+        this.applyPushResult(tx, item, result, outcome);
+        count += 1;
+      }
+      return count;
+    });
   }
 
   async pull(): Promise<PullOutcome> {
@@ -211,6 +316,13 @@ export class SyncClient {
     if (policy.appendOnly && op !== 'insert') throw new SyncPolicyError('append_only', collection);
     const timestamp = this.now().toISOString();
     const mutationId = this.newId();
+    const mutation: SyncMutation = { mutationId, collection, recordId, op, baseRevision: null, data, clientCreatedAt: timestamp };
+    // PKG-02: validate on write. A mutation the wire schema refuses (a non-UUID id, a non-object payload)
+    // would otherwise sit in the outbox, fail every push and, in SQLite, every outbox read.
+    const checked = SyncMutationSchema.safeParse(mutation);
+    if (!checked.success) {
+      throw new SyncPolicyError('invalid_mutation', `${collection}: invalid ${checked.error.issues.map((i) => i.path.join('.') || 'mutation').join(', ')}`);
+    }
 
     this.store.transaction((tx) => {
       const existing = tx.getRecord(collection, recordId);
@@ -235,15 +347,7 @@ export class SyncClient {
         attempts: 0,
         createdAt: timestamp,
         lastError: null,
-        mutation: {
-          mutationId,
-          collection,
-          recordId,
-          op,
-          baseRevision: op === 'insert' ? null : (existing?.revision ?? null),
-          data,
-          clientCreatedAt: timestamp,
-        },
+        mutation: { ...mutation, baseRevision: op === 'insert' ? null : (existing?.revision ?? null) },
       });
     });
   }
@@ -283,7 +387,11 @@ export class SyncClient {
         tx.updateOutbox(item.id, { status: 'rejected', lastError: result.reason ?? 'rejected' });
         outcome.rejected += 1;
         if (record && record.pendingMutationId === item.id) {
-          tx.putRecord({ ...record, pendingMutationId: null });
+          // PKG-03: the rejection is final, so the local effect is reversed. The record leaves get/list (its data
+          // stays in the outbox item, see rejectedMutations()), and pull restores the server's copy if there is
+          // one: the revision is cleared and the cursor moves back to just before the revision the device had.
+          tx.putRecord({ ...record, data: null, deleted: true, revision: null, pendingMutationId: null, updatedAt: this.now().toISOString() });
+          if (record.revision !== null) tx.setCursor(Math.min(tx.getCursor(), record.revision - 1));
         }
         return;
       }

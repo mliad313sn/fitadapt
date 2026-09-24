@@ -10,10 +10,15 @@
  *    through. Tests run it over captured log output and analytics events and
  *    fail on any finding.
  *
- * Detection is by key name (e.g. `email`, `weightKg`, `painScore`, `note`) and
- * by value pattern (email addresses, weights with a unit, pain wording or
- * "n/10" scores, capitalised full names, free-text sentences, bearer tokens,
- * phone numbers in international format, IPv4 addresses).
+ * Detection is by key name (e.g. `email`, `weightKg`, `painScore`, `note`,
+ * any key ending in `name`) and by value pattern (email addresses, also
+ * percent-encoded or with an internationalised domain; weights with a unit;
+ * pain wording or "n/10" scores; capitalised full names, also hyphenated,
+ * with an apostrophe, in capitals or followed by punctuation, and runs of
+ * such names inside sentences and developer messages; free-text sentences;
+ * bearer tokens, JWTs and common API key prefixes; phone numbers in
+ * international or French national format; IPv4 and IPv6 addresses).
+ * PKG-04 widened each of these.
  */
 export type PersonalDataCategory = 'email' | 'name' | 'weight' | 'pain' | 'free_text' | 'secret' | 'phone' | 'ip';
 
@@ -29,7 +34,8 @@ export const REDACTED = '[redacted]';
 
 const KEY_RULES: ReadonlyArray<readonly [RegExp, PersonalDataCategory]> = [
   [/e[-_]?mail|courriel/i, 'email'],
-  [/^(?:first|last|full|given|family|display|nick|user|real|legal|middle|sur|pre)?[-_]?(?:name|nom|prenom|prénom)$/i, 'name'],
+  // PKG-04: any key ending in name / nom / prénom (ownerName, partnerName, guest_nom…); technical names are allowlisted below.
+  [/(?:name|nom|prenom|prénom)$/i, 'name'],
   [/weight|body[-_]?mass|\bbmi\b|^bmi|kilos?$|kg$|lbs?$|pounds|poids/i, 'weight'],
   [/pain|symptom|injur|douleur|blessure/i, 'pain'],
   [/note|comment|message|free[-_]?text|description|reply|prompt|answer|feedback|^bio$|^text$|^content$|^body$|transcript/i, 'free_text'],
@@ -38,6 +44,56 @@ const KEY_RULES: ReadonlyArray<readonly [RegExp, PersonalDataCategory]> = [
   [/^ip$|ip[-_]?addr|remote[-_]?addr|^ips$/i, 'ip'],
 ];
 
+/**
+ * Keys that end in "name" but hold a technical identifier, never a person's
+ * name. Compared in lower case without '-' and '_'. A device name ("Jeanne's
+ * phone"), a display name or a user name is personal and is NOT listed.
+ */
+const TECHNICAL_NAME_KEYS: ReadonlySet<string> = new Set([
+  'eventname',
+  'routename',
+  'screenname',
+  'filename',
+  'hostname',
+  'pathname',
+  'typename',
+  'classname',
+  'tablename',
+  'columnname',
+  'fieldname',
+  'keyname',
+  'metricname',
+  'servicename',
+  'appname',
+  'packagename',
+  'modulename',
+  'functionname',
+  'methodname',
+  'rulename',
+  'tagname',
+  'queuename',
+  'jobname',
+  'stepname',
+  'featurename',
+  'flagname',
+  'experimentname',
+  'testname',
+  'suitename',
+  'exercisename',
+  'templatename',
+  'collectionname',
+  'schemaname',
+  'indexname',
+  'constraintname',
+  'channelname',
+  'platformname',
+  'osname',
+  'browsername',
+  'errorname',
+  'buildname',
+  'bundlename',
+]);
+
 // Every pattern below runs on untrusted input (log values, analytics props), so
 // each has a star height of 1 (no nested quantifiers) to rule out catastrophic
 // backtracking (ReDoS). Names and sentences are recognised by tokenising instead.
@@ -45,29 +101,120 @@ const KEY_RULES: ReadonlyArray<readonly [RegExp, PersonalDataCategory]> = [
 // (local part ≤ 64, domain ≤ 255 characters), which keeps the scan linear.
 const LOCAL_PART_MAX = 64;
 const DOMAIN_MAX = 255;
-const LOCAL_CHAR = /[A-Z0-9._%+-]/i;
-const DOMAIN_AT_START = /^[A-Z0-9-][A-Z0-9.-]{0,252}\.[A-Z]{2,24}/i;
+// Letters and digits of any script: internationalised local parts and domains (PKG-04).
+const LOCAL_CHAR = /[\p{L}\p{N}._%+-]/u;
+const DOMAIN_AT_START = /^[\p{L}\p{N}-][\p{L}\p{N}.-]{0,252}\.\p{L}{2,24}/u;
+/** "@", its fullwidth form, and "%40" (an address inside a URL or query string). */
+const AT_SIGNS = /@|＠|%40/gi;
 const JWT = /\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g;
 const BEARER = /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi;
-const WEIGHT = /\b\d{1,3}[.,]?\d{0,3}\s?(?:kgs?|kilos?|kilogrammes?|kilograms?|lbs?|pounds?|livres?)\b/gi;
+/** Common API key and token prefixes: sk-… keys, GitHub tokens, Slack tokens, AWS access key ids. */
+const KEY_PREFIX = /\b(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|xox[abprs]-[A-Za-z0-9-]{10,}|AKIA[0-9A-Z]{16})/g;
+const WEIGHT = /\b\d{1,3}[.,]?\d{0,3}\s{0,3}(?:kgs?|kilos?|kilogrammes?|kilograms?|lbs?|pounds?|livres?)\b/gi;
 const PHONE = /\+\d[\d\s.-]{7,18}\d\b/g;
+/** French national format: 06 12 34 56 78, 06.12.34.56.78, 0612345678 (PKG-04). */
+const PHONE_FR = /(?<![\d.-])0[1-9](?:[ .-]?\d\d)(?:[ .-]?\d\d)(?:[ .-]?\d\d)(?:[ .-]?\d\d)(?![\d-]|\.\d)/g;
 const IPV4 = /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g;
+/** IPv6 candidates (hex digits and colons); each one is confirmed by `isIpv6`. */
+const IPV6_CANDIDATE = /(?<![\w:])[0-9A-Fa-f:]{2,39}(?![\w:])/g;
+const HEX_GROUP = /^[0-9A-Fa-f]{1,4}$/;
 const PAIN = /\b(?:pain|painful|hurts?|hurting|ache|aching|sore|douleurs?|douloureux|douloureuse|mal au|mal aux|mal à la|mal a la|mal à l'|mal au niveau)\b|\b(?:10|\d)\s?\/\s?10\b/i;
-const NAME_WORD = /^\p{Lu}[\p{Ll}'’-]+$/u;
 const WORD = /^\p{L}{2,}$/u;
 const SEPARATORS = /[\s,;:!?.'’]+/u;
 
-/** [start, end) ranges of email addresses in `value`. */
+/** Name parts: "Jeanne", "O" (of O'Brien), "McDonald", all capitals ("TESTEUR"). */
+const NAME_PART = /^\p{Lu}\p{Ll}*$/u;
+const NAME_PART_INNER_CAPITAL = /^\p{Lu}\p{Ll}+\p{Lu}\p{Ll}+$/u;
+const NAME_PART_CAPITALS = /^\p{Lu}{2,}$/u;
+const NAME_TAIL = /^\p{Lu}?\p{Ll}+$/u;
+const LEADING_PUNCTUATION = /^[("«“‘']+/u;
+const TRAILING_PUNCTUATION = /[)"»”’',.;:!?]+$/u;
+const ENDS_A_NAME = /[,.;:!?)]$/u;
+const NAME_JOINERS = /[-'’]/u;
+
+/**
+ * One capitalised name word, tokenised rather than matched by one nested
+ * regex (ReDoS): hyphenated (Marie-Claire), with an apostrophe (O'Brien,
+ * D’Artagnan), with an inner capital (McDonald), in capitals (TESTEUR,
+ * MARIE-CLAIRE), with edge punctuation stripped ("Testeur," "(Jeanne").
+ * A single all-capitals word alone (an acronym such as "GET") is not a name
+ * word unless it is part of a run with another name word (see `nameRuns`).
+ */
+function nameWordKind(raw: string): 'word' | 'capitals' | null {
+  const token = raw.replace(LEADING_PUNCTUATION, '').replace(TRAILING_PUNCTUATION, '');
+  if (token.length < 2) return null;
+  const parts = token.split(NAME_JOINERS);
+  if (parts.length > 4 || parts.some((p) => p === '')) return null;
+  if (parts.every((p) => NAME_PART_CAPITALS.test(p))) return 'capitals';
+  const [first, ...rest] = parts as [string, ...string[]];
+  if (!NAME_PART.test(first) && !NAME_PART_INNER_CAPITAL.test(first)) return null;
+  if (rest.length === 0) return first.length >= 2 ? 'word' : null;
+  return rest.every((p) => NAME_TAIL.test(p) || NAME_PART.test(p)) ? 'word' : null;
+}
+
+/**
+ * A sequence of name words reads as a person's name unless it is made only of
+ * all-capitals words and one of them is shorter than 4 letters: "JEANNE
+ * TESTEUR" is a name, "HTTP GET" and "S3 BLOCK" are not.
+ */
+function plausibleName(words: readonly string[]): boolean {
+  if (words.length < 2) return false;
+  const kinds = words.map(nameWordKind);
+  if (kinds.some((k) => k === null)) return false;
+  return kinds.some((k) => k === 'word') || words.every((w) => w.replace(LEADING_PUNCTUATION, '').replace(TRAILING_PUNCTUATION, '').length >= 4);
+}
+
+/** [start, end) ranges of runs of two or more name words in free text ("invite sent to Jeanne Testeur"), ending at punctuation. */
+function nameRuns(value: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = [];
+  const words = [...value.matchAll(/\S+/gu)];
+  let run: RegExpMatchArray[] = [];
+  const close = () => {
+    if (plausibleName(run.map((w) => w[0]))) {
+      const last = run[run.length - 1]!;
+      ranges.push([run[0]!.index!, last.index! + last[0].length]);
+    }
+    run = [];
+  };
+  for (const w of words) {
+    if (nameWordKind(w[0]) === null) {
+      close();
+      continue;
+    }
+    run.push(w);
+    if (ENDS_A_NAME.test(w[0])) close();
+  }
+  close();
+  return ranges;
+}
+
+/** [start, end) ranges of email addresses in `value`, around "@", "＠" or "%40". */
 function emailRanges(value: string): Array<[number, number]> {
   const ranges: Array<[number, number]> = [];
-  let at = value.indexOf('@');
-  while (at !== -1) {
+  for (const sign of value.matchAll(reset(AT_SIGNS))) {
+    const at = sign.index;
+    const after = at + sign[0].length;
     let start = at;
     while (start > 0 && at - start < LOCAL_PART_MAX && LOCAL_CHAR.test(value.charAt(start - 1))) start -= 1;
-    const domain = DOMAIN_AT_START.exec(value.slice(at + 1, at + 1 + DOMAIN_MAX));
-    if (start < at && domain) ranges.push([start, at + 1 + domain[0].length]);
-    at = value.indexOf('@', at + 1);
+    const domain = DOMAIN_AT_START.exec(value.slice(after, after + DOMAIN_MAX));
+    if (start < at && domain) ranges.push([start, after + domain[0].length]);
   }
+  return ranges;
+}
+
+/** An IPv6 address: 8 groups, or fewer around one "::"; each group 1–4 hex digits. Times ("12:30:45") have no "::" and 3 groups. */
+function isIpv6(candidate: string): boolean {
+  const compressed = candidate.indexOf('::');
+  if (compressed !== candidate.lastIndexOf('::')) return false;
+  const groups = candidate.split(':');
+  if (compressed === -1) return groups.length === 8 && groups.every((g) => HEX_GROUP.test(g));
+  const filled = groups.filter((g) => g !== '');
+  return groups.length >= 3 && filled.length <= 7 && filled.every((g) => HEX_GROUP.test(g));
+}
+
+function ipv6Ranges(value: string): Array<[number, number]> {
+  const ranges: Array<[number, number]> = [];
+  for (const m of value.matchAll(reset(IPV6_CANDIDATE))) if (isIpv6(m[0])) ranges.push([m.index, m.index + m[0].length]);
   return ranges;
 }
 
@@ -82,10 +229,10 @@ function replaceRanges(value: string, ranges: Array<[number, number]>, replaceme
   return out + value.slice(cursor);
 }
 
-/** Two or more capitalised words and nothing else, e.g. "Jeanne Testeur". */
+/** Two to six name words and nothing else, e.g. "Jeanne Testeur", "Marie-Claire DUPONT,", "Siobhan O'Brien". */
 function isFullName(value: string): boolean {
   const parts = value.trim().split(/\s+/);
-  return parts.length >= 2 && parts.every((p) => NAME_WORD.test(p));
+  return parts.length <= 6 && plausibleName(parts);
 }
 
 /** Three or more consecutive words: a sentence someone typed rather than a code or an identifier. */
@@ -99,43 +246,54 @@ function isFreeText(value: string): boolean {
 }
 
 function keyCategory(key: string): PersonalDataCategory | undefined {
-  for (const [pattern, category] of KEY_RULES) if (pattern.test(key)) return category;
+  for (const [pattern, category] of KEY_RULES) {
+    if (!pattern.test(key)) continue;
+    if (category === 'name' && TECHNICAL_NAME_KEYS.has(key.toLowerCase().replace(/[-_]/g, ''))) continue;
+    return category;
+  }
   return undefined;
 }
 
-const reset = (re: RegExp) => {
+function reset(re: RegExp): RegExp {
   re.lastIndex = 0;
   return re;
-};
+}
 
 /** Categories a single string value matches (value patterns only). */
 export function valueCategories(value: string, options: { allowSentences?: boolean } = {}): PersonalDataCategory[] {
   const found = new Set<PersonalDataCategory>();
   if (emailRanges(value).length > 0) found.add('email');
-  if (reset(JWT).test(value) || reset(BEARER).test(value)) found.add('secret');
+  if (reset(JWT).test(value) || reset(BEARER).test(value) || reset(KEY_PREFIX).test(value)) found.add('secret');
   if (reset(WEIGHT).test(value)) found.add('weight');
-  if (reset(PHONE).test(value)) found.add('phone');
-  if (reset(IPV4).test(value)) found.add('ip');
+  if (reset(PHONE).test(value) || reset(PHONE_FR).test(value)) found.add('phone');
+  if (reset(IPV4).test(value) || ipv6Ranges(value).length > 0) found.add('ip');
   if (PAIN.test(value)) found.add('pain');
   if (!options.allowSentences) {
     if (isFullName(value)) found.add('name');
     else if (isFreeText(value)) found.add('free_text');
   }
+  // Names inside a sentence or a developer message ("pair with Jeanne Testeur"), PKG-04.
+  if (!found.has('name') && nameRuns(value).length > 0) found.add('name');
   return [...found];
 }
 
 /**
  * Redacts recognisable personal data inside a developer-written message
  * (e.g. a log message string). Sentences are allowed here: log messages are
- * constant text written by developers, but interpolated values are redacted.
+ * constant text written by developers, but interpolated values (including a
+ * run of capitalised names) are redacted.
  */
 export function scrubText(text: string): string {
   let out = replaceRanges(text, emailRanges(text), REDACTED)
     .replace(reset(JWT), REDACTED)
     .replace(reset(BEARER), REDACTED)
+    .replace(reset(KEY_PREFIX), REDACTED)
     .replace(reset(WEIGHT), REDACTED)
     .replace(reset(PHONE), REDACTED)
+    .replace(reset(PHONE_FR), REDACTED)
     .replace(reset(IPV4), REDACTED);
+  out = replaceRanges(out, ipv6Ranges(out), REDACTED);
+  out = replaceRanges(out, nameRuns(out), REDACTED);
   if (PAIN.test(out)) out = REDACTED;
   return out;
 }
@@ -192,8 +350,8 @@ export function scrubLogRecord(record: Record<string, unknown>, options: ScrubOp
 export interface DetectOptions {
   /**
    * Keys whose string values are developer-written sentences (the log `msg`).
-   * They are still checked for emails, weights, pain wording, phones, IPs and
-   * tokens, but not for sentence shape.
+   * They are still checked for emails, weights, pain wording, phones, IPs,
+   * tokens and runs of capitalised names, but not for sentence shape.
    */
   readonly messageKeys?: readonly string[];
 }

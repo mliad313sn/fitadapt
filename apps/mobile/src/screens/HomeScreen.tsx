@@ -34,7 +34,7 @@ export interface HomeScreenProps {
 export function HomeScreen({ onOpenPrivacy, onOpenLibrary, onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, onOpenCalendar, onOpenWorkout, onOpenPair, onOpenProgress, onOpenNutrition, onReviewLegal, onRescreen, onOpenEquipment, onSignIn }: HomeScreenProps = {}) {
   const theme = useTheme();
   const { t, locale, setLocale, unitSystem, setUnitSystem } = useI18n();
-  const { pendingCount } = useSync();
+  const { pendingCount, rejectedCount } = useSync();
   const gymMode = useSettings((s) => s.gymMode);
   const toggleGymMode = useSettings((s) => s.toggleGymMode);
 
@@ -53,6 +53,11 @@ export function HomeScreen({ onOpenPrivacy, onOpenLibrary, onStartOnboarding, on
           <Text accessibilityLiveRegion="polite" style={{ color: theme.colors.textMuted, fontSize: theme.fontSize.label }} testID="sync-status">
             {t('home.syncStatus', { count: pendingCount })}
           </Text>
+          {rejectedCount > 0 ? (
+            <Text accessibilityLiveRegion="polite" style={{ color: theme.colors.text, fontSize: theme.fontSize.label }} testID="sync-rejected">
+              {t('home.syncRejected', { count: rejectedCount })}
+            </Text>
+          ) : null}
         </Card>
 
         <Button

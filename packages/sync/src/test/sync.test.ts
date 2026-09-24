@@ -213,7 +213,11 @@ describe('sync client edge cases', () => {
     const outcome = await a.client.push();
     expect(outcome.rejected).toBe(1);
     expect(a.client.outbox('rejected')[0]?.lastError).toBe('record_exists');
-    expect(a.client.get('set_logs', recordId)?.pendingMutationId).toBeNull();
+    // PKG-03: the rejected insert is reversed on the device and reported; pull then brings the server's record.
+    expect(a.client.get('set_logs', recordId)).toBeUndefined();
+    expect(a.client.rejectedMutations()).toMatchObject([{ recordId, collection: 'set_logs', reason: 'record_exists', data: { x: 2 } }]);
+    await a.client.pull();
+    expect(a.client.get('set_logs', recordId)).toMatchObject({ data: { x: 1 }, pendingMutationId: null });
   });
 
   it('a conflicting insert on a record deleted server-side keeps the server state', async () => {
@@ -315,27 +319,28 @@ describe.each(kinds)('local key/value state — %s', (kind) => {
 describe('M01 collections and server-side validation', () => {
   it('registers profile and equipment profiles as mutable and screenings as append-only', async () => {
     const { SYNC_COLLECTIONS } = await import('../index.js');
-    expect(SYNC_COLLECTIONS.profile).toEqual({ appendOnly: false });
-    expect(SYNC_COLLECTIONS.equipment_profiles).toEqual({ appendOnly: false });
-    expect(SYNC_COLLECTIONS.screenings).toEqual({ appendOnly: true });
+    const shared = await import('@fitadapt/shared');
+    expect(SYNC_COLLECTIONS.profile).toEqual({ appendOnly: false, schema: shared.ProfileSchema });
+    expect(SYNC_COLLECTIONS.equipment_profiles).toEqual({ appendOnly: false, schema: shared.EquipmentProfileSchema });
+    expect(SYNC_COLLECTIONS.screenings).toEqual({ appendOnly: true, schema: shared.ScreeningRecordSchema });
     // M07: assessments are append-only too.
-    expect(SYNC_COLLECTIONS.assessments).toEqual({ appendOnly: true });
+    expect(SYNC_COLLECTIONS.assessments).toEqual({ appendOnly: true, schema: shared.AssessmentRecordSchema });
     // M08: programs and reflows are append-only too.
-    expect(SYNC_COLLECTIONS.programs).toEqual({ appendOnly: true });
-    expect(SYNC_COLLECTIONS.program_reflows).toEqual({ appendOnly: true });
+    expect(SYNC_COLLECTIONS.programs).toEqual({ appendOnly: true, schema: shared.ProgramRecordSchema });
+    expect(SYNC_COLLECTIONS.program_reflows).toEqual({ appendOnly: true, schema: shared.ReflowRecordSchema });
     // M02: started sessions and execution events are append-only too.
-    expect(SYNC_COLLECTIONS.workout_sessions).toEqual({ appendOnly: true });
-    expect(SYNC_COLLECTIONS.execution_logs).toEqual({ appendOnly: true });
+    expect(SYNC_COLLECTIONS.workout_sessions).toEqual({ appendOnly: true, schema: shared.WorkoutSessionRecordSchema });
+    expect(SYNC_COLLECTIONS.execution_logs).toEqual({ appendOnly: true, schema: shared.ExecutionLogSchema });
     // M05: readiness checks are append-only too.
-    expect(SYNC_COLLECTIONS.readiness_checks).toEqual({ appendOnly: true });
+    expect(SYNC_COLLECTIONS.readiness_checks).toEqual({ appendOnly: true, schema: shared.ReadinessCheckSchema });
     // M04: body metrics and measurements are append-only too; progress photos are not a sync collection.
-    expect(SYNC_COLLECTIONS.body_metrics).toEqual({ appendOnly: true });
-    expect(SYNC_COLLECTIONS.measurements).toEqual({ appendOnly: true });
+    expect(SYNC_COLLECTIONS.body_metrics).toEqual({ appendOnly: true, schema: shared.BodyMetricSchema });
+    expect(SYNC_COLLECTIONS.measurements).toEqual({ appendOnly: true, schema: shared.MeasurementSchema });
     expect(Object.keys(SYNC_COLLECTIONS).some((c) => c.includes('photo'))).toBe(false);
     // M10: nutrition plans, intake logs and habit ticks are append-only too.
-    expect(SYNC_COLLECTIONS.nutrition_plans).toEqual({ appendOnly: true });
-    expect(SYNC_COLLECTIONS.intake_logs).toEqual({ appendOnly: true });
-    expect(SYNC_COLLECTIONS.habit_checks).toEqual({ appendOnly: true });
+    expect(SYNC_COLLECTIONS.nutrition_plans).toEqual({ appendOnly: true, schema: shared.NutritionPlanRecordSchema });
+    expect(SYNC_COLLECTIONS.intake_logs).toEqual({ appendOnly: true, schema: shared.IntakeLogSchema });
+    expect(SYNC_COLLECTIONS.habit_checks).toEqual({ appendOnly: true, schema: shared.HabitCheckSchema });
   });
 
   it('rejects a mutation the validator refuses, finally, and reports applied ones to the listener', async () => {

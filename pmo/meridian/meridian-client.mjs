@@ -23,7 +23,39 @@ export const BASE = (process.env.MERIDIAN_URL ?? "http://localhost:4173").replac
 export const INTEGRATION_NAME = "FitAdapt repository sync";
 const SCOPES = "read:meetings,read:portfolio,write:meetings,write:portfolio";
 
+const isLoopback = (host) => /^localhost$/i.test(host) || host === "[::1]" || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
+
+/**
+ * PKG-14: the administrator password, the session cookie and the integration
+ * key go to MERIDIAN_URL, so it must be https — plain http only for a
+ * loopback host (a Meridian running on this machine). Returns the reason a
+ * URL is refused, or null.
+ */
+export function baseUrlProblem(url) {
+  let u;
+  try { u = new URL(url); } catch { return `MERIDIAN_URL "${url}" is not a URL`; }
+  if (u.username || u.password) return "MERIDIAN_URL must not carry credentials";
+  if (u.protocol === "https:") return null;
+  if (u.protocol === "http:" && isLoopback(u.hostname)) return null;
+  return `MERIDIAN_URL must use https (plain http only for localhost): refusing to send credentials to ${u.protocol}//${u.host}`;
+}
+
+/**
+ * PKG-14: drive.mjs imports and runs Meridian's engine from MERIDIAN_HOME, so
+ * that checkout must be the server's version. A mismatch is refused unless
+ * the operator passes --allow-meridian-version-mismatch (or
+ * MERIDIAN_ALLOW_VERSION_MISMATCH=1). Returns the reason, or null.
+ */
+export function meridianHomeProblem(home, homeVersion, serverVersion, allowMismatch) {
+  if (homeVersion === serverVersion) return null;
+  if (allowMismatch) return null;
+  return `${home} is Meridian ${homeVersion ?? "(no package.json)"}, the server is ${serverVersion}: refusing to run its engine. ` +
+    "Check out the server's version there, or pass --allow-meridian-version-mismatch (or MERIDIAN_ALLOW_VERSION_MISMATCH=1) to accept the difference.";
+}
+
 async function request(method, path, body, headers = {}) {
+  const problem = baseUrlProblem(BASE);
+  if (problem) throw new Error(problem);
   const res = await fetch(BASE + path, {
     method,
     headers: { ...(body !== undefined ? { "content-type": "application/json" } : {}), ...headers },

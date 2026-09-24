@@ -31,6 +31,12 @@ export interface SyncServerOptions<TTx extends ServerTx = ServerTx> {
   collections?: CollectionRegistry;
   validate?: MutationValidator;
   onApplied?: MutationListener<TTx>;
+  /**
+   * PKG-06: parse each mutation's `data` against its collection's schema
+   * before the domain validator, rejecting `<collection>.invalid`. Off by
+   * default until the API turns it on (its fixtures push free-form data).
+   */
+  enforceCollectionSchemas?: boolean;
 }
 
 /**
@@ -42,12 +48,14 @@ export class SyncServer<TTx extends ServerTx = ServerTx> {
   private readonly collections: CollectionRegistry;
   private readonly validate?: MutationValidator;
   private readonly onApplied?: MutationListener<TTx>;
+  private readonly enforceCollectionSchemas: boolean;
 
-  constructor({ store, collections = SYNC_COLLECTIONS, validate, onApplied }: SyncServerOptions<TTx>) {
+  constructor({ store, collections = SYNC_COLLECTIONS, validate, onApplied, enforceCollectionSchemas = false }: SyncServerOptions<TTx>) {
     this.store = store;
     this.collections = collections;
     this.validate = validate;
     this.onApplied = onApplied;
+    this.enforceCollectionSchemas = enforceCollectionSchemas;
   }
 
   async push(userId: string, input: unknown): Promise<PushResponse> {
@@ -93,6 +101,9 @@ export class SyncServer<TTx extends ServerTx = ServerTx> {
     }
     if (m.op !== 'delete' && m.data === null) {
       return { mutationId: m.mutationId, status: 'rejected', reason: 'missing_data' };
+    }
+    if (this.enforceCollectionSchemas && m.op !== 'delete' && !policy.schema.safeParse(m.data).success) {
+      return { mutationId: m.mutationId, status: 'rejected', reason: `${m.collection}.invalid` };
     }
     const invalid = this.validate ? await this.validate(userId, m) : null;
     if (invalid !== null) {

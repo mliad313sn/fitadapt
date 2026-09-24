@@ -10,12 +10,16 @@
  * - no raw HTML injection in React (dangerouslySetInnerHTML).
  * Scope: shipped code and build scripts; tests and test-runner configs are out
  * of scope (they never run in production). A justified inline suppression
- * (`-- reason`) is the only way to accept a finding.
+ * (rule names, then `-- reason`) is the only way to accept a finding; a
+ * directive without rule names or without a reason, or an inline rule
+ * configuration comment, is itself an error that no directive can silence
+ * (PKG-09, lib/directives.mjs).
  */
 import { defineConfig } from 'eslint/config';
 import security from 'eslint-plugin-security';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import { suppressionProcessor } from './lib/directives.mjs';
 
 /** @type {import('eslint').Linter.RulesRecord} */
 export const securityRules = {
@@ -70,7 +74,10 @@ export default defineConfig(
       // Declared so rules such as no-implied-eval recognise setTimeout, setInterval, etc.
       globals: { ...globals.node, ...globals.browser },
     },
+    // Unused directives are the main lint's concern (it knows every rule); here a directive for a
+    // rule this config does not enable would always look unused.
     linterOptions: { reportUnusedDisableDirectives: 'off' },
+    processor: suppressionProcessor(),
     // typescript-eslint is registered so existing disable comments for its rules resolve.
     plugins: { security, '@typescript-eslint': tseslint.plugin },
     rules: securityRules,

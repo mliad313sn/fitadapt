@@ -57,9 +57,11 @@ export default defineConfig(
   },
   // CLAUDE.md rule 5: no user-facing string outside packages/i18n.
   // Test files are not shipped UI; they may use literal fixture labels.
+  // PKG-15: app .ts files too (hooks, stores, notification and dialog helpers): there the rule checks
+  // Alert.alert / ToastAndroid / setOptions / notification content; JSX checks never fire in .ts.
   {
-    files: ['**/*.tsx', '**/*.jsx'],
-    ignores: ['**/*.test.tsx', '**/*.test.jsx', '**/test-utils.tsx', '**/__tests__/**'],
+    files: ['**/*.tsx', '**/*.jsx', 'apps/mobile/src/**/*.ts', 'apps/mobile/app/**/*.ts', 'apps/coach-web/**/*.ts', 'packages/ui/src/**/*.ts'],
+    ignores: ['**/*.test.tsx', '**/*.test.jsx', '**/*.test.ts', '**/test-utils.tsx', '**/__tests__/**', '**/*.d.ts'],
     plugins: { fitadapt },
     rules: { 'fitadapt/no-hardcoded-jsx-strings': 'error' },
   },

@@ -1,4 +1,5 @@
 export * from './collections.js';
+export * from './config.js';
 export * from './errors.js';
 export * from './local/types.js';
 export * from './local/memory-store.js';

@@ -126,10 +126,27 @@ export interface DefensibilityEvent extends DefensibilityEventInput {
   readonly hash: string;
 }
 
+/** Own keys only: a tampered type such as 'constructor' or 'toString' is unknown, never a prototype member (PKG-10). */
+export function isDefensibilityEventType(type: unknown): type is DefensibilityEventType {
+  return typeof type === 'string' && Object.hasOwn(DefensibilityPayloads, type);
+}
+
 export function parsePayload<T extends DefensibilityEventType>(type: T, payload: unknown): DefensibilityPayload<T> {
-  const schema = DefensibilityPayloads[type];
-  if (!schema) throw new Error(`unknown defensibility event type ${String(type)}`);
-  return schema.parse(payload) as DefensibilityPayload<T>;
+  if (!isDefensibilityEventType(type)) throw new Error(`unknown defensibility event type ${String(type)}`);
+  return DefensibilityPayloads[type].parse(payload) as DefensibilityPayload<T>;
+}
+
+/**
+ * The only accepted form of `occurredAt`: ISO 8601 in UTC with a `Z`, as
+ * `Date.prototype.toISOString()` writes it (milliseconds optional). Retention
+ * compares `occurred_at` as text, which orders correctly only for this form (PKG-11).
+ */
+const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|\.\d{3}Z)$/;
+export function isCanonicalTimestamp(value: unknown): value is string {
+  if (typeof value !== 'string' || !ISO_UTC.test(value)) return false;
+  const ms = Date.parse(value);
+  // Rejects impossible dates (2026-02-30) that Date.parse would roll over.
+  return !Number.isNaN(ms) && new Date(ms).toISOString().slice(0, 19) === value.slice(0, 19);
 }
 
 export function eventHash(e: Omit<DefensibilityEvent, 'hash'>): string {
@@ -141,27 +158,61 @@ export function eventHash(e: Omit<DefensibilityEvent, 'hash'>): string {
 /** Builds the next event of a chain. `previous` is the chain's current head (undefined for a new chain). */
 export function chainEvent(previous: DefensibilityEvent | undefined, input: DefensibilityEventInput, id: string): DefensibilityEvent {
   if (previous && previous.chain !== input.chain) throw new Error('previous event belongs to another chain');
-  if (Number.isNaN(Date.parse(input.occurredAt))) throw new Error('occurredAt is not a timestamp');
+  if (!isCanonicalTimestamp(input.occurredAt)) throw new Error('occurredAt is not an ISO 8601 UTC timestamp (YYYY-MM-DDTHH:mm:ss[.sss]Z)');
   const payload = parsePayload(input.type, input.payload);
   const base = { id, chain: input.chain, chainSeq: (previous?.chainSeq ?? 0) + 1, type: input.type, occurredAt: input.occurredAt, payload, prevHash: previous?.hash ?? GENESIS_HASH };
   return { ...base, hash: eventHash(base) };
 }
 
+export type ChainBreak =
+  | 'hash_mismatch'
+  | 'link_mismatch'
+  | 'sequence_gap'
+  | 'chain_mismatch'
+  | 'invalid_payload'
+  | 'invalid_timestamp'
+  /** Fewer events than the anchored head records: the end of the chain, or all of it, was removed (PKG-01). */
+  | 'truncated'
+  /** As many events as the anchor records, or more, but the last hash differs from the anchored head. */
+  | 'head_mismatch';
+
 export type ChainVerification =
   | { readonly ok: true; readonly length: number; readonly head: string }
-  | { readonly ok: false; readonly brokenAt: number; readonly reason: 'hash_mismatch' | 'link_mismatch' | 'sequence_gap' | 'chain_mismatch' | 'invalid_payload' };
+  | { readonly ok: false; readonly brokenAt: number; readonly reason: ChainBreak };
 
-/** Verifies one chain given in chain order. Detects edited, removed, inserted or reordered events. */
-export function verifyChain(events: readonly DefensibilityEvent[]): ChainVerification {
+/**
+ * The anchored head of a chain (length and last hash), kept apart from the
+ * events: in PostgreSQL the `defensibility_heads` row maintained by trigger
+ * in the append transaction (ADR-009 amended by ADR-024). A chain can only
+ * be proven complete against it; without it, any prefix of a valid chain
+ * verifies.
+ */
+export interface ChainHead {
+  readonly length: number;
+  readonly head: string;
+}
+
+/**
+ * Verifies one chain given in chain order. Detects edited, inserted or
+ * reordered events, and removed events in the middle. With `expected` (the
+ * anchored head) it also detects removal of the end of the chain or of the
+ * whole chain; `verifyChain(events)` alone cannot.
+ */
+export function verifyChain(events: readonly DefensibilityEvent[], expected?: ChainHead): ChainVerification {
   let prev = GENESIS_HASH;
   for (let i = 0; i < events.length; i++) {
     const e = events[i]!;
     if (e.chain !== events[0]!.chain) return { ok: false, brokenAt: i, reason: 'chain_mismatch' };
     if (e.chainSeq !== i + 1) return { ok: false, brokenAt: i, reason: 'sequence_gap' };
     if (e.prevHash !== prev) return { ok: false, brokenAt: i, reason: 'link_mismatch' };
-    if (!(e.type in DefensibilityPayloads) || !DefensibilityPayloads[e.type].safeParse(e.payload).success) return { ok: false, brokenAt: i, reason: 'invalid_payload' };
+    if (!isDefensibilityEventType(e.type) || !DefensibilityPayloads[e.type].safeParse(e.payload).success) return { ok: false, brokenAt: i, reason: 'invalid_payload' };
+    if (!isCanonicalTimestamp(e.occurredAt)) return { ok: false, brokenAt: i, reason: 'invalid_timestamp' };
     if (eventHash(e) !== e.hash) return { ok: false, brokenAt: i, reason: 'hash_mismatch' };
     prev = e.hash;
+  }
+  if (expected) {
+    if (events.length < expected.length) return { ok: false, brokenAt: events.length, reason: 'truncated' };
+    if (events.length > expected.length || prev !== expected.head) return { ok: false, brokenAt: Math.min(events.length, expected.length) - 1, reason: 'head_mismatch' };
   }
   return { ok: true, length: events.length, head: prev };
 }
@@ -169,19 +220,25 @@ export function verifyChain(events: readonly DefensibilityEvent[]): ChainVerific
 /** In-memory log (device-side buffer and tests). The API keeps the durable log in PostgreSQL. */
 export class MemoryDefensibilityLog {
   private readonly chains = new Map<string, DefensibilityEvent[]>();
+  /** Anchored heads, kept apart from the events as in PostgreSQL (`defensibility_heads`). */
+  private readonly heads = new Map<string, ChainHead>();
   constructor(private readonly newId: () => string) {}
   append(input: DefensibilityEventInput): DefensibilityEvent {
     const chain = this.chains.get(input.chain) ?? [];
     const event = chainEvent(chain[chain.length - 1], input, this.newId());
     chain.push(event);
     this.chains.set(input.chain, chain);
+    this.heads.set(input.chain, { length: event.chainSeq, head: event.hash });
     return event;
   }
   events(chain: string): readonly DefensibilityEvent[] {
     return [...(this.chains.get(chain) ?? [])];
   }
+  head(chain: string): ChainHead | undefined {
+    return this.heads.get(chain);
+  }
   verify(chain: string): ChainVerification {
-    return verifyChain(this.chains.get(chain) ?? []);
+    return verifyChain(this.chains.get(chain) ?? [], this.heads.get(chain) ?? { length: 0, head: GENESIS_HASH });
   }
 }
 
@@ -194,6 +251,8 @@ export interface LegalHoldExport {
   readonly subjectRef: string;
   readonly draftNotice: string;
   readonly integrity: ChainVerification;
+  /** The anchored head the chain was verified against (PKG-01); absent only for exports built without one. */
+  readonly anchoredHead?: ChainHead;
   readonly acceptances: readonly DefensibilityEvent[];
   readonly consents: readonly DefensibilityEvent[];
   readonly notices: readonly DefensibilityEvent[];
@@ -213,7 +272,7 @@ export interface LegalHoldExport {
 }
 
 /** Groups a subject's chain into the sections a legal-hold export needs, with the integrity result. */
-export function buildLegalHoldExport(subjectRef: string, chain: readonly DefensibilityEvent[], generatedAt: string): LegalHoldExport {
+export function buildLegalHoldExport(subjectRef: string, chain: readonly DefensibilityEvent[], generatedAt: string, expected?: ChainHead): LegalHoldExport {
   const of = (...types: DefensibilityEventType[]) => chain.filter((e) => types.includes(e.type));
   const versions = new Map<string, { engineVersion: string; firstSeen: string; lastSeen: string; events: number }>();
   for (const e of of('safety.event', 'safety.attested', 'prescription.issued', 'program.generated', 'program.reflowed', 'pair.timeline_built', 'nutrition.target_set')) {
@@ -230,7 +289,8 @@ export function buildLegalHoldExport(subjectRef: string, chain: readonly Defensi
     generatedAt,
     subjectRef,
     draftNotice: 'Export format is a draft; its evidentiary use requires counsel review.',
-    integrity: verifyChain(chain),
+    integrity: verifyChain(chain, expected),
+    ...(expected ? { anchoredHead: expected } : {}),
     acceptances: of('acceptance.recorded'),
     consents: of('consent.recorded'),
     notices: of('notice.shown', 'notice.acknowledged'),

@@ -23,6 +23,9 @@ export const en = {
   'home.subtitle': 'Your sessions work offline, in English or French.',
   'home.syncStatus':
     '{count, plural, =0 {Everything is synced} one {# change waiting to sync} other {# changes waiting to sync}}',
+  // PKG-03: the server refused a change for good (it failed a check); the device removed it.
+  'home.syncRejected':
+    '{count, plural, one {# change was not accepted by the server and was removed from this device. Please check it and enter it again.} other {# changes were not accepted by the server and were removed from this device. Please check them and enter them again.}}',
   'home.language.switch': 'Switch to French',
   'home.language.switchHint': 'Changes the language of the whole app',
   'home.gymMode.enable': 'Turn on gym mode',
