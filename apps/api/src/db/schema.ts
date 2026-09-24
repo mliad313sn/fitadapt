@@ -250,6 +250,25 @@ export const defensibilityEvents = pgTable(
   (t) => [uniqueIndex('defensibility_events_chain_idx').on(t.chain, t.chainSeq), index('defensibility_events_type_idx').on(t.type)],
 );
 
+/**
+ * Anchored head of each defensibility chain (PKG-01, ADR-024 amending ADR-009).
+ * Maintained only by the insert and delete triggers of `defensibility_events`,
+ * in the same transaction as the event; direct writes are refused. The
+ * verifier compares the chain against it, so removing the end of a chain or a
+ * whole chain is detected. A purged chain keeps its row with the length and
+ * head it had (`purged_length`, `purged_head_hash`); it is never deleted.
+ */
+export const defensibilityHeads = pgTable('defensibility_heads', {
+  chain: text('chain').primaryKey(),
+  length: integer('length').notNull(),
+  headHash: text('head_hash').notNull(),
+  openHolds: integer('open_holds').notNull().default(0),
+  purgedLength: integer('purged_length'),
+  purgedHeadHash: text('purged_head_hash'),
+  purgedAt: timestamp('purged_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
 
 /**

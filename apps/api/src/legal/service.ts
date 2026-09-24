@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   DEFAULT_REGISTRY,
+  GLOBAL_CHAIN,
   NOTICES,
   acceptanceState,
   buildLegalHoldExport,
@@ -251,18 +252,42 @@ export class LegalService {
   async legalHoldExport(userId: string, actorRole: string, reasonCode = 'legal_hold_export'): Promise<LegalHoldExport> {
     const chain = this.subjectRef(userId);
     const now = this.deps.now();
-    await this.deps.db.transaction(async (tx) => {
-      const existing = await this.log.chain(chain, tx);
-      await this.log.append(tx, {
-        type: 'log.accessed',
-        chain,
-        occurredAt: now.toISOString(),
-        payload: { actorRole, purpose: 'legal_hold_export', subjectDigest: sha256Hex(chain), eventsReturned: existing.length + 1 },
+    try {
+      await this.deps.db.transaction(async (tx) => {
+        const existing = await this.log.chain(chain, tx);
+        await this.log.append(tx, {
+          type: 'log.accessed',
+          chain,
+          occurredAt: now.toISOString(),
+          payload: { actorRole, purpose: 'legal_hold_export', subjectDigest: sha256Hex(chain), eventsReturned: existing.length + 1 },
+        });
+        if (!(await this.log.isHeld(chain, tx))) {
+          await this.log.append(tx, { type: 'legal_hold.placed', chain, occurredAt: now.toISOString(), payload: { holdId: randomUUID(), reasonCode } });
+        }
       });
-      if (!(await this.log.isHeld(chain, tx))) {
-        await this.log.append(tx, { type: 'legal_hold.placed', chain, occurredAt: now.toISOString(), payload: { holdId: randomUUID(), reasonCode } });
-      }
-    });
-    return buildLegalHoldExport(chain, await this.log.chain(chain), now.toISOString());
+    } catch (error) {
+      // PKG-01: the database refuses to extend a chain whose rows no longer match its anchored head
+      // (restrict_violation). The export is then the evidence of tampering: the access is logged in
+      // the global chain instead, and the export reports the break.
+      if (pgCode(error) !== '23001') throw error;
+      const existing = await this.log.chain(chain);
+      await this.log.appendNow({
+        type: 'log.accessed',
+        chain: GLOBAL_CHAIN,
+        occurredAt: now.toISOString(),
+        payload: { actorRole, purpose: 'legal_hold_export', subjectDigest: sha256Hex(chain), eventsReturned: existing.length },
+      });
+    }
+    const { events, head } = await this.log.snapshot(chain);
+    return buildLegalHoldExport(chain, events, now.toISOString(), head);
   }
+}
+
+/** SQLSTATE of a PostgreSQL error, also when drizzle wraps it in `cause`. */
+function pgCode(error: unknown): string | undefined {
+  for (let e: unknown = error, depth = 0; e && typeof e === 'object' && depth < 3; e = (e as { cause?: unknown }).cause, depth++) {
+    const code = (e as { code?: unknown }).code;
+    if (typeof code === 'string') return code;
+  }
+  return undefined;
 }

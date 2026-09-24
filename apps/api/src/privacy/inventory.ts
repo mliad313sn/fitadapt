@@ -54,6 +54,12 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = Object.freeze([
     personalData: 'none directly: keyed subject reference, document/notice ids, versions, hashes, safety reason codes, engine versions (pseudonymous, ADR-009)',
   },
   {
+    table: 'defensibility_heads',
+    export: { excluded: 'integrity anchor of the pseudonymous defensibility file (PKG-01, ADR-024): chain reference, length and last hash only' },
+    erase: 'retained_pseudonymous',
+    personalData: 'none directly: keyed subject reference, event count, hash, open-hold count, purge time',
+  },
+  {
     table: 'photo_backup_keys',
     export: { excluded: 'end-to-end-encrypted: the photo key wrapped by a key derived from the recovery code, which only the user holds; the service cannot read it (ADR-020). The user exports photos from the device' },
     erase: 'cascade_from_users',

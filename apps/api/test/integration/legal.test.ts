@@ -219,5 +219,124 @@ describe('defensibility log (L11)', () => {
     expect(global.map((e) => e.type)).toEqual(['retention.purged']);
     expect(global[0]!.payload).toMatchObject({ chainDigest: sha256Hex(subjectOf(expired.userId)), eventCount: 6 });
     expect(await h.app.services.legal.log.verify('global')).toMatchObject({ ok: true });
+    // PKG-01: the purged chain keeps a tombstone head (length 0, purged length and hash kept).
+    expect(await h.app.services.legal.log.verify(subjectOf(expired.userId))).toMatchObject({ ok: true, length: 0 });
+    const tomb = await h.database.db.execute<{ length: number; purged_length: number; purged_head_hash: string }>(
+      sql`SELECT length, purged_length, purged_head_hash FROM defensibility_heads WHERE chain = ${subjectOf(expired.userId)}`,
+    );
+    expect(tomb.rows[0]).toMatchObject({ length: 0, purged_length: 6, purged_head_hash: (global[0]!.payload as { headHash: string }).headHash });
+  });
+
+  describe('PKG-01: truncation and whole-chain deletion', () => {
+    const rejected = async (query: Promise<unknown>) => {
+      const error = await query.then(
+        () => null,
+        (e: unknown) => e as { message: string; cause?: { message: string } },
+      );
+      return error?.cause?.message ?? error?.message ?? 'not rejected';
+    };
+    const count = async (chain: string) => (await h.database.db.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM defensibility_events WHERE chain = ${chain}`)).rows[0]!.n;
+
+    it('refuses to delete the end of a chain, even with the old purge flag set', async () => {
+      const { userId } = await userWithHistory();
+      const subject = subjectOf(userId);
+      expect(await rejected(h.database.db.execute(sql`DELETE FROM defensibility_events WHERE chain = ${subject} AND chain_seq > 4`))).toMatch(/append-only/);
+      const withFlag = h.database.db.transaction(async (tx) => {
+        await tx.execute(sql`SET LOCAL app.defensibility_purge = 'on'`);
+        await tx.execute(sql`DELETE FROM defensibility_events WHERE chain = ${subject} AND type = 'safety.event'`);
+      });
+      expect(await rejected(withFlag)).toMatch(/append-only/);
+      expect(await count(subject)).toBe(6);
+      expect(await h.app.services.legal.log.verify(subject)).toMatchObject({ ok: true, length: 6 });
+    });
+
+    it('refuses to delete a whole chain without a matching retention.purged record, TRUNCATE, and writes to the heads', async () => {
+      const { userId } = await userWithHistory();
+      const subject = subjectOf(userId);
+      expect(await rejected(h.database.db.execute(sql`DELETE FROM defensibility_events WHERE chain = ${subject}`))).toMatch(/append-only/);
+      expect(await rejected(h.database.db.execute(sql`TRUNCATE defensibility_events`))).toMatch(/append-only/);
+      expect(await rejected(h.database.db.execute(sql`TRUNCATE defensibility_heads`))).toMatch(/append-only/);
+      expect(await rejected(h.database.db.execute(sql`UPDATE defensibility_heads SET length = 1 WHERE chain = ${subject}`))).toMatch(/append-only/);
+      expect(await rejected(h.database.db.execute(sql`DELETE FROM defensibility_heads WHERE chain = ${subject}`))).toMatch(/append-only/);
+      expect(await rejected(h.database.db.execute(sql`INSERT INTO defensibility_heads (chain, length, head_hash) VALUES ('forged', 0, ${'0'.repeat(64)})`))).toMatch(/append-only/);
+      expect(await count(subject)).toBe(6);
+      expect(await h.app.services.legal.log.head(subject)).toMatchObject({ length: 6 });
+    });
+
+    it('the purge function refuses the global chain, an unexpired chain, a held chain and a bad cutoff', async () => {
+      const fresh = await userWithHistory();
+      const held = await userWithHistory();
+      await h.app.services.legal.legalHoldExport(held.userId, 'test_counsel');
+      const future = new Date(Date.now() + (legalValue('defensibilityRetentionDays') + 1) * 86_400_000).toISOString();
+      const purge = (chain: string, cutoff: string) =>
+        h.database.db.transaction(async (tx) => {
+          await tx.execute(sql`SELECT defensibility_purge_chain(${chain}, ${cutoff})`);
+        });
+      expect(await rejected(purge(subjectOf(fresh.userId), new Date().toISOString().replace(/T.*/, 'T00:00:00.000Z')))).toMatch(/retention period/);
+      expect(await rejected(purge(subjectOf(held.userId), future))).toMatch(/legal hold/);
+      expect(await rejected(purge('global', future))).toMatch(/never purged/);
+      expect(await rejected(purge(subjectOf(fresh.userId), 'Sep 23 2099'))).toMatch(/ISO 8601/);
+      // Even an expired chain cannot be removed without the global record: the commit fails.
+      expect(await rejected(purge(subjectOf(fresh.userId), future))).toMatch(/retention\.purged|only defensibility_purge_chain/);
+      expect(await count(subjectOf(fresh.userId))).toBe(6);
+    });
+
+    it('refuses an insert that does not extend the anchored head (fork or rewrite of the tail)', async () => {
+      const { userId } = await userWithHistory();
+      const subject = subjectOf(userId);
+      const [last] = (await h.app.services.legal.log.chain(subject)).slice(-1);
+      const insert = (seq: number, prev: string) =>
+        h.database.db.execute(
+          sql`INSERT INTO defensibility_events (id, chain, chain_seq, type, occurred_at, payload, prev_hash, hash) VALUES (${randomUUID()}, ${subject}, ${seq}, 'pair.partner_left', ${new Date().toISOString()}, ${JSON.stringify({ pairSessionId: randomUUID() })}::jsonb, ${prev}, ${'f'.repeat(64)})`,
+        );
+      expect(await rejected(insert(7, '0'.repeat(64)))).toMatch(/append-only/);
+      expect(await rejected(insert(9, last!.hash))).toMatch(/append-only/);
+      expect(await rejected(h.database.db.execute(sql`INSERT INTO defensibility_events (id, chain, chain_seq, type, occurred_at, payload, prev_hash, hash) VALUES (${randomUUID()}, 'new-chain', 2, 'pair.partner_left', 'x', '{}'::jsonb, ${'0'.repeat(64)}, ${'f'.repeat(64)})`))).toMatch(/append-only/);
+    });
+
+    it('detects a removed tail or a removed chain when the triggers are bypassed by the table owner', async () => {
+      const { userId } = await userWithHistory();
+      const subject = subjectOf(userId);
+      const other = await userWithHistory();
+      await h.database.db.execute(sql`ALTER TABLE defensibility_events DISABLE TRIGGER USER`);
+      try {
+        await h.database.db.execute(sql`DELETE FROM defensibility_events WHERE chain = ${subject} AND type = 'safety.event'`);
+        await h.database.db.execute(sql`DELETE FROM defensibility_events WHERE chain = ${subjectOf(other.userId)}`);
+      } finally {
+        await h.database.db.execute(sql`ALTER TABLE defensibility_events ENABLE TRIGGER USER`);
+      }
+      expect(await h.app.services.legal.log.verify(subject)).toEqual({ ok: false, brokenAt: 5, reason: 'truncated' });
+      expect(await h.app.services.legal.log.verify(subjectOf(other.userId))).toEqual({ ok: false, brokenAt: 0, reason: 'truncated' });
+      const out = await h.app.services.legal.legalHoldExport(userId, 'test_counsel');
+      // The database refuses to extend the tampered chain; the access is logged in the global chain instead.
+      expect(out.integrity).toEqual({ ok: false, brokenAt: 5, reason: 'truncated' });
+      expect(out.anchoredHead).toMatchObject({ length: 6 });
+      const global = await h.app.services.legal.log.chain('global');
+      expect(global.map((e) => [e.type, (e.payload as { subjectDigest?: string }).subjectDigest])).toEqual([['log.accessed', sha256Hex(subject)]]);
+    });
+
+    it('with a separate purger role, the application role cannot delete even a correctly recorded whole chain', async () => {
+      const mode = await h.database.db.execute<{ separated: boolean }>(
+        sql`SELECT (p.proowner <> c.relowner) AS separated FROM pg_proc p, pg_class c WHERE p.oid = 'defensibility_purge_chain(text, text)'::regprocedure AND c.oid = 'defensibility_events'::regclass`,
+      );
+      const separated = mode.rows[0]!.separated;
+      const { userId } = await userWithHistory();
+      const subject = subjectOf(userId);
+      const head = await h.app.services.legal.log.head(subject);
+      const direct = h.database.db.transaction(async (tx) => {
+        await tx.execute(sql`DELETE FROM defensibility_events WHERE chain = ${subject}`);
+        await h.app.services.legal.log.append(tx, { type: 'retention.purged', chain: 'global', occurredAt: new Date().toISOString(), payload: { chainDigest: sha256Hex(subject), eventCount: head.length, headHash: head.head } });
+      });
+      if (separated) {
+        expect(await rejected(direct)).toMatch(/only defensibility_purge_chain/);
+        expect(await count(subject)).toBe(6);
+      } else {
+        // No purger role (the migrating role cannot create roles): the deletion is structurally complete and leaves a
+        // permanent retention.purged record in the global chain and a tombstone head, so it is never silent.
+        expect(await rejected(direct)).toBe('not rejected');
+        expect((await h.app.services.legal.log.chain('global')).map((e) => e.type)).toEqual(['retention.purged']);
+        expect(await h.app.services.legal.log.head(subject)).toEqual({ length: 0, head: '0'.repeat(64) });
+      }
+    });
   });
 });

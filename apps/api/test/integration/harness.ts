@@ -98,9 +98,17 @@ async function clearRedis(redis: Redis, prefix: string) {
 /** Resets the database tables and this harness's Redis namespace (rate-limit counters). */
 export async function truncateAll(h: Harness) {
   await clearRedis(h.redis, h.redisPrefix);
-  await h.database.db.execute(
-    sql`TRUNCATE users, devices, otp_codes, auth_sessions, refresh_tokens, sync_heads, sync_changes, sync_mutations, consent_records, data_requests, audit_entries, legal_acceptances, notice_impressions, defensibility_events, photo_backup_keys, photo_backups, pair_sessions, pair_participants, pair_events CASCADE`,
-  );
+  // The defensibility tables refuse TRUNCATE (PKG-01, ADR-024). Between tests only, the schema owner
+  // lifts their triggers inside one transaction, so they are back on even if the TRUNCATE fails.
+  await h.database.db.transaction(async (tx) => {
+    await tx.execute(sql`ALTER TABLE defensibility_events DISABLE TRIGGER USER`);
+    await tx.execute(sql`ALTER TABLE defensibility_heads DISABLE TRIGGER USER`);
+    await tx.execute(
+      sql`TRUNCATE users, devices, otp_codes, auth_sessions, refresh_tokens, sync_heads, sync_changes, sync_mutations, consent_records, data_requests, audit_entries, legal_acceptances, notice_impressions, defensibility_events, defensibility_heads, photo_backup_keys, photo_backups, pair_sessions, pair_participants, pair_events CASCADE`,
+    );
+    await tx.execute(sql`ALTER TABLE defensibility_events ENABLE TRIGGER USER`);
+    await tx.execute(sql`ALTER TABLE defensibility_heads ENABLE TRIGGER USER`);
+  });
 }
 
 export const uniqueEmail = () => `user-${randomUUID().slice(0, 8)}@example.test`;

@@ -1,6 +1,6 @@
 # ADR-009 — Defensibility log: append-only, hash-chained, pseudonymous
 
-- Status: Accepted (M20)
+- Status: Accepted (M20); amended by ADR-024 (anchored chain heads, structural purge; PKG-01)
 - Date: 2026-09-23
 - Deciders: M20 engineer; retention and lawful basis pending counsel (B1, B2)
 
@@ -26,6 +26,7 @@ L11: consents, notices shown, safety events, engine version per prescription, co
 
 ## Consequences
 
+- **Amended by ADR-024:** the statement below held only for edits. A removed tail or a removed chain verified as `ok` and the `app.defensibility_purge` GUC could be set by any session. ADR-024 adds anchored heads (`defensibility_heads`), a structural purge through `defensibility_purge_chain` and a separate purger role.
 - Tampering by a table owner (triggers disabled) is **detected**, not prevented; an integration test proves it. Recomputing the whole chain after an edit is possible for someone with write access; the next step is to anchor chain heads outside the database (e.g. a daily head hash in write-once storage, M19) — open item.
 - The log is pseudonymous personal data (it is linkable through the pepper). Lawful basis, period and its interaction with erasure requests are open questions for counsel.
 - Device-side events (safety stops offline) will need a device buffer (`MemoryDefensibilityLog` shape) uploaded after sign-in (M01/M05).
