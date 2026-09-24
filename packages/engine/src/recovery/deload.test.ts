@@ -2,7 +2,7 @@ import type { PainReport, SafetyStopEvent } from '@fitadapt/safety';
 import type { HistoryExercise, ReadinessCheck, SessionHistoryEntry, SessionPlan } from '@fitadapt/shared';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { FULL_GYM, profileFrom } from '../__fixtures__/library.js';
+import { SAFE_FACTS, FULL_GYM, profileFrom } from '../__fixtures__/library.js';
 import { GYM_CAPACITY, RECOVERY_LIBRARY } from '../__fixtures__/recovery.js';
 import { GYM_ID, GYM_LOADS, programContext } from '../__fixtures__/session.js';
 import { fixedClock } from '../clock.js';
@@ -122,7 +122,7 @@ describe('M05 triggered deloads: each trigger in the spec (goal condition 3)', (
 // ------------------------------------------------------------------ the prescription
 
 const MON = Date.parse('2026-09-28T08:00:00.000Z');
-const gym = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({
+const gym = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({ ...SAFE_FACTS,
   safetyProfile: profileFrom(),
   equipment: [...FULL_GYM, 'cable_station'],
   equipmentLoads: GYM_LOADS,

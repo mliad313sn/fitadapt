@@ -8,6 +8,19 @@ import { defaultEquipmentLoads, EMPTY_EQUIPMENT_LOADS } from '@fitadapt/engine';
 import type { AssessmentResult, AssessmentTestResult, CalendarDateValue, EquipmentLoads, ExperienceLevel, JointFlags } from '@fitadapt/shared';
 import { GYM_ID, HOME_ID, PARK_ID } from './personas.js';
 
+/**
+ * SAF-3: the safety facts every engine input carries, at their "nothing reported" values; a test overrides what it
+ * reports (joint flags, history, date of birth…).
+ */
+export const SAFE_FACTS = Object.freeze({
+  jointFlags: {},
+  history: [],
+  recentLoads: [],
+  birthDate: null,
+  localDate: null,
+  intensityLock: Object.freeze({ locked: false, since: null }),
+}) as { readonly jointFlags: Record<never, never>; readonly history: readonly never[]; readonly recentLoads: readonly never[]; readonly birthDate: null; readonly localDate: null; readonly intensityLock: { readonly locked: false; readonly since: null } };
+
 type Done = { reps?: number; seconds?: number; loadKg?: number; rir?: number };
 const done = (testId: string, exerciseId: string, m: Done): AssessmentTestResult => ({ status: 'done', testId, exerciseId, reps: m.reps ?? null, seconds: m.seconds ?? null, loadKg: m.loadKg ?? null, rir: m.rir ?? null });
 const result = (protocolId: AssessmentResult['protocolId'], tests: AssessmentTestResult[]): AssessmentResult => ({ protocolId, protocolVersion: 1, stopRir: 2, startedAt: '2026-09-24T17:00:00.000Z', completedAt: '2026-09-24T17:30:00.000Z', tests });

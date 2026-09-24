@@ -24,6 +24,7 @@ import {
   AssessmentRecordSchema,
   EquipmentProfileSchema,
   ExecutionLogSchema,
+  GenerateSessionInputSchema,
   PROFILE_COLLECTIONS,
   PROFILE_RECORD_ID,
   JOINTS,
@@ -180,9 +181,12 @@ export async function validateWorkoutSession(db: Database, legal: LegalService, 
   }
   const mismatch = await checkInputs(db, userId, record, latestProfile);
   if (mismatch) return mismatch;
+  // SAF-3 (FIX-A): a stored input may predate the required safety facts; a new session must carry them all (fail closed).
+  const input = GenerateSessionInputSchema.safeParse(record.input);
+  if (!input.success) return 'session.invalid';
   let expected;
   try {
-    expected = generateSession(record.input, createEngineContext({ clock: fixedClock(Date.parse(record.plan.generatedAt)), seed: record.plan.seed }));
+    expected = generateSession(input.data, createEngineContext({ clock: fixedClock(Date.parse(record.plan.generatedAt)), seed: record.plan.seed }));
   } catch {
     return 'session.invalid';
   }

@@ -169,8 +169,11 @@ export function PairScreen({ onExit }: PairScreenProps) {
       jointFlags: facts.jointFlags,
       capacity: defaultCapacity(clock.now()),
       history: facts.history,
+      recentLoads: [],
       bodyweightKg: guest.profile.bodyweightKg,
       birthDate: guest.profile.birthDate,
+      // SAF-12: same device, same local date.
+      localDate: inputA.localDate,
       intensityLock: facts.intensityLock,
       ...(facts.deload ? { deload: facts.deload } : {}),
     };

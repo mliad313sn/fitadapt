@@ -39,7 +39,7 @@ export function movementContext(input: GenerateSessionInput, library: SessionLib
 
 function buildContext(input: GenerateSessionInput, library: SessionLibrary, nowMs: number): CardioBuildContext {
   const m = movementContext(input, library);
-  return { ...m, zones: zonesFor({ profile: input.safetyProfile, birthDate: input.birthDate, heartRate: input.heartRate, nowMs }) };
+  return { ...m, zones: zonesFor({ profile: input.safetyProfile, birthDate: input.birthDate, localDate: input.localDate, heartRate: input.heartRate, nowMs }) };
 }
 
 /** The HIIT gate for M08 interval blocks: null when intervals may stay, else the reason they become steady. */

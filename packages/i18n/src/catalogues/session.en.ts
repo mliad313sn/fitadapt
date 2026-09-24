@@ -34,6 +34,7 @@ export const sessionEn = {
   'engine.reason.session.unavailable.no_time': 'There is not enough time today for a session with its warm-up.',
   'engine.reason.session.unavailable.s7_age': 'Sessions are not available on this account.',
   'engine.reason.session.unavailable.s3_intensity_locked': 'Sessions are paused after the warning signs you reported, until you confirm a medical review.',
+  'engine.reason.session.unavailable.clock_mismatch': 'The date on this device does not look right, so no session is prepared. Check the date and time settings, then try again.',
   'engine.reason.session.unavailable.no_program': 'Make your training plan first, or measure your starting point.',
   'engine.reason.session.slot_dropped.lunge': 'No lunge fits your place and your answers today.',
   'engine.reason.session.slot_dropped.vertical_push': 'No overhead push fits your place and your answers today.',

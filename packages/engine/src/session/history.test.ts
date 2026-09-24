@@ -1,6 +1,6 @@
 import type { ExecutionLog, SessionPlan } from '@fitadapt/shared';
 import { describe, expect, it } from 'vitest';
-import { FULL_GYM, P1_HOME, profileFrom } from '../__fixtures__/library.js';
+import { SAFE_FACTS, FULL_GYM, P1_HOME, profileFrom } from '../__fixtures__/library.js';
 import { GYM_ID, GYM_LOADS, HOME_LOADS, SESSION_LIBRARY, programContext, slot } from '../__fixtures__/session.js';
 import { perform, record, atTop } from '../__fixtures__/simulate.js';
 import { fixedClock } from '../clock.js';
@@ -13,7 +13,7 @@ import type { GenerateSessionInput } from './types.js';
 
 const MON = Date.parse('2026-09-28T08:00:00.000Z');
 const GYM = [...FULL_GYM, 'cable_station'] as const;
-const input: GenerateSessionInput = { safetyProfile: profileFrom(), equipment: GYM, equipmentLoads: GYM_LOADS, equipmentProfileId: GYM_ID, minutesAvailable: 60, programSession: programContext(), experience: 'intermediate' };
+const input: GenerateSessionInput = { ...SAFE_FACTS, safetyProfile: profileFrom(), equipment: GYM, equipmentLoads: GYM_LOADS, equipmentProfileId: GYM_ID, minutesAvailable: 60, programSession: programContext(), experience: 'intermediate' };
 const make = (i: GenerateSessionInput, at = MON, seed = 11): SessionPlan => {
   const r = generateSession(i, SESSION_LIBRARY, createEngineContext({ clock: fixedClock(at), seed }));
   if (r.status !== 'ok') throw new Error(r.reasonCodes.join());

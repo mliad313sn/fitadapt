@@ -28,7 +28,7 @@ function tabataBlock(): CardioPlan {
     return { planId: `00000000-0000-4000-8000-00000000000${i + 1}`, prescribedAt: at, startedAt: at, countsForProgression: false, exercises: [], cardioSeconds: 1200 };
   });
   // 25 minutes: a 5-minute warm-up, then 20 minutes of Tabata blocks and an easy end.
-  const r = generateSession({ safetyProfile: profile, equipment: [], minutesAvailable: 25, mode: 'cardio', cardio: { protocol: 'tabata' }, history, experience: 'intermediate' }, createEngineContext({ clock: fixedClock(T0), seed: 1 }));
+  const r = generateSession({ jointFlags: {}, recentLoads: [], birthDate: null, localDate: null, intensityLock: { locked: false, since: null }, safetyProfile: profile, equipment: [], minutesAvailable: 25, mode: 'cardio', cardio: { protocol: 'tabata' }, history, experience: 'intermediate' }, createEngineContext({ clock: fixedClock(T0), seed: 1 }));
   if (r.status !== 'ok') throw new Error(r.reasonCodes.join());
   return r.plan.cardio!;
 }

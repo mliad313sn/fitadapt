@@ -2,7 +2,7 @@ import { JOINTS, SCREENING_QUESTION_IDS, SharedTimelineSchema, type EquipmentId,
 import { screeningGateCheck } from '@fitadapt/safety';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { FULL_GYM, P1_HOME, profileFrom } from '../__fixtures__/library.js';
+import { SAFE_FACTS, FULL_GYM, P1_HOME, profileFrom } from '../__fixtures__/library.js';
 import { GYM_ID, GYM_LOADS, HOME_ID, HOME_LOADS, SESSION_LIBRARY, programContext, slot } from '../__fixtures__/session.js';
 import { fixedClock } from '../clock.js';
 import { createEngineContext } from '../context.js';
@@ -20,7 +20,7 @@ const GYM = [...FULL_GYM, 'cable_station'] as EquipmentId[];
 const HOME: EquipmentId[] = [...P1_HOME];
 
 /** P1-like (Ibrahima, 120 kg, beginner, amber knees history) and P2-like (Awa, 60 kg, beginner) inputs — fictional. */
-const p1 = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({
+const p1 = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({ ...SAFE_FACTS,
   safetyProfile: profileFrom(),
   equipment: HOME,
   equipmentLoads: HOME_LOADS,
@@ -31,7 +31,7 @@ const p1 = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => (
   bodyweightKg: 120,
   ...over,
 });
-const p2 = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({
+const p2 = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({ ...SAFE_FACTS,
   safetyProfile: profileFrom(),
   equipment: HOME,
   equipmentLoads: HOME_LOADS,

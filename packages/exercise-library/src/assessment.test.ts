@@ -1,3 +1,4 @@
+import { SAFE_FACTS } from './__fixtures__/session-personas.js';
 import {
   ASSESSMENT_PROTOCOLS,
   ASSESSMENT_REASON_CODES,
@@ -49,6 +50,9 @@ const available = (plan: AssessmentPlan) => {
   return plan;
 };
 
+/** SAF-2: the safety facts an assessment requires, at their "nothing reported" values. */
+const ASSESS_FACTS = { jointFlags: {}, intensityLock: { locked: false, since: null }, birthDate: null, localDate: null, nowMs: Date.parse('2026-09-24T08:00:00.000Z') } as const;
+
 describe('M07 protocols refer to the M06 seed', () => {
   it('every test variant is a seed exercise on the ladder its test maps to; default slot ladders exist', () => {
     for (const p of Object.values(ASSESSMENT_PROTOCOLS)) {
@@ -91,7 +95,7 @@ describe('persona P1 (home: pull-up bar, bands, 2 × 10 kg dumbbells; 3 × 40 mi
   const safetyProfile = profile([], 1988);
 
   it('"0 pull-ups" places him on the pull ladder; the CapacityModel drives his first session', () => {
-    const plan = available(buildAssessmentPlan(ASSESSMENT_PROTOCOLS.home, { safetyProfile, equipment }));
+    const plan = available(buildAssessmentPlan(ASSESSMENT_PROTOCOLS.home, { ...ASSESS_FACTS, safetyProfile, equipment }));
     expect(plan.stopRir).toBe(2);
     expect(plan.instructions.every((i) => !i.stop.toFailure && i.stop.rir === 2)).toBe(true);
     const offered = Object.fromEntries(plan.instructions.map((i) => [i.testId, i.options]));
@@ -123,7 +127,7 @@ describe('persona P1 (home: pull-up bar, bands, 2 × 10 kg dumbbells; 3 × 40 mi
       core: ['knee_plank', 'assessment.mapping.in_range'],
     });
 
-    const session = generateSession({ capacity, safetyProfile, equipment, minutesAvailable: 40, jointFlags: { knee: 'amber' } }, ctx());
+    const session = generateSession({ ...SAFE_FACTS, capacity, safetyProfile, equipment, minutesAvailable: 40, jointFlags: { knee: 'amber' } }, ctx());
     if (session.status !== 'ok') throw new Error(session.reasonCodes.join());
     const { plan: first } = session;
     expect(first.capacityAssessedAt).toBe(capacity.assessedAt);
@@ -144,7 +148,7 @@ describe('persona P5 (advanced powerlifter, full gym with microplates, 4 × 75 m
   const safetyProfile = profile([], 1997);
 
   it('submaximal load tests give RIR-adjusted Epley e1RMs; the first session loads come from them', () => {
-    const plan = available(buildAssessmentPlan(ASSESSMENT_PROTOCOLS.gym, { safetyProfile, equipment }));
+    const plan = available(buildAssessmentPlan(ASSESSMENT_PROTOCOLS.gym, { ...ASSESS_FACTS, safetyProfile, equipment }));
     expect(plan.instructions.filter((i) => i.kind === 'load_reps').every((i) => i.stop.rir === 2 && i.stop.capReps === 12)).toBe(true);
     const result: AssessmentResult = {
       protocolId: 'gym',
@@ -166,7 +170,7 @@ describe('persona P5 (advanced powerlifter, full gym with microplates, 4 × 75 m
     expect(squat).toMatchObject({ exerciseId: 'barbell_back_squat', e1rmKg: 213.3, loadKg: 142.5 });
     expect(capacity.slots.find((s) => s.slot === 'hinge')).toMatchObject({ e1rmKg: 177.3 });
 
-    const session = generateSession({ capacity, safetyProfile, equipment, minutesAvailable: 75, loadIncrementKg: 0.5 }, ctx());
+    const session = generateSession({ ...SAFE_FACTS, capacity, safetyProfile, equipment, minutesAvailable: 75, loadIncrementKg: 0.5 }, ctx());
     if (session.status !== 'ok') throw new Error(session.reasonCodes.join());
     const { plan: first } = session;
     expect(first.targetRir).toBe(3);
@@ -206,7 +210,7 @@ describe('every M07 reason code has an FR and EN explanation, and the engine emi
     for (const p of Object.values(ASSESSMENT_PROTOCOLS)) {
       for (const safetyProfile of profiles) {
         for (const equipment of places) {
-          const plan = buildAssessmentPlan(p, { safetyProfile, equipment });
+          const plan = buildAssessmentPlan(p, { ...ASSESS_FACTS, safetyProfile, equipment });
           if (plan.status === 'unavailable') {
             seen.add(plan.reasonCode);
             continue;
@@ -221,7 +225,7 @@ describe('every M07 reason code has an FR and EN explanation, and the engine emi
             const capacity = buildCapacityModel({ protocolId: p.id, protocolVersion: p.version, stopRir: plan.stopRir, startedAt: '2026-09-23T18:00:00.000Z', completedAt: '2026-09-23T18:15:00.000Z', tests });
             capacity.slots.forEach((s) => s.reasonCodes.forEach((c) => seen.add(c)));
             for (const minutes of [10, 45]) {
-              const session = generateSession({ capacity, safetyProfile, equipment, minutesAvailable: minutes, jointFlags: { knee: 'red' } }, ctx());
+              const session = generateSession({ ...SAFE_FACTS, capacity, safetyProfile, equipment, minutesAvailable: minutes, jointFlags: { knee: 'red' } }, ctx());
               if (session.status === 'unavailable') session.reasonCodes.forEach((c) => seen.add(c));
               else {
                 session.plan.reasonCodes.forEach((c) => seen.add(c));

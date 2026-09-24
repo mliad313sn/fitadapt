@@ -14,7 +14,7 @@ import {
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { buildCapacityModel } from '../assessment/index.js';
-import { FIXTURE_LIBRARY, profileFrom } from '../__fixtures__/library.js';
+import { SAFE_FACTS, FIXTURE_LIBRARY, profileFrom } from '../__fixtures__/library.js';
 import { SESSION_EXERCISES, SESSION_LIBRARY, programContext } from '../__fixtures__/session.js';
 import { Diary, type Performance } from '../__fixtures__/simulate.js';
 import { fixedClock } from '../clock.js';
@@ -177,6 +177,7 @@ const inputArb: fc.Arbitrary<GenerateSessionInput> = fc
     experience: fc.constantFrom('none', 'returning', 'beginner', 'intermediate', 'advanced'),
   })
   .map(({ program, ...rest }) => ({
+    ...SAFE_FACTS,
     ...rest,
     programSession: program ? programContext({ slots: program.slots as never, targetRpe: program.targetRpe, kind: program.kind, conditioning: program.conditioning as never }) : null,
   }));
@@ -263,7 +264,7 @@ describe('over a sequence of sessions, with the clock moved back and forth and t
           let clock = NOW;
           steps.forEach((step, i) => {
             clock += step.shift * DAY;
-            const input: GenerateSessionInput = { safetyProfile, equipment: step.equipment, equipmentLoads: step.loads, minutesAvailable: 60, capacity: gymCapacity, programSession: programContext({ intent: step.intent as 'general' }), history: diary.history(), experience: 'intermediate' };
+            const input: GenerateSessionInput = { ...SAFE_FACTS, safetyProfile, equipment: step.equipment, equipmentLoads: step.loads, minutesAvailable: 60, capacity: gymCapacity, programSession: programContext({ intent: step.intent as 'general' }), history: diary.history(), experience: 'intermediate' };
             const r = generateSession(input, SESSION_LIBRARY, createEngineContext({ clock: fixedClock(clock), seed: i + 1 }));
             if (r.status !== 'ok') return;
             checkPlan(r.plan, input);

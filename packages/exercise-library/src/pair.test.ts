@@ -6,7 +6,7 @@ import { createTranslator, en, fr, type MessageKey } from '@fitadapt/i18n';
 import { SharedTimelineSchema, type ScoredSet, type SessionPlan } from '@fitadapt/shared';
 import { describe, expect, it } from 'vitest';
 import { HOME_ID, PERSONA_INPUTS } from './__fixtures__/personas.js';
-import { PERSONA_SESSIONS } from './__fixtures__/session-personas.js';
+import { SAFE_FACTS, PERSONA_SESSIONS } from './__fixtures__/session-personas.js';
 import { buildCapacityModel, fairScore, generatePairSession, generateProgram, seedLibrary } from './index.js';
 
 /**
@@ -34,6 +34,7 @@ function wednesdayInputs(): { a: GenerateSessionInput; b: GenerateSessionInput; 
     return {
       date,
       input: {
+        ...SAFE_FACTS,
         safetyProfile: PERSONA_INPUTS[persona].safetyProfile,
         equipment: place.equipment,
         equipmentLoads: p.loads[HOME_ID]!,

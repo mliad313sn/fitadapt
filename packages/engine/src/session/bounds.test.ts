@@ -2,7 +2,7 @@ import { s5LoadCeiling } from '@fitadapt/safety';
 import { GenerateSessionInputSchema, SessionHistoryEntrySchema, type ExecutionLog, type HistoryExercise, type SessionHistoryEntry } from '@fitadapt/shared';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { FULL_GYM, profileFrom } from '../__fixtures__/library.js';
+import { SAFE_FACTS, FULL_GYM, profileFrom } from '../__fixtures__/library.js';
 import { GYM_CAPACITY } from '../__fixtures__/recovery.js';
 import { GYM_ID, GYM_LOADS, SESSION_LIBRARY, programContext } from '../__fixtures__/session.js';
 import { record } from '../__fixtures__/simulate.js';
@@ -41,7 +41,7 @@ const entry = (n: number, ms: number, exercises: HistoryExercise[]): SessionHist
   exercises,
 });
 
-const firstInput = (history: SessionHistoryEntry[]): GenerateSessionInput => ({ capacity: GYM_CAPACITY, safetyProfile: profileFrom(), equipment: FULL_GYM, minutesAvailable: 75, history });
+const firstInput = (history: SessionHistoryEntry[]): GenerateSessionInput => ({ ...SAFE_FACTS, capacity: GYM_CAPACITY, safetyProfile: profileFrom(), equipment: FULL_GYM, minutesAvailable: 75, history });
 const squatLoad = (input: GenerateSessionInput) => {
   const r = generateSession(input, SESSION_LIBRARY, ctx());
   if (r.status !== 'ok') throw new Error(r.reasonCodes.join());
@@ -71,19 +71,19 @@ describe('SAF-1: a history longer than the boundary cap never breaks generation 
 
   it('a program session with 200 sessions of history: ok', () => {
     const history = Array.from({ length: 200 }, (_, i) => entry(i, NOW - (200 - i) * DAY, [exercise('barbell_back_squat', 60, 5)]));
-    const input: GenerateSessionInput = { safetyProfile: profileFrom(), equipment: GYM, equipmentLoads: GYM_LOADS, equipmentProfileId: GYM_ID, minutesAvailable: 60, programSession: programContext(), experience: 'intermediate', history };
+    const input: GenerateSessionInput = { ...SAFE_FACTS, safetyProfile: profileFrom(), equipment: GYM, equipmentLoads: GYM_LOADS, equipmentProfileId: GYM_ID, minutesAvailable: 60, programSession: programContext(), experience: 'intermediate', history };
     expect(generateSession(input, SESSION_LIBRARY, ctx()).status).toBe('ok');
   });
 
   it('within the caps the input is returned unchanged', () => {
     const input = firstInput([entry(1, NOW - DAY, [exercise('barbell_back_squat', 50)])]);
     expect(boundSessionInput(input, NOW)).toBe(input);
-    expect(boundSessionInput({}, NOW)).toEqual({});
+    expect(boundSessionInput({ history: [], recentLoads: [] }, NOW)).toEqual({ history: [], recentLoads: [] });
   });
 
   it('more than 500 recent loads: folded to the S5 window per exercise (the ceiling never loosens)', () => {
     const recentLoads = Array.from({ length: 600 }, (_, i) => ({ exerciseId: i % 2 ? 'barbell_back_squat' : 'goblet_squat', loadKg: 40 + (i % 50), prescribedAt: at(NOW - (i % 10) * DAY) }));
-    const bounded = boundSessionInput({ recentLoads }, NOW);
+    const bounded = boundSessionInput({ history: [], recentLoads }, NOW);
     expect(bounded.recentLoads!.length).toBeLessThanOrEqual(2);
     for (const id of ['barbell_back_squat', 'goblet_squat']) {
       const full = s5LoadCeiling(recentLoads.filter((r) => r.exerciseId === id).map((r) => ({ loadKg: r.loadKg, at: r.prescribedAt })), NOW);
@@ -123,7 +123,7 @@ describe('SAF-7: load references passed to the progression never exceed its cap'
       entry(i, NOW - (60 - i) * DAY, [exercise('barbell_back_squat', 60, 5, 'squat', 'primary'), exercise('barbell_back_squat', 50, 5, 'squat', 'secondary')]),
     );
     expect(loadReferencesFor(history, [], 'barbell_back_squat').length).toBe(720);
-    const input: GenerateSessionInput = { safetyProfile: profileFrom(), equipment: GYM, equipmentLoads: GYM_LOADS, equipmentProfileId: GYM_ID, minutesAvailable: 60, programSession: programContext(), experience: 'intermediate', history };
+    const input: GenerateSessionInput = { ...SAFE_FACTS, safetyProfile: profileFrom(), equipment: GYM, equipmentLoads: GYM_LOADS, equipmentProfileId: GYM_ID, minutesAvailable: 60, programSession: programContext(), experience: 'intermediate', history };
     const r = generateSession(input, SESSION_LIBRARY, ctx());
     expect(r.status).toBe('ok');
   });
@@ -131,7 +131,7 @@ describe('SAF-7: load references passed to the progression never exceed its cap'
 
 describe('SAF-6: a session with more than 20 exercise entries (swaps) keeps the S5 references of the extra ones', () => {
   it('the 21st entry (a swap prescribed at 20 kg) caps the next prescription of that exercise at 22 kg', () => {
-    const input: GenerateSessionInput = { safetyProfile: profileFrom(), equipment: GYM, equipmentLoads: GYM_LOADS, equipmentProfileId: GYM_ID, minutesAvailable: 60, programSession: programContext(), experience: 'intermediate' };
+    const input: GenerateSessionInput = { ...SAFE_FACTS, safetyProfile: profileFrom(), equipment: GYM, equipmentLoads: GYM_LOADS, equipmentProfileId: GYM_ID, minutesAvailable: 60, programSession: programContext(), experience: 'intermediate' };
     const r = generateSession(input, SESSION_LIBRARY, createEngineContext({ clock: fixedClock(NOW - DAY), seed: 4 }));
     if (r.status !== 'ok') throw new Error(r.reasonCodes.join());
     const plan = r.plan;

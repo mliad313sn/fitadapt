@@ -3,7 +3,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GenerateSessionInputSchema, GenerateSessionResultSchema, ProgressionDecisionSchema, ProgressionInputSchema } from '@fitadapt/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FULL_GYM, profileFrom } from './__fixtures__/library.js';
+import { SAFE_FACTS, FULL_GYM, profileFrom } from './__fixtures__/library.js';
 import { GYM_ID, GYM_LOADS, SESSION_LIBRARY, programContext } from './__fixtures__/session.js';
 import { Diary, atTop } from './__fixtures__/simulate.js';
 import * as engine from './index.js';
@@ -76,7 +76,7 @@ describe('the engine is pure (goal condition 1)', () => {
 
   describe('at run time, only the injected clock and seed matter', () => {
     afterEach(() => vi.restoreAllMocks());
-    const input = { safetyProfile: profileFrom(), equipment: [...FULL_GYM, 'cable_station' as const], equipmentLoads: GYM_LOADS, equipmentProfileId: GYM_ID, minutesAvailable: 45, programSession: programContext(), experience: 'intermediate' as const };
+    const input = { ...SAFE_FACTS, safetyProfile: profileFrom(), equipment: [...FULL_GYM, 'cable_station' as const], equipmentLoads: GYM_LOADS, equipmentProfileId: GYM_ID, minutesAvailable: 45, programSession: programContext(), experience: 'intermediate' as const };
     const run = (clockMs: number, seed: number) => {
       const ctx = engine.createEngineContext({ clock: engine.fixedClock(clockMs), seed });
       const first = engine.generateSession(input, SESSION_LIBRARY, ctx);
@@ -119,7 +119,7 @@ describe('the engine is pure (goal condition 1)', () => {
   it('exports generateSession() and evaluateProgression() whose input and output are zod schemas in packages/shared', () => {
     expect(typeof engine.generateSession).toBe('function');
     expect(typeof engine.evaluateProgression).toBe('function');
-    const input = { safetyProfile: profileFrom(), equipment: [...FULL_GYM], minutesAvailable: 45, programSession: programContext() };
+    const input = { ...SAFE_FACTS, safetyProfile: profileFrom(), equipment: [...FULL_GYM], minutesAvailable: 45, programSession: programContext() };
     expect(GenerateSessionInputSchema.parse(input)).toEqual(input);
     const out = engine.generateSession(input, SESSION_LIBRARY, engine.createEngineContext({ clock: engine.fixedClock(0), seed: 1 }));
     expect(GenerateSessionResultSchema.parse(out)).toEqual(out);

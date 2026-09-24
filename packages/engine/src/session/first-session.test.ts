@@ -1,7 +1,7 @@
 import { SCREENING_QUESTION_IDS, SafetyProfileSchema, SessionPlanSchema, type AssessmentResult, type CapacityModel } from '@fitadapt/shared';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { FIXTURE_LIBRARY, FULL_GYM, P1_HOME, profileFrom } from '../__fixtures__/library.js';
+import { SAFE_FACTS, FIXTURE_LIBRARY, FULL_GYM, P1_HOME, profileFrom } from '../__fixtures__/library.js';
 import { buildCapacityModel, loadForReps, roundDownToIncrement } from '../assessment/index.js';
 import { fixedClock } from '../clock.js';
 import { createEngineContext } from '../context.js';
@@ -46,7 +46,7 @@ const homeResult: AssessmentResult = {
 };
 const gymCapacity = buildCapacityModel(gymResult, FIXTURE_LIBRARY);
 const homeCapacity = buildCapacityModel(homeResult, FIXTURE_LIBRARY);
-const input = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({ capacity: gymCapacity, safetyProfile: cleared, equipment: FULL_GYM, minutesAvailable: 75, ...over });
+const input = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({ ...SAFE_FACTS, capacity: gymCapacity, safetyProfile: cleared, equipment: FULL_GYM, minutesAvailable: 75, ...over });
 const ok = (over: Partial<GenerateSessionInput> = {}) => {
   const r = generateSession(input(over), FIXTURE_LIBRARY, ctx());
   if (r.status !== 'ok') throw new Error(`expected a plan: ${r.reasonCodes.join()}`);
@@ -190,7 +190,7 @@ describe('generateSession uses the CapacityModel for the first session', () => {
         fc.constantFrom(gymCapacity, homeCapacity),
         (yes, clearance, equipment, minutes, capacity) => {
           const profile = profileFrom(yes, { clearanceAttested: clearance });
-          const r = generateSession({ capacity, safetyProfile: profile, equipment, minutesAvailable: minutes }, FIXTURE_LIBRARY, ctx());
+          const r = generateSession({ ...SAFE_FACTS, capacity, safetyProfile: profile, equipment, minutesAvailable: minutes }, FIXTURE_LIBRARY, ctx());
           if (r.status !== 'ok') return;
           const cap = profile.unresolvedFlags.length > 0 ? Math.min(profile.maxRPE, 7) : profile.maxRPE;
           expect(10 - r.plan.targetRir).toBeLessThanOrEqual(cap);

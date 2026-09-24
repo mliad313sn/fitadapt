@@ -22,7 +22,7 @@ import { createTranslator, en, fr } from '@fitadapt/i18n';
 import { SessionPlanSchema, type ExecutionLog, type ReflowRecord, type SessionPlan, type WorkoutSessionRecord } from '@fitadapt/shared';
 import { describe, expect, it } from 'vitest';
 import { PERSONA_INPUTS } from './__fixtures__/personas.js';
-import { PERSONA_SESSIONS } from './__fixtures__/session-personas.js';
+import { SAFE_FACTS, PERSONA_SESSIONS } from './__fixtures__/session-personas.js';
 import { buildCapacityModel, generateProgram, generateSession, seedLibrary } from './index.js';
 
 /**
@@ -71,6 +71,7 @@ function simulate(persona: Persona): Simulated {
       }
       const place = input.locations.find((l) => l.equipmentProfileId === session.equipmentProfileId)!;
       const genInput: GenerateSessionInput = {
+        ...SAFE_FACTS,
         safetyProfile: input.safetyProfile,
         equipment: place.equipment,
         equipmentLoads: p.loads[place.equipmentProfileId]!,

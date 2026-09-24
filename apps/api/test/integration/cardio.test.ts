@@ -64,6 +64,10 @@ async function ready(biometrics: Biometrics = EMPTY_BIOMETRICS) {
     equipmentLoads: { barKg: null, platePairsKg: [], dumbbellsKg: [10], kettlebellsKg: [], stack: null },
     minutesAvailable: 30,
     history: [],
+    // SAF-3/SAF-12: every safety fact is explicit.
+    jointFlags: {},
+    recentLoads: [],
+    localDate: null,
     birthDate: BIRTH,
     experience: 'intermediate',
     intensityLock: { locked: false, since: null },

@@ -8,6 +8,7 @@ import {
   replacementsFor as replacementsOnLibrary,
   type PainAdjustment,
   type AssessmentPlan,
+  type AssessmentSafetyFacts,
   type AssessmentProtocol,
   type EngineContext,
   type EquipmentSet,
@@ -15,7 +16,7 @@ import {
   type GenerateSessionResult,
   type SessionLibrary,
 } from '@fitadapt/engine';
-import type { AssessmentResult, CapacityModel, EquipmentId, Joint, JointFlags, PerformedSet, PlannedExercise, SafetyProfile, SessionPlan } from '@fitadapt/shared';
+import type { AssessmentResult, CapacityModel, EquipmentId, Joint, PerformedSet, PlannedExercise, SafetyProfile, SessionPlan } from '@fitadapt/shared';
 import { seedLibrary, type ExerciseLibrary } from './library.js';
 import { WARM_UP_DRILLS } from './seed/warmups.js';
 import { STEADY_MODALITIES, VENUE_SWAPS } from './seed/cardio.js';
@@ -48,7 +49,8 @@ export function sessionLibrary(library: ExerciseLibrary = seedLibrary()): Sessio
 let bound: SessionLibrary | undefined;
 const seedSession = () => (bound ??= sessionLibrary());
 
-export function buildAssessmentPlan(protocol: AssessmentProtocol, input: { safetyProfile: SafetyProfile; equipment: EquipmentSet; jointFlags?: JointFlags }): AssessmentPlan {
+/** SAF-2: every safety fact is required (S3 lock, S2 joint flags, S7 date of birth and local date, engine time). */
+export function buildAssessmentPlan(protocol: AssessmentProtocol, input: { safetyProfile: SafetyProfile; equipment: EquipmentSet } & AssessmentSafetyFacts): AssessmentPlan {
   return buildPlanOnLibrary(protocol, { ...input, exercises: seedLibrary().graph.exercises });
 }
 

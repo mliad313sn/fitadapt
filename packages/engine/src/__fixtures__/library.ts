@@ -99,6 +99,19 @@ export const FIXTURE_LIBRARY: SessionLibrary = {
 export const P1_HOME: EquipmentId[] = ['pull_up_bar', 'resistance_band', 'dumbbell'];
 export const FULL_GYM: EquipmentId[] = ['barbell', 'squat_rack', 'flat_bench', 'dumbbell', 'kettlebell', 'leg_press', 'lat_pulldown', 'weight_plate', 'resistance_band', 'pull_up_bar', 'box', 'ab_wheel', 'gymnastic_rings'];
 
+/**
+ * SAF-3: the safety facts every engine input must carry, at their "nothing reported" values
+ * (no pain flags, no history, no recent loads, no date of birth, unknown local date, unlocked).
+ */
+export const SAFE_FACTS = Object.freeze({
+  jointFlags: {},
+  history: [],
+  recentLoads: [],
+  birthDate: null,
+  localDate: null,
+  intensityLock: Object.freeze({ locked: false, since: null }),
+}) as { readonly jointFlags: Record<never, never>; readonly history: readonly never[]; readonly recentLoads: readonly never[]; readonly birthDate: null; readonly localDate: null; readonly intensityLock: { readonly locked: false; readonly since: null } };
+
 /** SafetyProfile from the M01 screening (never re-implemented here). */
 export function profileFrom(yes: ScreeningQuestionId[] = [], options: { clearanceAttested?: boolean; birthYear?: number } = {}): SafetyProfile {
   const answers = Object.fromEntries(SCREENING_QUESTION_IDS.map((q) => [q, yes.includes(q) ? 'yes' : 'no']));

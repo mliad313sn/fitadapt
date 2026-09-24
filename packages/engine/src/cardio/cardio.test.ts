@@ -2,7 +2,7 @@ import { CardioPlanSchema, JOINTS, type EquipmentId, SafetyProfileSchema, impact
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { CARDIO_LIBRARY, trainedHistory } from '../__fixtures__/cardio.js';
-import { profileFrom } from '../__fixtures__/library.js';
+import { SAFE_FACTS, profileFrom } from '../__fixtures__/library.js';
 import { programContext } from '../__fixtures__/session.js';
 import { fixedClock } from '../clock.js';
 import { createEngineContext } from '../context.js';
@@ -26,7 +26,7 @@ const GYM: EquipmentId[] = ['stationary_bike', 'rowing_machine', 'treadmill', 'e
 const cleared = () => profileFrom();
 const with_ = (p: SafetyProfile, over: Partial<SafetyProfile>) => SafetyProfileSchema.parse({ ...p, ...over });
 
-const cardioInput = (protocol: CardioProtocol, over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({
+const cardioInput = (protocol: CardioProtocol, over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({ ...SAFE_FACTS,
   safetyProfile: cleared(),
   equipment: HOME,
   minutesAvailable: 30,
@@ -148,7 +148,7 @@ describe('packages/engine/cardio generates HIIT, Tabata, EMOM, AMRAP and steady-
   });
 
   it('a program finisher (M08) becomes a cardio block after the strength work, with no second warm-up; the M02 time-boxing is kept', () => {
-    const input: GenerateSessionInput = {
+    const input: GenerateSessionInput = { ...SAFE_FACTS,
       safetyProfile: cleared(),
       equipment: ['dumbbell', 'pull_up_bar', 'resistance_band', 'stationary_bike'],
       minutesAvailable: 45,
@@ -484,7 +484,7 @@ describe('the impact default applies to the whole session, not only its cardio b
   });
 
   it('a program session for a BMI ≥ 35 user uses only low-impact exercises in every slot, and so does its finisher', () => {
-    const input: GenerateSessionInput = {
+    const input: GenerateSessionInput = { ...SAFE_FACTS,
       safetyProfile: cleared(),
       equipment: [],
       minutesAvailable: 45,

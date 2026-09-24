@@ -224,23 +224,30 @@ export const GenerateSessionInputSchema = z.strictObject({
   equipmentLoads: EquipmentLoadsSchema.nullable().optional(),
   equipmentProfileId: UuidSchema.nullable().optional(),
   minutesAvailable: z.number().min(0).max(600),
-  /** M05 pain traffic light (S2). */
-  jointFlags: JointFlagsSchema.optional(),
+  /** M05 pain traffic light (S2). Required (SAF-3): no flags is an explicit `{}`, never an absent fact. */
+  jointFlags: JointFlagsSchema,
   /** M07 capacity model (first session; starting rungs and e1RMs later). */
   capacity: CapacityModelSchema.nullable().optional(),
   /** M08 session of the day; absent → the first session from the capacity model. */
   programSession: ProgramSessionContextSchema.nullable().optional(),
-  /** Past sessions, oldest first. */
-  history: z.array(SessionHistoryEntrySchema).max(SESSION_HISTORY_MAX).optional(),
-  /** M07: loads prescribed recently (S5). */
-  recentLoads: z.array(RecentLoadSchema).max(RECENT_LOADS_MAX).optional(),
+  /** Past sessions, oldest first (the engine's `boundSessionInput` keeps the newest 60). Required (SAF-3): none is `[]`. */
+  history: z.array(SessionHistoryEntrySchema).max(SESSION_HISTORY_MAX),
+  /** M07: loads prescribed recently (S5). Required (SAF-3): none is `[]`. */
+  recentLoads: z.array(RecentLoadSchema).max(RECENT_LOADS_MAX),
   /** M07: rounding step when the place's loads are not known. */
   loadIncrementKg: z.number().positive().max(50).optional(),
   bodyweightKg: z.number().min(25).max(350).nullable().optional(),
-  /** S7 re-check with the M17 age gate on the engine clock's date. */
-  birthDate: CalendarDateSchema.nullable().optional(),
+  /** S7 re-check with the M17 age gate. Required (SAF-3): null only when the account has no date of birth. */
+  birthDate: CalendarDateSchema.nullable(),
+  /**
+   * SAF-12: the user's local calendar date at generation (the device's time zone). The S7 re-check uses the
+   * earlier of it and the engine clock's UTC date; a date more than one day away from the clock's is refused.
+   * Null (unknown): the check assumes the day before the UTC date (fail closed).
+   */
+  localDate: CalendarDateSchema.nullable(),
   experience: ExperienceLevelSchema.nullable().optional(),
-  intensityLock: IntensityLockSchema.optional(),
+  /** S3 lock (packages/safety intensityLockStatus). Required (SAF-3): unlocked is an explicit `{ locked: false, since: null }`. */
+  intensityLock: IntensityLockSchema,
   /** M05/M12 readiness: 'reduced' → fewer sets and more reps in reserve. */
   readiness: z.enum(READINESS_LEVELS).optional(),
   /** M05: a triggered deload (engine deloadStatus) → volume −40–50 %, no progression. */
@@ -257,6 +264,23 @@ export const GenerateSessionInputSchema = z.strictObject({
   impactOptIn: z.boolean().optional(),
 });
 export type GenerateSessionInputValue = z.infer<typeof GenerateSessionInputSchema>;
+
+/**
+ * The input as stored with a started session (`workout_sessions`). Records
+ * written before SAF-3 may lack the safety facts, so this schema keeps them
+ * optional: old rows still parse (their history and S5 references are never
+ * lost). A stored input is never trusted as an engine input: the server
+ * re-derives through GenerateSessionInputSchema, which requires the facts.
+ */
+export const StoredSessionInputSchema = GenerateSessionInputSchema.extend({
+  jointFlags: JointFlagsSchema.optional(),
+  history: z.array(SessionHistoryEntrySchema).max(SESSION_HISTORY_MAX).optional(),
+  recentLoads: z.array(RecentLoadSchema).max(RECENT_LOADS_MAX).optional(),
+  birthDate: CalendarDateSchema.nullable().optional(),
+  localDate: CalendarDateSchema.nullable().optional(),
+  intensityLock: IntensityLockSchema.optional(),
+});
+export type StoredSessionInput = z.infer<typeof StoredSessionInputSchema>;
 
 // ------------------------------------------------------ progression decision
 
@@ -323,7 +347,7 @@ export type ProgressionDecision = z.infer<typeof ProgressionDecisionSchema>;
 /** The plan a user started (collection `workout_sessions`, append-only): the executed prescription with the inputs it came from. */
 export const WorkoutSessionRecordSchema = z.strictObject({
   schemaVersion: z.literal(1),
-  input: GenerateSessionInputSchema,
+  input: StoredSessionInputSchema,
   plan: SessionPlanSchema,
   safetyEvents: z.array(SessionSafetyEventSchema),
   startedAt: IsoDateTimeSchema,

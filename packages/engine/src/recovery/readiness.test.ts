@@ -1,7 +1,7 @@
 import type { ReadinessCheck, SessionPlan } from '@fitadapt/shared';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { FULL_GYM, profileFrom } from '../__fixtures__/library.js';
+import { SAFE_FACTS, FULL_GYM, profileFrom } from '../__fixtures__/library.js';
 import { GYM_CAPACITY, RECOVERY_LIBRARY } from '../__fixtures__/recovery.js';
 import { GYM_ID, GYM_LOADS, programContext } from '../__fixtures__/session.js';
 import { fixedClock } from '../clock.js';
@@ -12,7 +12,7 @@ import { readinessCheckOn, readinessFromCheck, readinessLevelOn } from './readin
 
 const MON = Date.parse('2026-09-28T08:00:00.000Z');
 const check = (a: Partial<ReadinessCheck> = {}): ReadinessCheck => ({ schemaVersion: 1, date: '2026-09-28', at: '2026-09-28T07:00:00.000Z', sleep: 4, soreness: 2, stress: 2, energy: 4, wearable: null, ...a });
-const gym = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({
+const gym = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({ ...SAFE_FACTS,
   safetyProfile: profileFrom(),
   equipment: [...FULL_GYM, 'cable_station'],
   equipmentLoads: GYM_LOADS,

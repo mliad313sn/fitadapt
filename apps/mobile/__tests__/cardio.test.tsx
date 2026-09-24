@@ -72,7 +72,7 @@ function device(options: { yes?: string[]; trainedDaysAgo?: number[]; weightKg?:
   // Earlier steady cardio sessions (engine plans at their own time), each run to the end.
   for (const [i, daysAgo] of (options.trainedDaysAgo ?? []).entries()) {
     const at = Date.parse(NOW) - daysAgo * DAY;
-    const input = { safetyProfile: selectSafetyProfile(profile.getState().screenings, consents.getState().records), equipment: [...EQUIPMENT_PRESETS.home_basic], minutesAvailable: 30, mode: 'cardio' as const, cardio: { protocol: 'steady' as const }, birthDate: { year: 1990, month: 5, day: 20 } };
+    const input = { jointFlags: {}, history: [], recentLoads: [], localDate: null, intensityLock: { locked: false, since: null }, safetyProfile: selectSafetyProfile(profile.getState().screenings, consents.getState().records), equipment: [...EQUIPMENT_PRESETS.home_basic], minutesAvailable: 30, mode: 'cardio' as const, cardio: { protocol: 'steady' as const }, birthDate: { year: 1990, month: 5, day: 20 } };
     const r = generateSession(input, createEngineContext({ clock: fixedClock(at), seed: i + 1 }));
     if (r.status !== 'ok') throw new Error(r.reasonCodes.join());
     const startedAt = new Date(at).toISOString();
