@@ -23,6 +23,7 @@
     "@fastify/swagger": "9.9.0",
     "@fitadapt/engine": "workspace:*",
     "@fitadapt/exercise-library": "workspace:*",
+    "@fitadapt/food-library": "workspace:*",
     "@fitadapt/legal": "workspace:*",
     "@fitadapt/privacy": "workspace:*",
     "@fitadapt/safety": "workspace:*",

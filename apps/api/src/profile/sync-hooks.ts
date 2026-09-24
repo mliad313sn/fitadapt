@@ -8,6 +8,7 @@ import {
   BodyMetricSchema,
   EquipmentProfileSchema,
   MeasurementSchema,
+  NUTRITION_COLLECTIONS,
   PROFILE_COLLECTIONS,
   PROGRAM_COLLECTIONS,
   PROGRESS_COLLECTIONS,
@@ -28,12 +29,13 @@ import type { ConsentWithdrawalHandler, PrivacyService } from '../privacy/servic
 import type { PgServerTx } from '../sync/pg-store.js';
 import { onProgramApplied, validateProgram, validateReflow } from './program-hooks.js';
 import { onSessionApplied, validateExecutionLog, validateWorkoutSession } from './session-hooks.js';
+import { onNutritionApplied, validateHabitCheck, validateIntakeLog, validateNutritionPlan } from './nutrition-hooks.js';
 
 /**
  * Collections holding health data (screening answers, biometrics, M07
  * assessment results, M08 programs, which embed the SafetyProfile, and their
  * reflows, M02 started sessions and execution logs, M05 readiness checks, M04 body weight, body-fat
- * estimates and circumferences): need the health consent
+ * estimates and circumferences, M10 nutrition plans, intake logs and habit ticks): need the health consent
  * (L9, ADR-004) and are erased when it is withdrawn. M00 set logs
  * (reps, load, reserve) stay outside, as before (open question, B1).
  */
@@ -51,6 +53,10 @@ export const HEALTH_COLLECTIONS: readonly string[] = [
   // M04: body weight, body-fat estimates and circumferences (progress photos are never synced, ADR-020).
   PROGRESS_COLLECTIONS.bodyMetrics,
   PROGRESS_COLLECTIONS.measurements,
+  // M10: nutrition plans (embed the SafetyProfile, weight, height, birth date), intake logs and habit ticks.
+  NUTRITION_COLLECTIONS.plans,
+  NUTRITION_COLLECTIONS.intakeLogs,
+  NUTRITION_COLLECTIONS.habitChecks,
 ];
 
 /**
@@ -160,6 +166,12 @@ export function profileSyncValidator(deps: ProfileSyncDeps): MutationValidator {
         return (await consentRequired(userId, m)) ?? (BodyMetricSchema.safeParse(m.data).success ? null : 'body_metric.invalid');
       case PROGRESS_COLLECTIONS.measurements:
         return (await consentRequired(userId, m)) ?? (MeasurementSchema.safeParse(m.data).success ? null : 'measurement.invalid');
+      case NUTRITION_COLLECTIONS.plans:
+        return (await consentRequired(userId, m)) ?? validateNutritionPlan(deps.db, userId, m.data, await latestSafetyProfile(deps.db, userId));
+      case NUTRITION_COLLECTIONS.intakeLogs:
+        return (await consentRequired(userId, m)) ?? validateIntakeLog(m.data);
+      case NUTRITION_COLLECTIONS.habitChecks:
+        return (await consentRequired(userId, m)) ?? validateHabitCheck(m.data);
       default:
         return null;
     }
@@ -201,6 +213,9 @@ export function profileSyncListener(deps: ProfileSyncDeps): MutationListener<PgS
     } else if (m.collection === SESSION_COLLECTIONS.workoutSessions || m.collection === SESSION_COLLECTIONS.executionLogs) {
       // M02: "prescription issued" (engine and rules versions) and its safety events, or the S3 events, in the same transaction as the record.
       await onSessionApplied(deps.legal, userId, m.collection, m.data, tx);
+    } else if (m.collection === NUTRITION_COLLECTIONS.plans) {
+      // M10: "nutrition target set" (engine and nutrition-rules versions, mode, codes) and its S4 events, in the same transaction as the record.
+      await onNutritionApplied(deps.legal, userId, m.collection, m.data, tx);
     }
   };
 }

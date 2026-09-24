@@ -228,6 +228,11 @@ export class LegalService {
     await this.log.append(tx, { type: 'program.reflowed', chain: this.subjectRef(userId), occurredAt: this.deps.now().toISOString(), payload });
   }
 
+  /** M10: a nutrition target the engine prescribed (versions, mode, codes; never a value), with the transaction of the stored plan (ADR-009). */
+  async recordNutritionTarget(userId: string, payload: DefensibilityPayload<'nutrition.target_set'>, tx: Tx): Promise<void> {
+    await this.log.append(tx, { type: 'nutrition.target_set', chain: this.subjectRef(userId), occurredAt: this.deps.now().toISOString(), payload });
+  }
+
   /**
    * M09 Fair Pair: a participant's own pair event (joined, challenge started,
    * left, partner left), in their own chain, always with the transaction of
