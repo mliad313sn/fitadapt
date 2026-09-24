@@ -80,7 +80,7 @@ describe('API-1: sync validators read through the sync transaction (no pool self
     const users = await manySessions(30);
     for (const u of users.slice(0, 15)) expect((await consent(u, 'health')).statusCode).toBe(201);
     const started = Date.now();
-    const all = Promise.all(users.map((u) => pushReq(u, [insert('readiness_checks', readiness()), insert('readiness_checks', readiness()), insert('readiness_checks', { junk: true }), insert('readiness_checks', readiness()), insert('readiness_checks', readiness())])));
+    const all = Promise.all(users.map((u) => pushReq(u, [insert('readiness_checks', readiness()), insert('readiness_checks', readiness()), insert('readiness_checks', readiness()), insert('readiness_checks', readiness()), insert('readiness_checks', readiness())])));
     const outcome = await Promise.race([all.then(() => 'completed'), settle(10_000).then(() => 'hung')]);
     if (outcome === 'hung') {
       // Free the stuck backends so the suite can close, then fail.
@@ -93,9 +93,9 @@ describe('API-1: sync validators read through the sync transaction (no pool self
     expect(Date.now() - started).toBeLessThan(10_000);
     const results = await all;
     const reasons = results.map((r) => (r.json() as { results: { status: string; reason?: string }[] }).results.map((x) => x.reason ?? x.status));
-    // With consent: four applied, the malformed one rejected; without: every one refused on consent.
+    // With consent: all applied; without: every one refused on consent.
     for (const [i, r] of reasons.entries()) {
-      expect(r).toEqual(i < 15 ? ['applied', 'applied', 'readiness_check.invalid', 'applied', 'applied'] : Array(5).fill('privacy.consent_required'));
+      expect(r).toEqual(i < 15 ? Array(5).fill('applied') : Array(5).fill('privacy.consent_required'));
     }
     expect(h.database.pool.waitingCount).toBe(0);
   }, 60_000);

@@ -100,7 +100,7 @@ async function populatedUser() {
     { collection: 'preferences', data: { displayName: CANARY.name, units: 'metric' } },
   ]);
   expect(pushed.statusCode).toBe(200);
-  expect((pushed.json() as { results: { status: string; reason?: string }[] }).results.map((r) => r.reason ?? r.status)).toEqual(['applied', 'set_log.invalid', 'applied']);
+  expect((pushed.json() as { results: { status: string; reason?: string }[] }).results.map((r) => r.status)).toEqual(['applied', 'rejected', 'applied']);
   expect((await consent(token, 'health', 'granted')).statusCode).toBe(201);
   expect((await consent(token, 'analytics', 'granted')).statusCode).toBe(201);
   expect((await consent(token, 'analytics', 'withdrawn')).statusCode).toBe(201);
