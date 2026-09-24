@@ -115,8 +115,8 @@ async function checkInputs(db: Database, userId: string, record: WorkoutSessionR
   // S7 (M17 age gate): the date of birth of the stored profile.
   const profile = await latestState(db, userId, PROFILE_COLLECTIONS.profile, PROFILE_RECORD_ID, (d) => ProfileSchema.safeParse(d));
   if (profile && !isDeepStrictEqual(input.birthDate ?? null, profile.birthDate)) return 'session.profile_mismatch';
-  // M03: a cardio block's impact default (BMI ≥ 35) reads the stored height and weight, never other numbers.
-  if (plan.cardio && profile && ((input.heightCm ?? null) !== profile.biometrics.heightCm || (input.bodyweightKg ?? null) !== profile.biometrics.weightKg)) return 'session.biometrics_mismatch';
+  // M03: the impact default (BMI ≥ 35) of every session reads the stored height and weight, never other numbers.
+  if (profile && ((input.heightCm ?? null) !== profile.biometrics.heightCm || (input.bodyweightKg ?? null) !== profile.biometrics.weightKg)) return 'session.biometrics_mismatch';
   // S3: the lock the stored execution logs imply.
   const { sessions, setLogs, events } = await storedExecution(db, userId);
   const lock = intensityLockStatus(events);

@@ -143,6 +143,9 @@ describe('M03 cardio sessions on the server', () => {
     expect(await r.push([insert('workout_sessions', workout(r.input({ cardio: { protocol: 'emom' }, heightCm: null, bodyweightKg: null }), NOW, 3))])).toEqual(['session.biometrics_mismatch']);
     expect(await r.push([insert('workout_sessions', workout(r.input({ cardio: { protocol: 'emom' }, bodyweightKg: 80 }), NOW, 4))])).toEqual(['session.biometrics_mismatch']);
     expect(await r.push([insert('workout_sessions', honest)])).toEqual(['applied']);
+    // Every session, not only cardio: a mobility session with another height is refused too.
+    expect(await r.push([insert('workout_sessions', workout(r.input({ mode: 'mobility_balance', cardio: null, heightCm: 150 }), NOW, 8, false))])).toEqual(['session.biometrics_mismatch']);
+    expect(await r.push([insert('workout_sessions', workout(r.input({ mode: 'mobility_balance', cardio: null }), NOW, 8, false))])).toEqual(['applied']);
     // An edited plan (another impact ceiling) is refused by the re-derivation.
     const tampered = { ...honest, plan: { ...honest.plan, planId: randomUUID(), cardio: { ...honest.plan.cardio!, impactCeiling: 'high' as const } } };
     expect(await r.push([insert('workout_sessions', tampered)])).toEqual(['session.mismatch']);
