@@ -64,8 +64,9 @@ export default defineConfig(
     rules: { 'fitadapt/no-hardcoded-jsx-strings': 'error' },
   },
   // packages/engine and packages/safety are pure: no I/O, no network, injected clock and seed.
+  // M11: packages/coach too (the same turn runs on the device offline and on the server; the model is injected).
   {
-    files: ['packages/engine/src/**/*.ts', 'packages/safety/src/**/*.ts'],
+    files: ['packages/engine/src/**/*.ts', 'packages/safety/src/**/*.ts', 'packages/coach/src/**/*.ts'],
     ignores: ['**/*.test.ts'],
     rules: {
       'no-restricted-imports': [
