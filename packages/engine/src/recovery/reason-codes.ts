@@ -27,6 +27,8 @@ export const M05_REASON_PARAMS: Readonly<Record<string, readonly string[]>> = Ob
   'session.deload.sets_reduced': [],
   // Alternative grips and variants for amber joints
   ...Object.fromEntries(JOINTS.map((j) => [`session.amber.${j}`, []])),
+  // S2: a slot left empty because every option loads a red joint
+  ...Object.fromEntries(JOINTS.map((j) => [`session.s2.slot_dropped.${j}`, []])),
   // Standalone mobility and balance session
   'session.mobility.standalone': [],
   'session.mobility.balance': [],

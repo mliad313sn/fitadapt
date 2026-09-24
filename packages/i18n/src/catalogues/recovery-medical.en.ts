@@ -19,6 +19,7 @@ const amber = (j: J) =>
     ? `Your ${joints[j]} is on amber: a neutral grip (palms facing each other) or a shorter range of motion may feel easier. Stop this exercise if the pain rises.`
     : `Your ${joints[j]} is on amber: move within a range that feels comfortable, for example not as deep. Stop this exercise if the pain rises.`;
 const physio = (j: J) => `Your ${joints[j]} has been on amber or red for more than two weeks. Consider seeing a physiotherapist, who can look at it with you. This app offers general guidance only and cannot tell what is causing it.`;
+const dropped = (j: J) => `One exercise is left out today: every option here would load your ${joints[j]}, which you rated red.`;
 const morning = (j: J) => `Your ${joints[j]}: how much pain now, from 0 to 10?`;
 
 export const recoveryMedicalEn = {
@@ -30,6 +31,14 @@ export const recoveryMedicalEn = {
   'engine.reason.session.amber.hip': amber('hip'),
   'engine.reason.session.amber.knee': amber('knee'),
   'engine.reason.session.amber.ankle': amber('ankle'),
+
+  'engine.reason.session.s2.slot_dropped.shoulder': dropped('shoulder'),
+  'engine.reason.session.s2.slot_dropped.elbow': dropped('elbow'),
+  'engine.reason.session.s2.slot_dropped.wrist': dropped('wrist'),
+  'engine.reason.session.s2.slot_dropped.lumbar': dropped('lumbar'),
+  'engine.reason.session.s2.slot_dropped.hip': dropped('hip'),
+  'engine.reason.session.s2.slot_dropped.knee': dropped('knee'),
+  'engine.reason.session.s2.slot_dropped.ankle': dropped('ankle'),
 
   // ---- Pain check after the session
   'recovery.pain.after.title': 'How do your joints feel?',
@@ -76,6 +85,8 @@ export const recoveryMedicalEn = {
   // ---- Red-flag check-in (with the readiness check)
   'recovery.redFlag.checkin.title': 'Before you train: any of these today?',
   'recovery.redFlag.checkin.body': 'If you have any of these, do not train today. Tap it to see what to do.',
+  'recovery.redFlag.checkin.stopTitle': 'Please do not train today',
+  'recovery.redFlag.checkin.symptomHint': 'Pauses training and shows what to do next',
 
   // ---- S3: the medical-review statement that lifts the lock (self-attestation, M05 decision; A1 and counsel to review)
   'recovery.s3.attest.title': 'Confirm your medical review',

@@ -40,7 +40,7 @@ export const recoveryEn = {
   'engine.reason.session.unavailable.no_mobility_exercise': 'No mobility or balance exercise fits your place and your answers today.',
 
   // ---- Screens: session type
-  'recovery.mode.training': 'Today’s session',
+  'recovery.mode.training': 'Training',
   'recovery.mode.mobility': 'Mobility and balance',
   'recovery.mode.hint': 'Chooses between today’s training and a gentle mobility and balance session',
 

@@ -115,6 +115,41 @@ describe('S2 from the M05 pain model into the next generateSession (goal conditi
   });
 });
 
+describe('S2 is explained and logged whenever it changes a slot (L11)', () => {
+  it('property: every exercise the same day would have had without the red flags, if it loads a red joint, is replaced with an S2 reason or its slot is dropped with one — and S2 is logged', () => {
+    const patterns = ['squat', 'hinge', 'lunge', 'horizontal_push', 'vertical_push', 'horizontal_pull', 'vertical_pull', 'core', 'isolation'] as const;
+    fc.assert(
+      fc.property(
+        fc.uniqueArray(fc.record({ pattern: fc.constantFrom(...patterns), role: fc.constantFrom('primary' as const, 'secondary' as const, 'accessory' as const), sets: fc.integer({ min: 1, max: 4 }) }), { minLength: 1, maxLength: 6, selector: (r) => `${r.pattern}:${r.role}` }),
+        fc.subarray([...JOINTS], { minLength: 1, maxLength: 3 }),
+        fc.boolean(),
+        (slots, redJoints, atGym) => {
+          const base = gym({
+            minutesAvailable: 240,
+            ...(atGym ? {} : { equipment: ['pull_up_bar', 'resistance_band', 'dumbbell'], equipmentLoads: HOME_LOADS, equipmentProfileId: HOME_ID, capacity: null }),
+            programSession: programContext({ slots: slots.map((x) => slot(x.pattern, x.role, 'general', x.sets)), equipmentProfileId: atGym ? GYM_ID : HOME_ID }),
+          });
+          const flags = Object.fromEntries(redJoints.map((j) => [j, 'red' as const]));
+          const without = gen(base);
+          const withFlags = gen({ ...base, jointFlags: flags });
+          if (without.status !== 'ok' || withFlags.status !== 'ok') return;
+          let changed = false;
+          for (const e of without.plan.exercises) {
+            const red = redJointsLoaded(RECOVERY_LIBRARY.graph.exercises.get(e.exerciseId)!, flags);
+            if (red.length === 0) continue;
+            changed = true;
+            const now = withFlags.plan.exercises.find((x) => x.slot === e.slot && x.role === e.role);
+            if (now) expect(now.reasonCodes[0]).toMatch(/^session\.exercise\.s2_substituted\./);
+            else expect(withFlags.plan.reasonCodes.some((c) => c.startsWith('session.s2.slot_dropped.'))).toBe(true);
+          }
+          if (changed) expect(withFlags.safetyEvents.some((ev) => ev.invariant === 'S2')).toBe(true);
+        },
+      ),
+      { numRuns: 400 },
+    );
+  });
+});
+
 describe('S3 red-flag stop in the engine', () => {
   const flag: SafetyStopEvent = { kind: 'red_flag', at: at(MON - DAY) };
   it('while locked no session of any kind is generated; after the attestation sessions return, deloaded for a week', () => {

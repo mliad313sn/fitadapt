@@ -18,6 +18,8 @@ const amber = (j: J) =>
     ? `${joints[j]} est à l’orange : une prise neutre (paumes face à face) ou une amplitude plus courte peut être plus confortable. Arrêtez l’exercice si la douleur augmente.`
     : `${joints[j]} est à l’orange : bougez dans une amplitude confortable, par exemple moins profond. Arrêtez l’exercice si la douleur augmente.`;
 const physio = (j: J) => `${joints[j]} est à l’orange ou au rouge depuis plus de deux semaines. Pensez à consulter un kinésithérapeute, qui pourra regarder cela avec vous. Cette application donne des conseils généraux et ne peut pas en connaître la cause.`;
+const droppedJ = { shoulder: 'votre épaule', elbow: 'votre coude', wrist: 'votre poignet', lumbar: 'le bas de votre dos', hip: 'votre hanche', knee: 'votre genou', ankle: 'votre cheville' } as const;
+const dropped = (j: J) => `Un exercice est retiré aujourd’hui : toutes les options ici solliciteraient ${droppedJ[j]}, que vous avez noté au rouge.`;
 const morning = (j: J) => `${joints[j]} : quelle douleur maintenant, de 0 à 10 ?`;
 
 export const recoveryMedicalFr: Record<keyof typeof recoveryMedicalEn, string> = {
@@ -28,6 +30,14 @@ export const recoveryMedicalFr: Record<keyof typeof recoveryMedicalEn, string> =
   'engine.reason.session.amber.hip': amber('hip'),
   'engine.reason.session.amber.knee': amber('knee'),
   'engine.reason.session.amber.ankle': amber('ankle'),
+
+  'engine.reason.session.s2.slot_dropped.shoulder': dropped('shoulder'),
+  'engine.reason.session.s2.slot_dropped.elbow': dropped('elbow'),
+  'engine.reason.session.s2.slot_dropped.wrist': dropped('wrist'),
+  'engine.reason.session.s2.slot_dropped.lumbar': dropped('lumbar'),
+  'engine.reason.session.s2.slot_dropped.hip': dropped('hip'),
+  'engine.reason.session.s2.slot_dropped.knee': dropped('knee'),
+  'engine.reason.session.s2.slot_dropped.ankle': dropped('ankle'),
 
   'recovery.pain.after.title': 'Comment vont vos articulations ?',
   'recovery.pain.after.body': 'Si quelque chose fait mal, choisissez l’articulation et notez la douleur de 0 (aucune) à 10 (la pire imaginable). Si rien ne fait mal, vous pouvez passer.',
@@ -69,6 +79,8 @@ export const recoveryMedicalFr: Record<keyof typeof recoveryMedicalEn, string> =
 
   'recovery.redFlag.checkin.title': 'Avant de vous entraîner : l’un de ces signes aujourd’hui ?',
   'recovery.redFlag.checkin.body': 'Si c’est le cas, ne vous entraînez pas aujourd’hui. Touchez le signe concerné pour savoir quoi faire.',
+  'recovery.redFlag.checkin.stopTitle': 'Ne vous entraînez pas aujourd’hui',
+  'recovery.redFlag.checkin.symptomHint': 'Met l’entraînement en pause et indique quoi faire',
 
   'recovery.s3.attest.title': 'Confirmer votre avis médical',
   'recovery.s3.attest.statement': 'Je confirme qu’un médecin ou un autre professionnel de santé qualifié m’a examiné depuis que j’ai signalé ces signes d’alerte, et qu’il est d’accord pour que je reprenne l’exercice.',

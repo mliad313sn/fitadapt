@@ -10,6 +10,7 @@ import {
   type EquipmentId,
   type EquipmentLoads,
   type HistoryExercise,
+  type Joint,
   type JointFlags,
   type LoadImplement,
   type MovementPattern,
@@ -380,7 +381,22 @@ function mapBlocked(ctx: Ctx, cand: Candidate, ex: GraphExercise): Candidate | n
   return { ...cand, exerciseId: id, ladderId: null, origin: 'substituted', reasonCode: 'session.exercise.substituted' };
 }
 
-function planSlot(ctx: Ctx, slot: ProgramSlot, sets: number): Prescribed | null {
+/** The joint flags without the red ones (amber kept): what the slot would get if nothing were red (S2 attribution). */
+const withoutRed = (flags: JointFlags): JointFlags => Object.fromEntries(Object.entries(flags).filter(([, f]) => f !== 'red')) as JointFlags;
+const anyRed = (flags: JointFlags) => JOINTS.some((j) => flags[j] === 'red');
+
+/**
+ * M05 (S2 attribution): the red joints the slot's exercise would load if nothing were red — what the same
+ * selection picks with the red flags lifted. Empty when no joint is red or that choice loads none of them.
+ */
+function redJointsWithoutFlags(ctx: Ctx, slot: ProgramSlot, sets: number): readonly Joint[] {
+  if (!anyRed(ctx.jointFlags)) return [];
+  const without = planSlot({ ...ctx, jointFlags: withoutRed(ctx.jointFlags), used: new Set(ctx.used) }, slot, sets, true);
+  const ex = without ? ctx.library.graph.exercises.get(without.exercise.exerciseId) : undefined;
+  return ex ? redJointsLoaded(ex, ctx.jointFlags) : [];
+}
+
+function planSlot(ctx: Ctx, slot: ProgramSlot, sets: number, dry = false): Prescribed | null {
   const prev = previousFor(ctx.history, slot.pattern, slot.role);
   const candidates: Candidate[] = [];
   if (prev) {
@@ -425,7 +441,9 @@ function planSlot(ctx: Ctx, slot: ProgramSlot, sets: number): Prescribed | null 
   // S2: when the exercise this slot would have had without the joint flags loads a red joint, whatever replaces it is an S2 substitution.
   const unflagged = candidates.length > 0 && candidates[0]!.origin !== 'from_program' ? candidates[0] : defaultCandidates({ ...ctx, jointFlags: {} }, slot)[0];
   const preferred = unflagged ? ctx.library.graph.exercises.get(unflagged.exerciseId) : undefined;
-  const redPreferred = preferred ? redJointsLoaded(preferred, ctx.jointFlags) : [];
+  const firstGuess = preferred ? redJointsLoaded(preferred, ctx.jointFlags) : [];
+  // The first guess can miss what the selection would really have picked (e.g. an exercise kept for another role this week): ask the selection itself.
+  const redPreferred = firstGuess.length > 0 || dry ? firstGuess : redJointsWithoutFlags(ctx, slot, sets);
   const otherRole = recentInOtherRole(ctx, slot.pattern, slot.role);
   const tried = new Set<string>();
   for (const pass of [false, true]) {
@@ -545,6 +563,12 @@ export function programSession(input: GenerateSessionInput, library: SessionLibr
     const result = planSlot(c, slot, sets);
     if (!result) {
       planReasons.push(`session.slot_dropped.${slot.pattern}`);
+      // M05 (S2): the slot is empty because what it would have had loads a red joint — say so, and log it.
+      const red = redJointsWithoutFlags(c, slot, sets);
+      if (red.length > 0) {
+        planReasons.push(`session.s2.slot_dropped.${red[0]!}`);
+        events.push({ invariant: 'S2', reasonCode: 'substitution.joint_red', action: 'blocked', engineVersion: ENGINE_VERSION });
+      }
       continue;
     }
     c.used.add(result.exercise.exerciseId);

@@ -35,7 +35,7 @@ export const recoveryFr: Record<keyof typeof recoveryEn, string> = {
   'engine.reason.session.mobility.easy_effort': 'Restez à un effort facile : arrêtez avec environ {rir} répétitions en réserve.',
   'engine.reason.session.unavailable.no_mobility_exercise': 'Aucun exercice de mobilité ou d’équilibre ne convient à votre lieu et à vos réponses aujourd’hui.',
 
-  'recovery.mode.training': 'Séance du jour',
+  'recovery.mode.training': 'Entraînement',
   'recovery.mode.mobility': 'Mobilité et équilibre',
   'recovery.mode.hint': 'Choisit entre l’entraînement du jour et une séance douce de mobilité et d’équilibre',
 
