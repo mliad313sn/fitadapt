@@ -211,13 +211,15 @@ export function addMonths(at: Date, months: number): Date {
 export type RescreenStatus =
   | { readonly status: 'never_screened' }
   | { readonly status: 'current'; readonly dueAt: string }
-  | { readonly status: 'due'; readonly reason: 'annual' | 'new_condition'; readonly dueAt: string };
+  | { readonly status: 'due'; readonly reason: 'annual' | 'new_condition' | 'rejected'; readonly dueAt: string };
 
 /**
  * M01: re-screen every 12 months (config) or when the user reports a new
- * condition after the last screening. Clock injected.
+ * condition after the last screening. Clock injected. FIX-B: a latest
+ * screening the server rejected makes a re-screen due now.
  */
-export function rescreenStatus(lastScreenedAt: string | null, now: Date, newConditionReportedAt: string | null = null): RescreenStatus {
+export function rescreenStatus(lastScreenedAt: string | null, now: Date, newConditionReportedAt: string | null = null, screeningRejected = false): RescreenStatus {
+  if (screeningRejected) return { status: 'due', reason: 'rejected', dueAt: now.toISOString() };
   if (lastScreenedAt === null || Number.isNaN(Date.parse(lastScreenedAt))) return { status: 'never_screened' };
   const dueAt = addMonths(new Date(lastScreenedAt), SCREENING_CONFIG.rescreenIntervalMonths.value).toISOString();
   if (newConditionReportedAt !== null && Date.parse(newConditionReportedAt) > Date.parse(lastScreenedAt)) {

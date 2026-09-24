@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { SCREENING_QUESTION_IDS, type SafetyProfile, type ScreeningQuestionId, type ScreeningRecord, type ScreeningResponses } from '@fitadapt/shared';
 import {
   AMBIGUOUS_SCREENING_REASON,
+  REJECTED_SCREENING_REASON,
+  rescreenStatus,
+  screeningGateCheck,
   evaluateScreening,
   intensityLockStatus,
   isAtLeastAsStrict,
@@ -302,5 +305,36 @@ describe('S3 on raw execution logs (the server and the device selector pass them
     const old = { kind: 'medical_review_attested', at: iso(BASE + 10_000), attests: [uuid(1)] };
     expect(intensityLockStatus([flag, old]).locked).toBe(true);
     expect(intensityLockStatus([flag, old, { kind: 'medical_review_attested', at: iso(BASE + 11_000), attests: [uuid(7)] }]).locked).toBe(false);
+  });
+});
+
+describe('FIX-B (with FIX-E): a screening the server rejected never lets the older, looser one count', () => {
+  it('property: with screeningRejected the profile is at least as strict as "not screened" AND as the accepted history, and asks for a re-screen', () => {
+    fc.assert(
+      fc.property(arbSteps, arbResponses, fc.integer({ min: 0, max: 10 }), fc.boolean(), fc.boolean(), (steps, _rejected, rpe, hiit, maximalTest) => {
+        // The rejected screening was removed by sync: only the accepted history is left on the device.
+        const accepted = writeLinked(steps);
+        const p = safetyProfileFromScreenings(accepted, { screeningRejected: true });
+        expect(isAtLeastAsStrict(p, notScreenedSafetyProfile())).toBe(true);
+        expect(isAtLeastAsStrict(p, safetyProfileFromScreenings(accepted))).toBe(true);
+        expect(p).toMatchObject({ screeningOutcome: expect.stringMatching(/^(not_screened|blocked)$/), automaticProgrammingAllowed: false, allowMaxTests: false, allowHIIT: false, deficitNutritionAllowed: false, heartRateZonesAllowed: false });
+        expect(p.maxRPE).toBeLessThanOrEqual(7);
+        expect(p.reasonCodes).toContain(REJECTED_SCREENING_REASON);
+        expect(p.reasonCodes).not.toContain(AMBIGUOUS_SCREENING_REASON);
+        // The S1 gate the engine calls refuses maximal tests and HIIT, and any effort above the S1 cap.
+        const allowed = screeningGateCheck({ profile: p, request: { rpe, hiit, maximalTest } }) === null;
+        if (allowed) expect(rpe <= 7 && !hiit && !maximalTest).toBe(true);
+      }),
+      { numRuns: 500 },
+    );
+  });
+
+  it('without the flag nothing changes; with no history left the reason is the rejection; the re-screen is due now', () => {
+    const accepted = writeLinked([{ responses: fc.sample(arbResponses, { numRuns: 1, seed: 7 })[0]!, at: 0 }]);
+    expect(safetyProfileFromScreenings(accepted, { screeningRejected: false })).toEqual(safetyProfileFromScreenings(accepted));
+    expect(safetyProfileFromScreenings([], { screeningRejected: true })).toEqual(notScreenedSafetyProfile(REJECTED_SCREENING_REASON));
+    const now = new Date('2026-10-02T08:00:00.000Z');
+    expect(rescreenStatus('2026-09-24T12:00:00.000Z', now, null, true)).toEqual({ status: 'due', reason: 'rejected', dueAt: now.toISOString() });
+    expect(rescreenStatus('2026-09-24T12:00:00.000Z', now, null, false).status).toBe('current');
   });
 });

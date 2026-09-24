@@ -15,6 +15,7 @@ export const onboardingFr: Record<keyof typeof onboardingEn, string> = {
   'home.legal.reviewHint': 'Certains textes ont changé. Acceptez les nouvelles versions pour continuer à vous entraîner.',
   'home.rescreen.annual': 'Vos réponses de santé datent un peu. Merci de les mettre à jour.',
   'home.rescreen.newCondition': 'Vous nous avez signalé un changement. Merci de mettre à jour vos réponses de santé.',
+  'home.rescreen.rejected': 'Vos dernières réponses de santé n’ont pas pu être enregistrées. Répondez à nouveau ; en attendant, l’application garde ses réglages les plus prudents.',
   'home.rescreen.button': 'Mettre à jour mes réponses de santé',
   'home.newCondition.report': 'Quelque chose a changé dans ma santé',
   'home.newCondition.reportHint': 'Vous invite à répondre de nouveau aux questions de santé',
@@ -186,5 +187,6 @@ export const onboardingFr: Record<keyof typeof onboardingEn, string> = {
   'reason.safety_profile.not_screened.invalid': 'Les réponses de santé n’ont pas pu être lues.',
   'reason.safety_profile.not_screened.invalid_birth_date': 'La date de naissance n’est pas une date réelle.',
   'reason.safety_profile.not_screened.no_consent': 'Le consentement aux données de santé est désactivé : les réponses de santé ne sont pas utilisées.',
+  'reason.safety_profile.not_screened.rejected': 'Vos dernières réponses de santé n’ont pas pu être enregistrées : les réglages les plus prudents s’appliquent jusqu’à ce que vous répondiez à nouveau.',
   'reason.safety_profile.ambiguous_latest': 'Certains questionnaires de santé n’ont pas pu être mis dans l’ordre (par exemple, remplis sur deux appareils) : les réponses les plus prudentes s’appliquent jusqu’au prochain questionnaire.',
 };

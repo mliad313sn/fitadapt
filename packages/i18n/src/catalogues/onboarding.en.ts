@@ -14,6 +14,7 @@ export const onboardingEn = {
   'home.legal.reviewHint': 'Some texts changed. Accept the new versions to keep training.',
   'home.rescreen.annual': 'It has been a while since your health answers. Please update them.',
   'home.rescreen.newCondition': 'You told us something changed. Please update your health answers.',
+  'home.rescreen.rejected': 'Your latest health answers could not be saved. Please answer them again; until then, the app stays at its most careful settings.',
   'home.rescreen.button': 'Update my health answers',
   'home.newCondition.report': 'Something changed in my health',
   'home.newCondition.reportHint': 'Asks you to answer the health questions again',
@@ -199,5 +200,6 @@ export const onboardingEn = {
   'reason.safety_profile.not_screened.invalid': 'The health answers could not be read.',
   'reason.safety_profile.not_screened.invalid_birth_date': 'The date of birth is not a real date.',
   'reason.safety_profile.not_screened.no_consent': 'Health-data consent is off, so health answers are not used.',
+  'reason.safety_profile.not_screened.rejected': 'Your latest health answers could not be saved, so the most careful settings apply until you answer again.',
   'reason.safety_profile.ambiguous_latest': 'Some health screenings could not be put in order (for example, answered on two devices), so the most careful answers apply until your next screening.',
 } as const;

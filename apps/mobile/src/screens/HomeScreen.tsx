@@ -133,8 +133,9 @@ function M01Entries({ onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, o
       ) : null}
       {access.onboardingComplete && rescreen.status === 'due' && onRescreen ? (
         <Card testID="rescreen-prompt">
-          <Text style={text}>{rescreen.reason === 'annual' ? t('home.rescreen.annual') : t('home.rescreen.newCondition')}</Text>
-          <Button label={t('home.rescreen.button')} onPress={() => onRescreen(rescreen.reason)} testID="rescreen" />
+          <Text style={text}>{rescreen.reason === 'annual' ? t('home.rescreen.annual') : rescreen.reason === 'rejected' ? t('home.rescreen.rejected') : t('home.rescreen.newCondition')}</Text>
+          {/* FIX-B: a re-screen after a rejected screening is recorded as a new-condition re-screen. */}
+          <Button label={t('home.rescreen.button')} onPress={() => onRescreen(rescreen.reason === 'rejected' ? 'new_condition' : rescreen.reason)} testID="rescreen" />
         </Card>
       ) : null}
       {access.onboardingComplete && rescreen.status !== 'due' ? (
