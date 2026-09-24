@@ -35,13 +35,13 @@ export function loadPolicy(path = POLICY_PATH) {
  * @returns {boolean}
  */
 export function isAllowed(expression, allowed) {
-  const tokens = tokenizeSpdx(expression);
-  if (!tokens) return false;
+  const parts = splitSpdx(expression);
+  if (!parts) return false;
   let at = 0;
   /** @returns {boolean | null} null = malformed */
   const parseOr = () => {
     let value = parseAnd();
-    while (value !== null && tokens[at] === 'OR') {
+    while (value !== null && parts[at] === 'OR') {
       at += 1;
       const right = parseAnd();
       value = right === null ? null : value || right;
@@ -50,7 +50,7 @@ export function isAllowed(expression, allowed) {
   };
   const parseAnd = () => {
     let value = parseAtom();
-    while (value !== null && tokens[at] === 'AND') {
+    while (value !== null && parts[at] === 'AND') {
       at += 1;
       const right = parseAtom();
       value = right === null ? null : value && right;
@@ -59,36 +59,36 @@ export function isAllowed(expression, allowed) {
   };
   /** @returns {boolean | null} */
   const parseAtom = () => {
-    const token = tokens[at];
-    if (token === '(') {
+    const part = parts[at];
+    if (part === '(') {
       at += 1;
       const inner = parseOr();
-      if (inner === null || tokens[at] !== ')') return null;
+      if (inner === null || parts[at] !== ')') return null;
       at += 1;
       return inner;
     }
-    if (token === undefined || SPDX_OPERATORS.has(token)) return null;
+    if (part === undefined || SPDX_OPERATORS.has(part)) return null;
     at += 1;
-    if (tokens[at] === 'WITH') {
-      const exception = tokens[at + 1];
+    if (parts[at] === 'WITH') {
+      const exception = parts[at + 1];
       if (exception === undefined || SPDX_OPERATORS.has(exception)) return null;
       at += 2;
-      return allowed.has(`${token} WITH ${exception}`);
+      return allowed.has(`${part} WITH ${exception}`);
     }
-    return allowed.has(token);
+    return allowed.has(part);
   };
   const result = parseOr();
-  return result === true && at === tokens.length;
+  return result === true && at === parts.length;
 }
 
 const SPDX_OPERATORS = new Set(['AND', 'OR', 'WITH', '(', ')']);
 
 /** @param {string} expression @returns {string[] | null} */
-function tokenizeSpdx(expression) {
-  const tokens = expression.replace(/[()]/g, ' $& ').trim().split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return null;
+function splitSpdx(expression) {
+  const parts = expression.replace(/[()]/g, ' $& ').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return null;
   // Licence ids and LicenseRef-/DocumentRef- references only (letters, digits, '.', '-', '+', ':').
-  return tokens.every((t) => SPDX_OPERATORS.has(t) || /^[A-Za-z0-9.+:-]+$/.test(t)) ? tokens : null;
+  return parts.every((t) => SPDX_OPERATORS.has(t) || /^[A-Za-z0-9.+:-]+$/.test(t)) ? parts : null;
 }
 
 /**

@@ -51,7 +51,7 @@ export const CLAIM_DENYLIST: readonly DenyRule[] = Object.freeze([
     description: 'lose N kg/lb in N days/weeks',
     // PKG-05: "up to" / "as much as" before the number, number words, losing / shed.
     pattern:
-      /(?<!\p{L})(?:lose|losing|shed|shedding)\s{1,3}(?:up\sto\s{1,3}|as\smuch\sas\s{1,3}|over\s{1,3})?(?:\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|twenty)\s{0,2}(?:kg|kilos?|lbs?|pounds)(?!\p{L})[^.!?\n]{0,20}(?<!\p{L})(?:in|within)\s{1,3}(?:\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|a)\s{0,2}(?:days?|weeks?|months?)(?!\p{L})/giu,
+      /(?<!\p{L})(?:lose|losing|shed|shedding)\s{1,3}(?:up\sto\s|as\smuch\sas\s|over\s)?(?:\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|twenty)\s{0,2}(?:kg|kilos?|lbs?|pounds)(?!\p{L})[^.!?\n]{0,20}(?<!\p{L})(?:in|within)\s{1,3}(?:\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|a)\s{0,2}(?:days?|weeks?|months?)(?!\p{L})/giu,
   },
   { id: 'en.burn_fat', locale: 'en', category: 'fat_loss', description: 'burn fat (fast) / fat-burning', pattern: /(?<!\p{L})(?:burn(?:s|ing|ed|t)?\s{1,3}(?:more\s|extra\s|off\s|away\s|the\s|your\s|stubborn\s){0,2}(?:belly\s|body\s)?fat|fat[\s-]{1,3}burn(?:ing|er|ers)?)(?!\p{L})/giu },
   { id: 'en.melt_fat', locale: 'en', category: 'fat_loss', description: 'melt (away) fat', pattern: /(?<!\p{L})melt(?:s|ing)?\s{1,3}(?:away\sthe\s|away\s|the\s)?(?:fat|pounds|kilos)(?!\p{L})/giu },
@@ -86,7 +86,7 @@ export const CLAIM_DENYLIST: readonly DenyRule[] = Object.freeze([
     description: 'perdre N kg en N jours/semaines',
     // PKG-05: « jusqu'à » / « plus de » avant le nombre, nombres en lettres.
     pattern:
-      /(?<!\p{L})perd(?:re|ez|s|ons|rez|ra)?\s{1,3}(?:jusqu'à\s{0,3}|jusqu'a\s{0,3}|plus\sde\s{1,3})?(?:\d{1,3}|un|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|vingt)\s{0,2}(?:kg|kilos?)(?!\p{L})[^.!?\n]{0,20}(?<!\p{L})en\s{1,3}(?:\d{1,3}|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix)\s{0,2}(?:jours?|semaines?|mois)(?!\p{L})/giu,
+      /(?<!\p{L})perd(?:re|ez|s|ons|rez|ra)?\s{1,3}(?:jusqu'à\s|jusqu'à|jusqu'a\s|jusqu'a|plus\sde\s)?(?:\d{1,3}|un|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|vingt)\s{0,2}(?:kg|kilos?)(?!\p{L})[^.!?\n]{0,20}(?<!\p{L})en\s{1,3}(?:\d{1,3}|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix)\s{0,2}(?:jours?|semaines?|mois)(?!\p{L})/giu,
   },
   {
     id: 'fr.bruler_graisses',

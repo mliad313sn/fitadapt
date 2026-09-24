@@ -129,7 +129,7 @@ export function parsePayload<T extends DefensibilityEventType>(type: T, payload:
  * `Date.prototype.toISOString()` writes it (milliseconds optional). Retention
  * compares `occurred_at` as text, which orders correctly only for this form (PKG-11).
  */
-const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|\.\d{3}Z)$/;
 export function isCanonicalTimestamp(value: unknown): value is string {
   if (typeof value !== 'string' || !ISO_UTC.test(value)) return false;
   const ms = Date.parse(value);
