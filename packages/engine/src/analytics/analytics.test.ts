@@ -368,13 +368,13 @@ describe('milestone forecasts: a date range with a confidence, always an estimat
     }
     const milestone = { ladderId: 'pull', steps, targetExerciseId: 'pull_up' };
 
-    it('ladder progress is the rung plus the share of the top reps', () => {
+    it('ladder progress is the rung plus the share of the top reps (holds: of M02\'s longest hold)', () => {
       const points = ladderProgress(weeks, steps, dateOf);
       expect(points[0]!.value).toBeCloseTo(4 + 3 / 8, 3);
       expect(points.at(-1)!.value).toBeGreaterThan(5);
       expect(points.every((p) => p.value < 6)).toBe(true);
       const hold = session('2026-07-01', [exercise('dead_hang', [set(null, null, 2, 'done', 20)], { target: { kind: 'hold', seconds: 30 } }), exercise('dead_hang', [set(null, null, 2, 'skipped', 20), set(null, null, 2, 'done', 0, 2)], { target: { kind: 'hold', seconds: 30 } })]);
-      expect(ladderProgress([hold, session('2026-07-02', [exercise('goblet_squat', [set(8, 10)])])], steps, dateOf)).toEqual([{ date: '2026-07-01', value: 0.667 }]);
+      expect(ladderProgress([hold, session('2026-07-02', [exercise('goblet_squat', [set(8, 10)])])], steps, dateOf)).toEqual([{ date: '2026-07-01', value: 0.333 }]);
       const noCount = session('2026-07-03', [exercise('dead_hang', [set(null, null, 2, 'done', null)], { target: { kind: 'hold', seconds: 30 } }), exercise('pull_up', [set(null, null, 2)], { target: { kind: 'reps', min: 1, max: 5 } })]);
       expect(ladderProgress([noCount], steps, dateOf)).toEqual([]);
     });

@@ -1,5 +1,6 @@
 import { MilestoneForecastSchema, type Confidence, type IsoDate, type MilestoneForecast, type SessionHistoryEntry } from '@fitadapt/shared';
 import { addDays, daysBetween } from '../program/dates.js';
+import { sessionValue } from '../config/session.js';
 import { analyticsValue } from './config.js';
 import { setE1RM, type DateOf } from './strength.js';
 
@@ -117,8 +118,11 @@ export type LadderSteps = readonly (readonly string[])[];
 
 /**
  * Ladder progress per session: the highest rung with a done set, plus the
- * share of that set's top reps (or hold) reached, below the next rung
- * (`ladder.maxRungFraction`). The milestone is reached once a set of the
+ * share of the rung done, below the next rung (`ladder.maxRungFraction`):
+ * reps as a share of the set's top reps, holds as a share of the longest
+ * hold M02 prescribes before moving to the next variant
+ * (SESSION_CONFIG `hold.maxSeconds`), so a hold that grows from session to
+ * session shows as progress. The milestone is reached once a set of the
  * target rung (or above) was done.
  */
 export function ladderProgress(history: readonly SessionHistoryEntry[], steps: LadderSteps, dateOf: DateOf): ProgressPoint[] {
@@ -131,7 +135,7 @@ export function ladderProgress(history: readonly SessionHistoryEntry[], steps: L
     for (const ex of entry.exercises) {
       const rung = rungOf.get(ex.exerciseId);
       if (rung === undefined) continue;
-      const top = ex.target.kind === 'reps' ? ex.target.max : ex.target.seconds;
+      const top = ex.target.kind === 'reps' ? ex.target.max : sessionValue('hold.maxSeconds');
       for (const s of ex.performed) {
         if (s.status !== 'done') continue;
         const amount = ex.target.kind === 'reps' ? (s.reps ?? 0) : (s.seconds ?? 0);
