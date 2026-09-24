@@ -179,6 +179,108 @@ describe('log scrubber', () => {
   });
 });
 
+/**
+ * PKG-04 corpus: every false negative of the packages/tooling review, and
+ * operational values that must stay untouched. All names and addresses are
+ * fictional (L12).
+ */
+describe('PKG-04 corpus: personal data the scrubber and the detector must catch', () => {
+  const byKey: Record<string, unknown>[] = [
+    { partnerName: 'Jeanne' },
+    { ownerName: 'Jeanne' },
+    { coachName: 'Jeanne Testeur' },
+    { guest_nom: 'Testeur' },
+    { deviceName: 'Jeanne’s phone' },
+    { userName: 'jtesteur' },
+  ];
+  it.each(byKey)('by key: %j', (record) => {
+    const [key] = Object.keys(record);
+    expect(findPersonalData(record)).toEqual([{ category: 'name', path: key, by: 'key' }]);
+    expect(scrubLogRecord(record)[key!]).toBe(REDACTED);
+  });
+
+  const byValue: readonly (readonly [string, string])[] = [
+    ['Marie-Claire Dupont', 'name'],
+    ["Siobhan O'Brien", 'name'],
+    ['Siobhan O’Brien', 'name'],
+    ['JEANNE TESTEUR', 'name'],
+    ['Jeanne TESTEUR', 'name'],
+    ['Jeanne Testeur,', 'name'],
+    ['Jeanne Testeur (host)', 'name'],
+    ['Paul McDonald', 'name'],
+    ['/v1/pair/invite?to=jeanne%40exemple.fr', 'email'],
+    ['jeanne@exämple.fr', 'email'],
+    ['jéanne@example.test', 'email'],
+    ['jeanne＠exemple.fr', 'email'],
+    ['0612345678', 'phone'],
+    ['06 12 34 56 78', 'phone'],
+    ['06.12.34.56.78', 'phone'],
+    ['2001:db8::1', 'ip'],
+    ['fe80::1ff:fe23:4567:890a', 'ip'],
+    ['2001:0db8:85a3:0000:0000:8a2e:0370:7334', 'ip'],
+    ['sk-ant-abcdefghijklmnopqrstuvwx', 'secret'],
+    [['gh', 'p_', 'a'.repeat(36)].join(''), 'secret'],
+    ['82  kg', 'weight'],
+    ['82kg.', 'weight'],
+  ];
+  it.each(byValue)('by value: %j is %s, and scrubbed', (value, category) => {
+    expect(valueCategories(value)).toContain(category);
+    expect(scrubLogRecord({ v: value }).v).toBe(REDACTED);
+    expect(findPersonalData({ v: value }).map((f) => f.category)).toContain(category);
+  });
+
+  const messages: readonly (readonly [string, string])[] = [
+    ['invite sent to Jeanne Testeur', `invite sent to ${REDACTED}`],
+    ['partner Marie-Claire Dupont left', `partner ${REDACTED} left`],
+    ["pair with Siobhan O'Brien, host", `pair with ${REDACTED} host`],
+    ['user jeanne%40exemple.fr joined', `user ${REDACTED} joined`],
+    ['call 06 12 34 56 78 now', `call ${REDACTED} now`],
+    ['from 2001:db8::1 at 12:30:45', `from ${REDACTED} at 12:30:45`],
+    ['key sk-ant-abcdefghijklmnopqrstuvwx refused', `key ${REDACTED} refused`],
+  ];
+  it.each(messages)('in the pino msg: %j', (msg, scrubbed) => {
+    expect(scrubText(msg)).toBe(scrubbed);
+    expect(findPersonalDataInLogLines(JSON.stringify({ level: 30, msg })).length).toBeGreaterThan(0);
+  });
+
+  it('leaves operational log values and messages alone', () => {
+    const clean = {
+      msg: 'incoming request',
+      eventName: 'workout_completed',
+      routeName: 'Home',
+      hostname: 'api-1',
+      fileName: 'hold.json',
+      exerciseName: 'back_squat',
+      at: '2026-09-23T10:00:00.000Z',
+      clock: '12:30:45',
+      method: 'GET',
+      proto: 'HTTP GET',
+      errorCode: '23505',
+      ms: 1234567890,
+      count: '0612',
+      version: '0.12.3',
+      userRef: '0b9c4c1e-3f7e-4f59-9a43-2d1c3a1e8f10',
+      ratio: '3:2',
+      s3: 'S3 BLOCK',
+    };
+    expect(findPersonalData(clean, { messageKeys: ['msg'] })).toEqual([]);
+    for (const msg of ['request completed', 'Server listening', 'route not found', 'sync push accepted', 'S3 lock set', 'Fair pair session started']) {
+      expect(findPersonalDataInLogLines(JSON.stringify({ level: 30, msg })), msg).toEqual([]);
+      expect(scrubText(msg)).toBe(msg);
+    }
+  });
+
+  it('stays linear on hostile name-like and address-like input', () => {
+    const hostile = ['Aa-'.repeat(20_000), "O'".repeat(20_000), 'A '.repeat(30_000), '%40'.repeat(20_000), ':'.repeat(60_000), 'ab:'.repeat(20_000), '0 1'.repeat(20_000)];
+    const started = performance.now();
+    for (const value of hostile) {
+      valueCategories(value);
+      scrubText(value);
+    }
+    expect(performance.now() - started).toBeLessThan(2_000);
+  });
+});
+
 describe('analytics allowlist', () => {
   it('accepts allowlisted events with enum properties', () => {
     expect(validateAnalyticsEvent({ event: 'app_opened' })).toEqual({ ok: true, event: { event: 'app_opened', props: {} } });
