@@ -19,6 +19,7 @@ Nadia: séchage cannot be delivered by training alone. Dr. Amina and Dr. Sofia: 
 
 ## Rules
 - S4 nutrition floors are enforced in code.
+  - *Spec note (FIX-A, PO decision after the A4/A6 AI pre-review, stricter; not a council sign-off):* the energy target is also never a number below an absolute minimum of 1,200 kcal/day — the floor is max(estimated BMR, 1,200). Below it the user gets the supportive mode (habits, no calorie number). The value is `validated: false` until seats A4 and A1 settle it; it may only ever be raised.
 - If a user reports being advised against calorie restriction, deficit targets and number-based tracking are disabled and supportive resources are shown.
 - No 'earn your food' mechanics linking exercise calories to allowed intake; no body-shaming copy.
 - L3 notice before any deficit target; general guidance only, no individual medical nutrition therapy.
