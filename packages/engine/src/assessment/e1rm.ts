@@ -24,10 +24,14 @@ export function loadForReps(e1rmKg: number, reps: number, rir: number): number {
 
 /**
  * Rounds a load DOWN to the equipment step (never up: a starting load is never
- * heavier than computed). Works in integer hundredths to avoid float drift.
+ * heavier than computed, and a load capped at the S5 ceiling stays under it).
+ * Works in integer hundredths to avoid float drift, and truncates to them
+ * (floor, with a 1e-8 allowance for float representation only), like
+ * `achievableAtMost`: rounding to the nearest hundredth first could round up
+ * (SAF-4: 49.9995 → 50).
  */
 export function roundDownToIncrement(loadKg: number, incrementKg = assessmentValue('defaultLoadIncrementKg')): number {
   if (!(incrementKg > 0)) throw new RangeError('incrementKg must be positive');
   const step = Math.round(incrementKg * 100);
-  return (Math.floor(Math.round(loadKg * 100) / step) * step) / 100;
+  return (Math.floor(Math.floor(loadKg * 100 + 1e-8) / step) * step) / 100;
 }

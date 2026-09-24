@@ -138,6 +138,16 @@ describe('e1RM by RIR-adjusted Epley (goal condition 2)', () => {
     expect(roundDownToIncrement(9.99, 1.25)).toBe(8.75);
     expect(roundDownToIncrement(0.3)).toBe(0);
     expect(() => roundDownToIncrement(10, 0)).toThrow(RangeError);
+    // SAF-4: never rounds up to the next hundredth before flooring.
+    expect(roundDownToIncrement(49.9995, 0.5)).toBe(49.5);
+    expect(roundDownToIncrement(45.45 * 1.1, 0.5)).toBe(49.5);
+    expect(roundDownToIncrement(99.99957, 0.5)).toBe(99.5);
+    fc.assert(
+      fc.property(fc.constantFrom(0.5, 1, 1.25, 2, 2.5, 5), fc.integer({ min: 1, max: 400 }), fc.double({ min: 0, max: 0.009, noNaN: true }), (step, k, below) => {
+        const x = k * step - below;
+        expect(roundDownToIncrement(x, step)).toBeLessThanOrEqual(x + 1e-9);
+      }),
+    );
     fc.assert(
       fc.property(fc.double({ min: 0, max: 500, noNaN: true }), fc.constantFrom(0.5, 1, 1.25, 2, 2.5, 5), (x, step) => {
         const r = roundDownToIncrement(x, step);
