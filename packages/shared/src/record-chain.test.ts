@@ -80,6 +80,21 @@ describe('orderChain (ADR-023)', () => {
     expect(ids(orderChain<R>([{ id: 'a', at: T(1) }, { id: 'b', at: 'not a time' }], links).heads)).toEqual(['a', 'b']);
   });
 
+  it('PKG-12: an unranked legacy record stays ambiguous against ranked records of the same instant, in any input order', () => {
+    const A: R = { id: 'a', at: T(1) };
+    const B: R = { id: 'b', at: T(1), rank: 1 };
+    const C: R = { id: 'c', at: T(1), rank: 2 };
+    for (const history of [[A, B, C], [C, B, A], [B, A, C], [C, A, B]]) {
+      const chain = orderChain<R>(history, links);
+      expect(ids(chain.heads)).toEqual(['a', 'c']);
+      expect(soleHead(chain)).toBeNull();
+    }
+    // A later instant still supersedes the whole earlier instant, unranked records included.
+    expect(ids(orderChain<R>([A, B, C, { id: 'd', at: T(2) }], links).heads)).toEqual(['d']);
+    // Two unranked records of one instant, with a ranked one: all three stay heads.
+    expect(ids(orderChain<R>([A, { id: 'e', at: T(1) }, B], links).heads).sort()).toEqual(['a', 'b', 'e']);
+  });
+
   it('a linked record naming the latest legacy record supersedes every older legacy record too', () => {
     const chain = orderChain<R>(
       [

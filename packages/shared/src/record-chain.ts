@@ -169,22 +169,33 @@ export function orderChain<T>(items: readonly T[], linksOf: (item: T) => ChainLi
   nodes.forEach((node, i) => {
     for (const id of node.links.supersedes ?? []) for (const j of byId.get(id) ?? []) if (j !== i) preds[i]!.push(j);
   });
-  // Legacy records: chained by (time, rank); equal keys stay side by side (ambiguous).
+  // Legacy records: chained by time; within one instant, ranked records are chained by rank among themselves.
+  // Equal keys stay side by side (ambiguous). PKG-12: a record without a rank has no order against the other
+  // records of its instant (ranked or not), so it stays a head of that instant; grouping pairwise with
+  // "unranked equals any rank" was not transitive and let a ranked record supersede it.
   const legacy = nodes
     .map((node, i) => ({ node, i }))
     .filter(({ node }) => node.links.supersedes === undefined && !Number.isNaN(node.time))
-    .sort((a, b) => a.node.time - b.node.time || (a.node.links.legacyRank ?? 0) - (b.node.links.legacyRank ?? 0));
-  const sameKey = (a: Node<T>, b: Node<T>) => a.time === b.time && (a.links.legacyRank === undefined || b.links.legacyRank === undefined || a.links.legacyRank === b.links.legacyRank);
-  let previousGroup: number[] = [];
-  let group: number[] = [];
-  legacy.forEach(({ node, i }, k) => {
-    if (k > 0 && !sameKey(legacy[k - 1]!.node, node)) {
-      previousGroup = group;
-      group = [];
+    .sort((a, b) => a.node.time - b.node.time);
+  let previousInstant: number[] = [];
+  for (let k = 0; k < legacy.length; ) {
+    let end = k;
+    while (end < legacy.length && legacy[end]!.node.time === legacy[k]!.node.time) end++;
+    const instant = legacy.slice(k, end);
+    for (const { i } of instant) for (const j of previousInstant) preds[i]!.push(j);
+    const ranked = instant.filter(({ node }) => node.links.legacyRank !== undefined).sort((a, b) => a.node.links.legacyRank! - b.node.links.legacyRank!);
+    let lowerRanks: number[] = [];
+    for (let r = 0; r < ranked.length; ) {
+      let same = r;
+      while (same < ranked.length && ranked[same]!.node.links.legacyRank === ranked[r]!.node.links.legacyRank) same++;
+      const group = ranked.slice(r, same).map(({ i }) => i);
+      for (const i of group) for (const j of lowerRanks) preds[i]!.push(j);
+      lowerRanks = group;
+      r = same;
     }
-    group.push(i);
-    for (const j of previousGroup) preds[i]!.push(j);
-  });
+    previousInstant = instant.map(({ i }) => i);
+    k = end;
+  }
 
   const comp = components(preds);
   // j is superseded iff a record outside j's cycle reaches it, i.e. iff j's component has an incoming link from another component.
