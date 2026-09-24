@@ -107,4 +107,19 @@ Coverage (lines / branches): engine 99.52 % / 95.97 %, safety 100 % / 98.35 %, s
 
 ## Fresh clone
 
-See the next commit (recorded after the verification run).
+`git clone` of HEAD `2f9c6c4` into the session scratchpad, `pnpm install --frozen-lockfile` (exit 0), then, in the foreground:
+
+| Command | Result |
+|---|---|
+| `pnpm -w build` | exit 0, 13/13 tasks |
+| `pnpm -w typecheck` | exit 0, 26/26 |
+| `pnpm -w lint` | exit 0, 26/26 |
+| `pnpm -w test` (1st) | exit 0, 26/26 |
+| `pnpm -w test --force` (2nd, 0 cached) | exit 0, 26/26 |
+| `pnpm --filter api test:integration` | exit 0, 16 files, 139 tests |
+| `pnpm security:audit` / `security:secrets` / `security:sast` | exit 0 / 0 / 0 (no high or critical; no leaks; SAST clean) |
+| `pnpm compliance:check` / `licences:check` | exit 0 / 0 |
+| `pnpm legal:claims` / `legal:licences` / `legal:docs` | exit 0 / 0 / 0 |
+| `for i in $(seq 20); do npx jest __tests__/nutrition.test.tsx \|\| break; done` (apps/mobile) | 20/20, `Tests: 12 passed, 12 total` |
+
+No failure in any run. This commit only adds this section.
