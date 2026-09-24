@@ -263,4 +263,43 @@ describe('sign-in in the app (end to end against a fake API)', () => {
     expect(screen.getByTestId('privacy-export').props.accessibilityState).toMatchObject({ disabled: false });
     expect(screen.getByTestId('privacy-delete').props.accessibilityState).toMatchObject({ disabled: false });
   });
+
+  it('MOB-07: on a phone holding another account’s data, sign-in is refused until that data is deleted from the phone', async () => {
+    const t = tr('en');
+    jest.requireMock('expo-secure-store').__items.delete('refresh_token');
+    // This phone's data belongs to another (fictional) account, which recorded a consent here.
+    mockDb.run('CREATE TABLE IF NOT EXISTS app_kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    mockDb.run("INSERT INTO app_kv VALUES ('age_gate_status', 'allowed'), ('device_account_id', '5a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d')");
+    renderRouter(appRoutes, { initialUrl: '/' });
+    await screen.findByRole('header', { name: t.t('home.title') });
+    fireEvent.press(screen.getByTestId('open-privacy'));
+    await screen.findByRole('header', { name: t.t('privacy.title') });
+    fireEvent.press(screen.getByRole('switch', { name: t.t('privacy.consent.health.label') }));
+    act(() => jest.requireActual('expo-router').router.back());
+
+    fireEvent.press(await screen.findByTestId('open-sign-in'));
+    fireEvent.changeText(await screen.findByTestId('sign-in-email'), 'Fictional.User@example.test');
+    fireEvent.press(screen.getByTestId('sign-in-send'));
+    await screen.findByText(t.t('signIn.codeSent'));
+    fireEvent.changeText(screen.getByTestId('sign-in-code'), '123456');
+    fireEvent.press(screen.getByTestId('sign-in-verify'));
+    expect(await screen.findByText(t.t('signIn.otherAccount'))).toBeTruthy();
+    // The new session was ended at once; the other account's consent never went to this account.
+    expect(requests.map((r) => r.path)).toEqual(['/v1/auth/otp/request', '/v1/auth/otp/verify', '/v1/auth/logout']);
+    expect(jest.requireMock('expo-secure-store').__items.get('refresh_token')).toBeUndefined();
+
+    // Deleting this phone's data (two steps), then signing in: only this account's own data goes up.
+    fireEvent.press(screen.getByTestId('sign-in-erase'));
+    fireEvent.press(screen.getByTestId('sign-in-erase-confirm'));
+    expect(await screen.findByText(t.t('signIn.otherAccount.erased'))).toBeTruthy();
+    expect(mockDb.exec("SELECT key FROM app_kv WHERE key = 'device_account_id' OR key = 'consent_records'")).toEqual([]);
+    fireEvent.press(screen.getByTestId('sign-in-send'));
+    await screen.findByText(t.t('signIn.codeSent'));
+    fireEvent.changeText(screen.getByTestId('sign-in-code'), '123456');
+    fireEvent.press(screen.getByTestId('sign-in-verify'));
+    await screen.findByText(t.t('signIn.done'));
+    await waitFor(() => expect(requests.map((r) => r.path)).toContain('/v1/sync/pull'));
+    expect(requests.some((r) => r.path === '/v1/privacy/consents')).toBe(false);
+    expect(mockDb.exec("SELECT value FROM app_kv WHERE key = 'device_account_id'")[0]!.values).toEqual([[user.id]]);
+  });
 });

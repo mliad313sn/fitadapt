@@ -7,14 +7,17 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { OtherAccountDataError } from '../account/account-binding';
 import { ApiRequestError } from '../auth/auth-api';
 import { reportError } from '../observability';
+import { usePrivacy } from '../privacy/PrivacyProvider';
 import { useSession, useSessionStatus } from '../profile/ProfileProvider';
 
 type Stage = 'email' | 'code' | 'done';
 
 function errorKey(error: unknown): MessageKey {
   if (error instanceof OfflineError) return 'signIn.offline';
+  if (error instanceof OtherAccountDataError) return 'signIn.otherAccount';
   if (error instanceof ApiRequestError && error.code) {
     const key = `errors.${error.code}`;
     if (isMessageKey(key)) return key;
@@ -38,6 +41,8 @@ export function SignInScreen() {
   const [code, setCode] = useState('');
   const [error, setError] = useState<MessageKey | null>(null);
   const [busy, setBusy] = useState(false);
+  const { wipeLocalData } = usePrivacy();
+  const [erase, setErase] = useState<'offer' | 'confirm' | 'done' | null>(null);
 
   const run = async (action: () => Promise<void>) => {
     if (!session) return;
@@ -48,6 +53,8 @@ export function SignInScreen() {
     } catch (e) {
       reportError(e, { area: 'auth' });
       setError(errorKey(e));
+      // MOB-07: this phone holds another account's data; its owner can erase it from this phone first.
+      if (e instanceof OtherAccountDataError) setErase('offer');
     } finally {
       setBusy(false);
     }
@@ -104,6 +111,29 @@ export function SignInScreen() {
         {error ? (
           <Text accessibilityLiveRegion="polite" style={{ color: theme.colors.danger, fontSize: theme.fontSize.label }} testID="sign-in-error">
             {t(error)}
+          </Text>
+        ) : null}
+        {erase === 'offer' ? <Button label={t('signIn.otherAccount.erase')} hint={t('signIn.otherAccount.eraseHint')} variant="secondary" onPress={() => setErase('confirm')} testID="sign-in-erase" /> : null}
+        {erase === 'confirm' ? (
+          <Button
+            label={t('signIn.otherAccount.confirm')}
+            hint={t('signIn.otherAccount.eraseHint')}
+            variant="danger"
+            disabled={busy}
+            onPress={() =>
+              void run(async () => {
+                await wipeLocalData();
+                setErase('done');
+                setCode('');
+                setStage('email');
+              })
+            }
+            testID="sign-in-erase-confirm"
+          />
+        ) : null}
+        {erase === 'done' ? (
+          <Text accessibilityLiveRegion="polite" style={text} testID="sign-in-erased">
+            {t('signIn.otherAccount.erased')}
           </Text>
         ) : null}
         <Button label={t('signIn.close')} variant="secondary" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} testID="sign-in-close" />

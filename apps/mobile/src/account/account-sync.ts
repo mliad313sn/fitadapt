@@ -30,12 +30,23 @@ export function createAccountApi(post: JsonPost, getAccessToken: () => Promise<s
   };
 }
 
-/** Ids already uploaded (or refused for good), so a record is sent once. */
+/**
+ * Ids already uploaded (or refused for good), so a record is sent once.
+ * MOB-07: kept per account (`account` names the account this phone's data
+ * belongs to), so "uploaded" to one account never means "uploaded" to another.
+ */
 export class UploadLedger {
-  constructor(private readonly kv: KeyValueStore) {}
+  constructor(
+    private readonly kv: KeyValueStore,
+    private readonly account: () => string | null = () => null,
+  ) {}
+  private key(): string {
+    const id = this.account();
+    return id === null ? UPLOADED_KEY : `${UPLOADED_KEY}.${id}`;
+  }
   private ids(): Set<string> {
     try {
-      return new Set(JSON.parse(this.kv.get(UPLOADED_KEY) ?? '[]') as string[]);
+      return new Set(JSON.parse(this.kv.get(this.key()) ?? '[]') as string[]);
     } catch {
       return new Set();
     }
@@ -46,7 +57,7 @@ export class UploadLedger {
   add(id: string): void {
     const ids = this.ids();
     ids.add(id);
-    this.kv.set(UPLOADED_KEY, JSON.stringify([...ids]));
+    this.kv.set(this.key(), JSON.stringify([...ids]));
   }
 }
 

@@ -8,34 +8,19 @@ import { useMemo } from 'react';
 import type { SyncSqliteDatabase } from '@fitadapt/sync';
 import { Platform } from 'react-native';
 import { useStore } from 'zustand';
-import { runAccountSync, createAccountApi, UploadLedger } from '../src/account/account-sync';
 import { AppProviders } from '../src/AppProviders';
-import { createAuthApi, jsonPost } from '../src/auth/auth-api';
-import { createSessionStore, type SessionStore } from '../src/auth/session-store';
+import { createAppServices } from '../src/app-services';
 import { secureStoreVault } from '../src/auth/vault';
 import { clock } from '../src/clock';
-import { createLegalStore } from '../src/legal/legal-store';
-import { LibraryStore } from '../src/library/library-store';
 import { reportError } from '../src/observability';
 import { ONBOARDING_STEPS } from '../src/onboarding/steps';
-import { createAgeGateStore } from '../src/privacy/age-gate';
-import { createHttpPrivacyClient } from '../src/privacy/client';
-import { createConsentStore } from '../src/privacy/consents';
 import { useAgeGate } from '../src/privacy/PrivacyProvider';
-import { createProfileStore } from '../src/profile/profile-store';
 import { useFirstWorkoutAccess } from '../src/profile/ProfileProvider';
-import { SqliteKeyValueStore, wipeLocalDatabase } from '../src/storage/app-state';
-import { apiBaseUrl, createDeviceSyncClient } from '../src/sync/device';
 import { openExpoDatabase } from '../src/sync/expo-db';
-import { createGuardrailInbox } from '../src/nutrition/guardrail-port';
-import { createNutritionStore } from '../src/nutrition/nutrition-store';
-import { httpPhotoBackupApi } from '../src/progress/photo-backup';
-import { expoPhotoFiles, PhotoVault } from '../src/progress/photo-vault';
-import { createProgressStore } from '../src/progress/progress-store';
+import { expoPhotoFiles } from '../src/progress/photo-vault';
 import { secureDeviceKeyStore } from '../src/storage/device-keys';
 import { StorageUnavailableScreen } from '../src/screens/StorageUnavailableScreen';
 import { DatabaseOpenError } from '../src/storage/encrypted-db';
-import { createPairStore } from '../src/pair/pair-store';
 
 /**
  * S7 age gate: until the user has passed it, the only reachable screen is the
@@ -108,72 +93,25 @@ export default function RootLayout() {
 
 function AppRoot({ db }: { db: SyncSqliteDatabase }) {
   const app = useMemo(() => {
-    const kv = new SqliteKeyValueStore(db);
     const locales = getLocales();
-    const jurisdiction = resolveJurisdiction(locales[0]?.regionCode);
-    // M06: the exercise library lives in the on-device database (offline); installed or refreshed at start.
-    const library = new LibraryStore(db);
-    library.install();
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL;
-    const post = jsonPost(apiBaseUrl(apiUrl));
-    // M01: the session provides access tokens to sync, privacy and the ledger upload (ADR-013).
-    const sessionRef: { current?: SessionStore } = {};
-    const getAccessToken = () => sessionRef.current!.getState().getAccessToken();
-    const syncClient = createDeviceSyncClient({ openDatabase: () => db, randomUUID, apiUrl, getAccessToken });
-    const consents = createConsentStore({ kv, newId: randomUUID, jurisdiction });
-    const legal = createLegalStore({ kv, newId: randomUUID, now: clock.now, jurisdiction });
-    const profile = createProfileStore({ sync: syncClient, kv, now: clock.now });
-    // M10: nutrition plans, intake logs and habits (sync records in the encrypted database); it handles every M04 hand-off as it arrives.
-    const nutritionStore = createNutritionStore({ sync: syncClient, kv, now: clock.now, newSeed: () => new DataView(getRandomBytes(4).buffer).getUint32(0) >>> 1 });
-    // M04: body data (sync records in the encrypted database), the guardrail inbox M10 handles, and the encrypted photo vault.
-    const nutrition = createGuardrailInbox(kv, (event) => nutritionStore.getState().receiveGuardrail(event));
-    const progress = createProgressStore({ sync: syncClient, kv, now: clock.now, nutrition });
-    // M09: a partner on this phone keeps their own ledgers and logs under their own namespace.
-    const pair = createPairStore({ kv, newId: randomUUID, now: clock.now, jurisdiction });
-    const vault = new PhotoVault({ db, files: expoPhotoFiles(), keys: secureDeviceKeyStore, randomBytes: getRandomBytes, newId: randomUUID, now: clock.now });
-    const accountApi = createAccountApi(post, getAccessToken);
-    const ledger = new UploadLedger(kv);
-    const accountSync = async () => {
-      if (sessionRef.current?.getState().status !== 'signed_in') return;
-      await runAccountSync({ api: accountApi, ledger, consents: consents.getState().records, acceptances: legal.getState().acceptances, notices: legal.getState().notices, sync: syncClient });
-      profile.getState().reload();
-      progress.getState().reload();
-      nutritionStore.getState().reload();
-    };
-    const session = createSessionStore({
-      api: createAuthApi(post),
-      vault: secureStoreVault,
-      device: () => ({ id: syncClient.deviceId, platform: platform() }),
-      now: clock.now,
-      onSignedIn: () => void accountSync().catch((error: unknown) => reportError(error, { area: 'sync' })),
-    });
-    sessionRef.current = session;
-    void session.getState().restore();
-    return {
-      library,
-      syncClient,
-      session,
-      legal,
-      profile,
-      accountSync,
-      pair,
-      nutritionStore,
-      privacyClient: createHttpPrivacyClient({ baseUrl: apiBaseUrl(apiUrl), getAccessToken }),
-      progress: { progress, nutrition, vault, randomBytes: getRandomBytes },
-      photoBackupApi: httpPhotoBackupApi({ baseUrl: apiBaseUrl(apiUrl), getAccessToken }),
+    const services = createAppServices({
+      db,
+      jurisdiction: resolveJurisdiction(locales[0]?.regionCode),
       initialLocale: resolveLocale(locales.map((l) => l.languageTag)),
-      privacy: {
-        ageGate: createAgeGateStore(kv),
-        consents,
-        wipeLocalData: () => {
-          vault.wipe();
-          wipeLocalDatabase(db);
-          legal.getState().clear();
-          profile.getState().reload();
-          nutritionStore.getState().reload();
-          void session.getState().forget();
-        },
-      },
+      apiUrl: process.env.EXPO_PUBLIC_API_URL,
+      randomUUID,
+      randomBytes: getRandomBytes,
+      now: clock.now,
+      keys: secureDeviceKeyStore,
+      photoFiles: expoPhotoFiles(),
+      tokenVault: secureStoreVault,
+      platform: platform(),
+    });
+    void services.session.getState().restore();
+    return {
+      ...services,
+      progress: { progress: services.progress, nutrition: services.nutrition, vault: services.vault, randomBytes: getRandomBytes },
+      privacy: { ageGate: services.ageGate, consents: services.consents, wipeLocalData: services.wipeLocalData },
     };
   }, [db]);
   // Export and deletion need a signed-in session (M17 deferred them to M01).

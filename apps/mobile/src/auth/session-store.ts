@@ -2,6 +2,7 @@ import { AuthErrorCode, type DeviceInfo, type Locale, type TokenPair } from '@fi
 import { createStore } from 'zustand';
 import { mobileAuthConfig } from '../config/auth.config';
 import { reportError } from '../observability';
+import { OtherAccountDataError } from '../account/account-binding';
 import { ApiRequestError, type AuthApi } from './auth-api';
 import type { TokenVault } from './vault';
 
@@ -22,6 +23,12 @@ export interface SessionDeps {
   now: () => Date;
   /** Runs after a successful sign-in (upload the device ledgers, then sync). */
   onSignedIn?: () => void;
+  /**
+   * MOB-07: whether this phone's data may go to the account that just signed
+   * in (AccountBinding.claim). When false the new session is ended at once
+   * (logout), nothing is kept, and verifyCode throws OtherAccountDataError.
+   */
+  claimAccount?: (accountId: string) => boolean;
 }
 
 export interface SessionState {
@@ -44,7 +51,7 @@ const ENDED = new Set<string>([AuthErrorCode.InvalidRefreshToken, AuthErrorCode.
  * token in memory only. Signing in is optional: the app works offline without
  * an account; sync and the data-rights endpoints need it.
  */
-export function createSessionStore({ api, vault, device, now, onSignedIn }: SessionDeps) {
+export function createSessionStore({ api, vault, device, now, onSignedIn, claimAccount }: SessionDeps) {
   let access: { token: string; expiresAt: number } | null = null;
   let refreshing: Promise<string> | null = null;
   const margin = mobileAuthConfig.accessTokenRefreshMarginSeconds.value * 1000;
@@ -72,6 +79,11 @@ export function createSessionStore({ api, vault, device, now, onSignedIn }: Sess
       requestCode: (email, locale) => api.requestCode(email, locale),
       async verifyCode(email, code) {
         const res = await api.verifyCode(email, code, device());
+        if (claimAccount && !claimAccount(res.user.id)) {
+          // Another account's data is on this phone: its outbox and ledgers must never reach this account.
+          await api.logout(res.tokens.refreshToken).catch((error: unknown) => reportError(error, { area: 'auth' }));
+          throw new OtherAccountDataError();
+        }
         await keep(res.tokens);
         set({ status: 'signed_in' });
         onSignedIn?.();

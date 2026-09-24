@@ -55,7 +55,7 @@ export function PrivacyScreen() {
     try {
       analytics.track('account_deletion_requested', {});
       await client.deleteAccount();
-      wipeLocalData();
+      await wipeLocalData();
       clearConsents();
       setConfirming(false);
       setNotice('privacy.delete.done');

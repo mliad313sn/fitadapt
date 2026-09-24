@@ -136,10 +136,13 @@ export interface PairStoreState {
   exportGuest(guestId: string): string;
   /** Erases everything this phone holds about a guest: profile, ledgers, logs and the pair sessions naming them. */
   deleteGuest(guestId: string): void;
+  /** Account wiped (MOB-01): the cached guest ledgers are dropped and everything is re-read from the device. */
+  reset(): void;
 }
 
 export function createPairStore({ kv, newId, now, jurisdiction }: PairStoreDeps) {
   const cache = new Map<string, GuestLedgers>();
+  let generation = 0;
   const gkv = (id: string) => prefixedKv(kv, guestPrefix(id));
   const readGuests = () => read(kv, GUESTS_KEY, z.array(z.uuid()), []).flatMap((id) => {
     const profile = read(gkv(id), 'profile', GuestProfileSchema.nullable(), null);
@@ -150,17 +153,32 @@ export function createPairStore({ kv, newId, now, jurisdiction }: PairStoreDeps)
     gkv(id).set(key, JSON.stringify([...list, schema.parse(value)]));
   };
 
-  return createStore<PairStoreState>((set, get) => ({
-    jurisdiction,
+  const stored = () => ({
     guests: readGuests(),
     ownerName: kv.get(OWNER_NAME_KEY) ?? null,
     ownerSharing: read(kv, OWNER_SHARING_KEY, z.array(PairSharingSchema), []),
     sessions: read(kv, SESSIONS_KEY, z.array(PairSessionSchema), []),
+  });
+
+  return createStore<PairStoreState>((set, get) => ({
+    jurisdiction,
+    ...stored(),
     revision: 0,
+    reset() {
+      generation += 1;
+      cache.clear();
+      set({ ...stored(), revision: get().revision + 1 });
+    },
     ledgers(guestId) {
       let ledgers = cache.get(guestId);
       if (!ledgers) {
-        ledgers = { consents: createConsentStore({ kv: gkv(guestId), newId, now, jurisdiction }), legal: createLegalStore({ kv: gkv(guestId), newId, now, jurisdiction }) };
+        // MOB-01: ledgers handed out before a wipe or a guest deletion can no longer write (a screen still holding one
+        // would otherwise write the deleted ledger back).
+        const born = generation;
+        const inner = gkv(guestId);
+        const live = () => born === generation && cache.get(guestId) === ledgers;
+        const ledgerKv: KeyValueStore = { get: (k) => inner.get(k), set: (k, v) => (live() ? inner.set(k, v) : undefined), remove: (k) => (live() ? inner.remove(k) : undefined) };
+        ledgers = { consents: createConsentStore({ kv: ledgerKv, newId, now, jurisdiction }), legal: createLegalStore({ kv: ledgerKv, newId, now, jurisdiction }) };
         cache.set(guestId, ledgers);
       }
       return ledgers;

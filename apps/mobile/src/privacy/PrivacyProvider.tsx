@@ -13,7 +13,7 @@ export interface PrivacyContextValue {
   /** API client for export and deletion; absent until the user is signed in (M01). */
   client?: PrivacyClient;
   /** Erases the account's data from this device (after a deletion). */
-  wipeLocalData: () => void;
+  wipeLocalData: () => void | Promise<void>;
 }
 
 const PrivacyContext = createContext<PrivacyContextValue | null>(null);
@@ -23,7 +23,7 @@ export interface PrivacyProviderProps {
   consents: ConsentStore;
   client?: PrivacyClient;
   analyticsTransport?: AnalyticsTransport;
-  wipeLocalData: () => void;
+  wipeLocalData: () => void | Promise<void>;
   children?: ReactNode;
 }
 

@@ -149,6 +149,8 @@ export interface ProfileState {
   newConditionReportedAt: string | null;
   /** Re-reads the synced records (after a pull). */
   reload(): void;
+  /** Account wiped (MOB-01): everything re-read from the device, the onboarding draft and the new-condition flag included. */
+  reset(): void;
   updateDraft(patch: Partial<OnboardingDraft>): void;
   saveEquipment(location: EquipmentLocation, equipment: readonly EquipmentId[]): string;
   removeEquipment(id: string): void;
@@ -267,6 +269,7 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
       draft: loadDraft(kv),
       newConditionReportedAt: kv.get(NEW_CONDITION_KEY) ?? null,
       reload: () => set(read()),
+      reset: () => set({ ...read(), draft: loadDraft(kv), newConditionReportedAt: kv.get(NEW_CONDITION_KEY) ?? null }),
       updateDraft(patch) {
         const draft = { ...get().draft, ...patch };
         kv.set(DRAFT_KEY, JSON.stringify(draft));

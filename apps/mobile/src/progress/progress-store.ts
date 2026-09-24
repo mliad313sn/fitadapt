@@ -42,6 +42,8 @@ export interface ProgressState {
   guardrailHandedOffOn: IsoDate | null;
   photoBackupEnabled: boolean;
   reload(): void;
+  /** Account wiped (MOB-01): records and the device-kept choices re-read. */
+  reset(): void;
   logBodyMetric(kind: BodyMetricKind, value: number, measuredOn: IsoDate): BodyMetric;
   /** Corrects (or, with null, removes) an entry: a new entry naming the one it corrects. */
   correctBodyMetric(id: string, value: number | null, measuredOn: IsoDate): BodyMetric;
@@ -82,6 +84,7 @@ export function createProgressStore({ sync, kv, now, nutrition, onWrite }: Progr
       guardrailHandedOffOn: kv.get(HANDED_OFF_KEY) ?? null,
       photoBackupEnabled: kv.get(BACKUP_KEY) === 'true',
       reload: () => set(read()),
+      reset: () => set({ ...read(), showBodyWeight: kv.get(SHOW_WEIGHT_KEY) !== 'false', guardrailHandedOffOn: kv.get(HANDED_OFF_KEY) ?? null, photoBackupEnabled: kv.get(BACKUP_KEY) === 'true' }),
       logBodyMetric(kind, value, measuredOn) {
         const data = BodyMetricSchema.parse({ schemaVersion: 1, kind, value, measuredOn, at: now().toISOString(), correctionOf: null });
         sync.insert(PROGRESS_COLLECTIONS.bodyMetrics, data);
