@@ -5,6 +5,7 @@ import { sessionFr } from './session.fr.js';
 import { recoveryFr } from './recovery.fr.js';
 import { recoveryMedicalFr } from './recovery-medical.fr.js';
 import { cardioFr } from './cardio.fr.js';
+import { progressFr } from './progress.fr.js';
 import { legalFr } from './legal.fr.js';
 import { libraryFr } from './library.fr.js';
 import { onboardingFr } from './onboarding.fr.js';
@@ -131,4 +132,7 @@ export const fr: Record<MessageKey, string> = {
 
   // M03 : cardio, consignes parlées du minuteur et écrans (zones nommées par l’effort, C9).
   ...cardioFr,
+
+  // M04 progress dashboard, body data, encrypted progress photos, export (no body-shaming; forecasts are estimates).
+  ...progressFr,
 };

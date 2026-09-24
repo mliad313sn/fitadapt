@@ -12,3 +12,4 @@ export * from './components/Toast';
 export * from './components/Toggle';
 export * from './components/Chip';
 export * from './components/ChoiceGroup';
+export * from './components/Chart';

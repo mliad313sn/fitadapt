@@ -4,6 +4,7 @@ import { sessionEn } from './session.en.js';
 import { recoveryEn } from './recovery.en.js';
 import { recoveryMedicalEn } from './recovery-medical.en.js';
 import { cardioEn } from './cardio.en.js';
+import { progressEn } from './progress.en.js';
 import { legalEn } from './legal.en.js';
 import { libraryEn } from './library.en.js';
 import { onboardingEn } from './onboarding.en.js';
@@ -144,6 +145,9 @@ export const en = {
 
   // M03 cardio and conditioning: reason codes, spoken interval cues and screens (effort-named zones only, C9).
   ...cardioEn,
+
+  // M04 progress dashboard, body data, encrypted progress photos, export (no body-shaming; forecasts are estimates).
+  ...progressEn,
 } as const;
 
 export type MessageKey = keyof typeof en;

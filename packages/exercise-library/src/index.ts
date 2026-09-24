@@ -14,3 +14,4 @@ export { WARM_UP_DRILLS } from './seed/warmups.js';
 export { STEADY_MODALITIES, VENUE_SWAPS } from './seed/cardio.js';
 export * from './assessment.js';
 export * from './program.js';
+export * from './progress.js';
