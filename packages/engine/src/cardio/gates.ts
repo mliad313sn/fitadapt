@@ -49,6 +49,11 @@ export function consistentTraining(history: readonly SessionHistoryEntry[], nowM
   return true;
 }
 
+/** A3/A5 #66: fewer interval sessions completed than the ramp needs → the first-exposure interval caps apply. */
+export function hiitFirstExposure(history: readonly SessionHistoryEntry[]): boolean {
+  return history.filter((h) => h.hiitCompleted === true).length < cardioValue('hiit.rampCompletedSessions');
+}
+
 /** Null when HIIT may be prescribed; otherwise why not (S1 first). */
 export function hiitGate(profile: SafetyProfile, history: readonly SessionHistoryEntry[], nowMs: number, rpe: number): HiitGateReason | null {
   const s1 = screeningGateCheck({ profile, request: { rpe, hiit: true, maximalTest: false } });

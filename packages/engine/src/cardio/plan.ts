@@ -26,6 +26,8 @@ export interface CardioBlockRequest {
   readonly warmUpSeconds: number;
   readonly custom?: CardioRequest['custom'];
   readonly preferred?: string | null;
+  /** A3/A5 #66: fewer than `hiit.rampCompletedSessions` interval sessions completed → the first-exposure caps apply. */
+  readonly firstExposure: boolean;
 }
 
 export interface CardioBuildContext extends MovementContext {
@@ -77,6 +79,7 @@ export function buildCardio(req: CardioBlockRequest, ctx: CardioBuildContext): C
   if (main < cardioValue('session.minMainSeconds')) return null;
   const mainStart = t.total;
   let interval: IntervalProtocol | null = null;
+  let firstCapped = false;
   const move = (i: number) => (ids.length > 0 ? ids[i % ids.length]! : null);
   const recoverId = machine ? ids[0]! : null;
 
@@ -89,7 +92,9 @@ export function buildCardio(req: CardioBlockRequest, ctx: CardioBuildContext): C
       const work = req.protocol === 'hiit' ? cardioValue('hiit.workSeconds') : req.custom?.workSeconds ?? cardioValue('hiit.workSeconds');
       const rest = req.protocol === 'hiit' ? cardioValue('hiit.recoverSeconds') : req.custom?.restSeconds ?? cardioValue('hiit.recoverSeconds');
       const wanted = req.protocol === 'hiit' ? cardioValue('hiit.maxRounds') : req.custom?.rounds ?? cardioValue('hiit.maxRounds');
-      const rounds = Math.min(wanted, Math.floor(main / (work + rest)));
+      const ceiling = hiit && req.firstExposure ? cardioValue('hiit.firstExposureMaxRounds') : Number.POSITIVE_INFINITY;
+      if (wanted > ceiling) firstCapped = true;
+      const rounds = Math.min(wanted, ceiling, Math.floor(main / (work + rest)));
       if (rounds < 1) return null;
       const intensity: CardioIntensity = hiit ? 'vigorous' : 'moderate';
       for (let i = 0; i < rounds; i++) {
@@ -105,7 +110,9 @@ export function buildCardio(req: CardioBlockRequest, ctx: CardioBuildContext): C
       const rounds = cardioValue('tabata.rounds');
       const blockRest = cardioValue('tabata.blockRestSeconds');
       const block = rounds * (work + rest);
-      const blocks = Math.min(cardioValue('tabata.maxBlocks'), Math.floor((main + blockRest) / (block + blockRest)));
+      const maxBlocks = req.firstExposure ? cardioValue('tabata.firstExposureMaxBlocks') : cardioValue('tabata.maxBlocks');
+      if (maxBlocks < cardioValue('tabata.maxBlocks')) firstCapped = true;
+      const blocks = Math.min(maxBlocks, Math.floor((main + blockRest) / (block + blockRest)));
       if (blocks < 1) return null;
       for (let b = 0; b < blocks; b++) {
         for (let i = 0; i < rounds; i++) {
@@ -148,6 +155,7 @@ export function buildCardio(req: CardioBlockRequest, ctx: CardioBuildContext): C
     ...ctx.impactReasons,
     ...choice.reasonCodes,
     ...(hiit ? ['cardio.hiit.gates_passed'] : []),
+    ...(firstCapped ? ['cardio.hiit.first_exposure'] : []),
   ];
   const plan = CardioPlanSchema.parse({
     protocol: req.protocol,

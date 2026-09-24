@@ -49,12 +49,14 @@ export const cardioEn = {
   'engine.reason.cardio.movement.rotation': 'The movements take turns from one interval to the next.',
   // ---- Engine reason codes: the HIIT gates
   'engine.reason.cardio.hiit.gates_passed': 'High-intensity intervals are available: your answers allow them and you have trained regularly for two weeks.',
+  'engine.reason.cardio.hiit.first_exposure': 'Your first interval sessions are kept shorter. More rounds come after a few sessions finished without warning signs or strong pain.',
   'engine.reason.cardio.hiit.needs_consistent_training': 'High-intensity intervals come after two weeks of regular training. Until then, the cardio is steady.',
   // ---- Engine reason codes: zones
   'engine.reason.cardio.zones.heart_rate_reserve': 'Heart-rate ranges from your resting heart rate and estimated maximum (heart-rate reserve).',
   'engine.reason.cardio.zones.hr_max_estimated': 'The maximum heart rate is an estimate from your age, not a measurement.',
   'engine.reason.cardio.zones.perceived_exertion': 'Guided by how hard it feels (0 to 10) and by the talk test.',
   'engine.reason.cardio.zones.no_resting_hr': 'Add a resting heart rate if you want heart-rate ranges too.',
+  'engine.reason.cardio.zones.medication_effort_only': 'You said a medicine can change how your body responds to effort, so your heart rate is not a reliable guide. Go by how hard it feels and the talk test.',
   'engine.reason.cardio.zones.no_age': 'Heart-rate ranges need your date of birth.',
   'engine.reason.cardio.zones.reserve_too_small': 'Heart-rate ranges are not shown for these numbers; effort and the talk test guide you.',
   'engine.reason.cardio.zones.talk_test': 'Talk test: easy means full sentences, moderate short sentences, vigorous only a few words.',

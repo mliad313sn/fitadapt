@@ -21,6 +21,8 @@ const ENG = 'M03 engineering default (conservative choice by the engineer); no e
 const SPEC = 'docs/specs/M03-cardio-conditioning.md';
 const TANAKA = `${SPEC} (Scope: "HRmax estimated as 208 − 0.7 × age (Tanaka et al., 2001)"); citation compiled by the drafting assistant, not checked against the paper`;
 const WHO = `${SPEC} (Scope: "Weekly aerobic target against WHO 2020: 150–300 min moderate or 75–150 min vigorous (vigorous minutes count double)"); Bull FC et al. (2020) as cited by docs/specs/00-product-vision.md, not checked against the guideline`;
+const FIRST =
+  'docs/governance/ai-reviews/A3-A5-training-science.md item 66 (AI pre-review, not a professional sign-off: "1 block / ≤ 6 rounds for the first interval sessions, increasing only after several completed sessions without red pain or S3 events; keep 3 / 10 as the long-term ceiling"); the number of sessions (3) is the engineer’s reading of "several"; seats A3, A5, A1 to decide';
 const ZONES = `${ENG}; heart-rate-reserve bands for light/moderate/vigorous effort chosen by the engineer (the Karvonen method itself is cited by ${SPEC}), not checked against any guideline`;
 
 /** Version of the cardio rules (protocols, gates, zones); the plan's session rules version moves with it. */
@@ -67,6 +69,13 @@ export const CARDIO_CONFIG = defineConfig({
   'hiit.workSeconds': { value: 30, unit: 's', source: ENG, validated: false },
   'hiit.recoverSeconds': { value: 60, unit: 's', source: ENG, validated: false },
   'hiit.maxRounds': { value: 10, unit: 'rounds', source: ENG, validated: false },
+  // ---- First interval exposures (A3/A5 pre-review #66, stricter): start low, ramp after completed sessions
+  /** HIIT and vigorous custom rounds until `hiit.rampCompletedSessions` interval sessions were completed. */
+  'hiit.firstExposureMaxRounds': { value: 6, unit: 'rounds', source: FIRST, validated: false },
+  /** Tabata blocks until then (the original protocol is a single ~4-minute block). */
+  'tabata.firstExposureMaxBlocks': { value: 1, unit: 'blocks', source: FIRST, validated: false },
+  /** Interval sessions completed (to the end, no red-flag stop, no red pain) before the long-term ceilings apply. */
+  'hiit.rampCompletedSessions': { value: 3, unit: 'sessions', source: FIRST, validated: false },
   'emom.maxMinutes': { value: 20, unit: 'min', source: ENG, validated: false },
   'emom.reps': { value: 8, unit: 'reps', source: ENG, validated: false },
   'amrap.maxMinutes': { value: 20, unit: 'min', source: ENG, validated: false },

@@ -1,4 +1,4 @@
-import { s5LoadCeiling } from '@fitadapt/safety';
+import { S2_RED_PAIN_SCORE, s5LoadCeiling } from '@fitadapt/safety';
 import { HISTORY_EXERCISES_MAX, type ExecutionLog, type HistoryExercise, type PerformedSet, type PlannedExercise, type SessionHistoryEntry, type SessionPlan, type SetLog, type WorkoutSessionRecord } from '@fitadapt/shared';
 import { entryLoads, foldLoads } from './bounds.js';
 import { loadReferencesFor } from './program-session.js';
@@ -56,7 +56,10 @@ export function buildSessionHistory(sessions: readonly WorkoutSessionRecord[], s
     const overflow = foldLoads(entryLoads({ ...base, exercises: exercises.slice(HISTORY_EXERCISES_MAX) }));
     const entry: SessionHistoryEntry = overflow.length > 0 ? { ...base, overflowLoads: overflow } : base;
     if (cardio.length === 0) return entry;
-    return { ...entry, cardioSeconds: Math.min(10_800, cardio.reduce((s, c) => s + c.moderateSeconds + c.vigorousSeconds, 0)) };
+    // A3/A5 #66: an interval block run to the end, without a red-flag stop or red pain, counts toward the interval ramp.
+    const redPain = events.some((e) => e.kind === 'pain' && e.planId === plan.planId && e.score >= S2_RED_PAIN_SCORE);
+    const hiitCompleted = plan.cardio?.hiit === true && cardio.some((c) => !c.endedEarly) && ended?.kind !== 'red_flag' && !redPain;
+    return { ...entry, cardioSeconds: Math.min(10_800, cardio.reduce((s, c) => s + c.moderateSeconds + c.vigorousSeconds, 0)), ...(hiitCompleted ? { hiitCompleted: true as const } : {}) };
   });
 }
 

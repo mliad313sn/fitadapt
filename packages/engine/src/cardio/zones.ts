@@ -55,12 +55,23 @@ export interface ZoneFacts {
   readonly nowMs: number;
 }
 
+/**
+ * CS-7 (docs/governance/ai-reviews/A1-A2-clinical-safety.md M01-06, M03-53): a
+ * medication that changes the heart-rate response (beta-blockers, per the AHA
+ * as cited there) makes heart-rate targets unreliable, and chasing one can mean
+ * working harder than intended. The M01 screening records it as the
+ * `medication_affecting_effort` answer (its reason code stays on the profile,
+ * cleared or not): those users get perceived exertion and the talk test only.
+ */
+export const HR_MEDICATION_REASON = 'safety_profile.flag.medication_affecting_effort';
+
 export function zonesFor(facts: ZoneFacts): HrZoneSet {
   const age = ageOn(facts.birthDate, facts.nowMs, facts.localDate);
+  const medication = facts.profile.reasonCodes.includes(HR_MEDICATION_REASON);
   const resting = facts.heartRate && facts.heartRate.source !== 'none' ? facts.heartRate.restingBpm : null;
   const hrMax = age !== null ? estimatedHrMax(age) : null;
   const reasons: string[] = [];
-  const hrr = resting !== null && hrMax !== null && hrMax - resting >= cardioValue('hrr.minReserveBpm');
+  const hrr = !medication && resting !== null && hrMax !== null && hrMax - resting >= cardioValue('hrr.minReserveBpm');
   const zones: HrZone[] = INTENSITIES.map((intensity) => {
     const rpe = rpeRange(intensity, facts.profile);
     const band = hrr
@@ -74,7 +85,8 @@ export function zonesFor(facts: ZoneFacts): HrZoneSet {
   if (hrr) reasons.push('cardio.zones.heart_rate_reserve', 'cardio.zones.hr_max_estimated');
   else {
     reasons.push('cardio.zones.perceived_exertion');
-    if (resting === null) reasons.push('cardio.zones.no_resting_hr');
+    if (medication) reasons.push('cardio.zones.medication_effort_only');
+    else if (resting === null) reasons.push('cardio.zones.no_resting_hr');
     else if (hrMax === null) reasons.push('cardio.zones.no_age');
     else reasons.push('cardio.zones.reserve_too_small');
   }

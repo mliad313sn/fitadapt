@@ -50,12 +50,14 @@ export const cardioFr: Record<keyof typeof cardioEn, string> = {
   'engine.reason.cardio.movement.rotation': 'Les mouvements alternent d’un intervalle à l’autre.',
   // ---- Codes de raison : conditions du fractionné intense
   'engine.reason.cardio.hiit.gates_passed': 'Le fractionné intense est possible : vos réponses le permettent et vous vous entraînez régulièrement depuis deux semaines.',
+  'engine.reason.cardio.hiit.first_exposure': 'Vos premières séances de fractionné sont plus courtes. Des répétitions s’ajoutent après quelques séances terminées sans signe d’alerte ni douleur forte.',
   'engine.reason.cardio.hiit.needs_consistent_training': 'Le fractionné intense vient après deux semaines d’entraînement régulier. D’ici là, le cardio reste à allure régulière.',
   // ---- Codes de raison : zones
   'engine.reason.cardio.zones.heart_rate_reserve': 'Plages de fréquence cardiaque calculées à partir de votre fréquence au repos et de votre maximum estimé (réserve cardiaque).',
   'engine.reason.cardio.zones.hr_max_estimated': 'La fréquence cardiaque maximale est une estimation d’après votre âge, pas une mesure.',
   'engine.reason.cardio.zones.perceived_exertion': 'Guidé par l’effort ressenti (de 0 à 10) et par le test de la parole.',
   'engine.reason.cardio.zones.no_resting_hr': 'Ajoutez une fréquence cardiaque au repos si vous voulez aussi des plages de fréquence.',
+  'engine.reason.cardio.zones.medication_effort_only': 'Vous avez indiqué qu’un médicament peut changer la réponse de votre corps à l’effort : la fréquence cardiaque n’est donc pas un repère fiable. Fiez-vous à la sensation d’effort et au test de la parole.',
   'engine.reason.cardio.zones.no_age': 'Les plages de fréquence cardiaque demandent votre date de naissance.',
   'engine.reason.cardio.zones.reserve_too_small': 'Pas de plages de fréquence pour ces valeurs : l’effort ressenti et le test de la parole vous guident.',
   'engine.reason.cardio.zones.talk_test': 'Test de la parole : léger, on parle en phrases complètes ; modéré, en phrases courtes ; soutenu, quelques mots seulement.',

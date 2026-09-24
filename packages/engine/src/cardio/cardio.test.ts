@@ -7,11 +7,13 @@ import { programContext } from '../__fixtures__/session.js';
 import { fixedClock } from '../clock.js';
 import { createEngineContext } from '../context.js';
 import { generateSession } from '../session/generate.js';
+import { buildSessionHistory } from '../session/history.js';
+import { record } from '../__fixtures__/simulate.js';
 import { planSeconds } from '../session/timebox.js';
 import type { GenerateSessionInput, GenerateSessionResult } from '../session/types.js';
 import { CARDIO_CONFIG } from './config.js';
 import { CARDIO_CUE_KEYS, cueSchedule, segmentAt } from './cues.js';
-import { cardioImpactCeiling, consistentTraining, hiitGate, lowImpactDefault, sessionSafetyProfile } from './gates.js';
+import { cardioImpactCeiling, consistentTraining, hiitFirstExposure, hiitGate, lowImpactDefault, sessionSafetyProfile } from './gates.js';
 import { aerobicMinutesLedger, cardioDone, ledgerEntriesFrom } from './ledger.js';
 import { cardioAlternatives } from './movements.js';
 import { M03_REASON_CODES } from './reason-codes.js';
@@ -32,7 +34,8 @@ const cardioInput = (protocol: CardioProtocol, over: Partial<GenerateSessionInpu
   minutesAvailable: 30,
   mode: 'cardio',
   cardio: { protocol },
-  history: trainedHistory(NOW),
+  // Past the interval ramp (3 interval sessions completed): the long-term ceilings; the first exposures are tested below.
+  history: trainedHistory(NOW, 2, 3, 3),
   birthDate: { year: 1986, month: 3, day: 1 },
   experience: 'intermediate',
   ...over,
@@ -93,6 +96,55 @@ describe('packages/engine/cardio generates HIIT, Tabata, EMOM, AMRAP and steady-
     const short = run(cardioInput('tabata', { minutesAvailable: 15 })).cardio;
     expect(short.interval).toMatchObject({ blocks: 1 });
     expect(short.timeline.filter((s) => s.kind === 'work')).toHaveLength(8);
+  });
+
+  it('A3/A5 #66: the first interval sessions are capped (HIIT ≤ 6 rounds, Tabata 1 block) until 3 were completed, and say so', () => {
+    for (const done of [0, 1, 2]) {
+      const hiit = run(cardioInput('hiit', { history: trainedHistory(NOW, 2, 3, done) })).cardio;
+      expect(hiit.interval).toMatchObject({ rounds: 6, blocks: 1 });
+      expect(hiit.reasonCodes).toContain('cardio.hiit.first_exposure');
+      const tabata = run(cardioInput('tabata', { history: trainedHistory(NOW, 2, 3, done) })).cardio;
+      expect(tabata.interval).toMatchObject({ blocks: 1 });
+      expect(tabata.reasonCodes).toContain('cardio.hiit.first_exposure');
+      const custom = run(cardioInput('custom', { history: trainedHistory(NOW, 2, 3, done), cardio: { protocol: 'custom', custom: { workSeconds: 30, restSeconds: 60, rounds: 12, intensity: 'vigorous' } } })).cardio;
+      expect(custom.interval!.rounds).toBeLessThanOrEqual(6);
+    }
+    const ramped = run(cardioInput('hiit')).cardio;
+    expect(ramped.interval).toMatchObject({ rounds: 10 });
+    expect(ramped.reasonCodes).not.toContain('cardio.hiit.first_exposure');
+    // Moderate custom intervals are not interval (HIIT) exposures: no cap.
+    const moderate = run(cardioInput('custom', { history: trainedHistory(NOW), cardio: { protocol: 'custom', custom: { workSeconds: 30, restSeconds: 60, rounds: 8, intensity: 'moderate' } } })).cardio;
+    expect(moderate.interval!.rounds).toBe(8);
+    expect(moderate.reasonCodes).not.toContain('cardio.hiit.first_exposure');
+  });
+
+  it('A3/A5 #66: an interval session counts toward the ramp only when run to the end, without a red-flag stop or red pain', () => {
+    const input = cardioInput('hiit', { history: trainedHistory(NOW) });
+    const { plan, cardio } = run(input);
+    const done = (endedEarly: boolean): ExecutionLog => ({ kind: 'cardio_done', planId: plan.planId, protocol: 'hiit', moderateSeconds: 0, vigorousSeconds: cardio.planned.vigorousSeconds, completedWork: 6, totalWork: 6, rounds: null, endedEarly, at: plan.generatedAt });
+    const entry = (events: ExecutionLog[]) => buildSessionHistory([record(input, plan)], [], events)[0]!;
+    expect(entry([done(false)]).hiitCompleted).toBe(true);
+    expect(entry([done(true)]).hiitCompleted).toBeUndefined();
+    expect(entry([done(false), { kind: 'red_flag', planId: plan.planId, symptom: 'palpitations', at: plan.generatedAt }]).hiitCompleted).toBeUndefined();
+    expect(entry([done(false), { kind: 'pain', planId: plan.planId, joint: 'knee', score: 6, at: plan.generatedAt }]).hiitCompleted).toBeUndefined();
+    expect(entry([done(false), { kind: 'pain', planId: plan.planId, joint: 'knee', score: 5, at: plan.generatedAt }]).hiitCompleted).toBe(true);
+    const steady = run(cardioInput('steady'));
+    expect(buildSessionHistory([record(cardioInput('steady'), steady.plan)], [], [{ ...(done(false) as Extract<ExecutionLog, { kind: 'cardio_done' }>), planId: steady.plan.planId, protocol: 'steady' }])[0]!.hiitCompleted).toBeUndefined();
+    expect(hiitFirstExposure(trainedHistory(NOW, 2, 3, 2))).toBe(true);
+    expect(hiitFirstExposure(trainedHistory(NOW, 2, 3, 3))).toBe(false);
+  });
+
+  it('CS-7: a user who reported a medication affecting effort gets effort and talk-test zones only, never heart-rate targets', () => {
+    const heartRate = { source: 'manual' as const, restingBpm: 60 };
+    const withHr = zonesFor({ profile: cleared(), birthDate: { year: 1986, month: 3, day: 1 }, heartRate, nowMs: NOW });
+    expect(withHr.method).toBe('heart_rate_reserve');
+    for (const clearanceAttested of [false, true]) {
+      const profile = profileFrom(['medication_affecting_effort'], { clearanceAttested });
+      const z = zonesFor({ profile, birthDate: { year: 1986, month: 3, day: 1 }, heartRate, nowMs: NOW });
+      expect(z).toMatchObject({ method: 'perceived_exertion', hrMaxBpm: null, restingBpm: null });
+      expect(z.zones.every((x) => x.minBpm === null && x.maxBpm === null && x.talkTest !== undefined)).toBe(true);
+      expect(z.reasonCodes).toEqual(['cardio.zones.perceived_exertion', 'cardio.zones.medication_effort_only', 'cardio.zones.talk_test']);
+    }
   });
 
   it('EMOM: a set of reps at the top of every minute, at a moderate (controlled) effort, rotating movements from different patterns', () => {

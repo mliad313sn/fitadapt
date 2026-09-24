@@ -186,6 +186,11 @@ export const SessionHistoryEntrySchema = z.strictObject({
   exercises: z.array(HistoryExerciseSchema).max(HISTORY_EXERCISES_MAX),
   /** M03: seconds of cardio run in this session (from its `cardio_done` log); absent when none was logged. */
   cardioSeconds: z.number().int().min(0).optional(),
+  /**
+   * M03 (A3/A5 pre-review #66): an interval block (HIIT, Tabata or vigorous custom) was run to the end in this
+   * session, with no red-flag stop and no red pain; absent when not. The first-exposure interval caps count these.
+   */
+  hiitCompleted: z.literal(true).optional(),
   /** SAF-6: S5 references of the exercises beyond the first 20 (many swaps), folded per exercise; absent when none. */
   overflowLoads: z.array(FoldedLoadSchema).max(RECENT_LOADS_MAX).optional(),
 });
