@@ -147,7 +147,9 @@ describe('goal targets', () => {
   it('asks for measurements when height or weight is missing, and says so when no estimate is possible', () => {
     expect(computeNutritionTarget(p1({ weightKg: null }), ctx()).target).toMatchObject({ mode: 'needs_measurements', energy: null, protein: null, reasonCodes: ['nutrition.needs_measurements'] });
     expect(computeNutritionTarget(p1({ heightCm: null }), ctx()).target.mode).toBe('needs_measurements');
-    const ancient = computeNutritionTarget(p1({ weightKg: 25, heightCm: 100, birthDate: { year: 1826, month: 1, day: 1 }, sexForEstimate: 'female', safetyProfile: screened([], { year: 1826, month: 1, day: 1 }) }), ctx()).target;
+    // FIX-B (MOB-13): a screening now refuses a date of birth over 120 years ago (not screened, fail closed), so the
+    // screening in this fixture is a valid one; the nutrition input keeps the ancient date that makes BMR impossible.
+    const ancient = computeNutritionTarget(p1({ weightKg: 25, heightCm: 100, birthDate: { year: 1826, month: 1, day: 1 }, sexForEstimate: 'female', safetyProfile: screened() }), ctx()).target;
     expect(ancient).toMatchObject({ mode: 'needs_measurements', reasonCodes: ['nutrition.energy.unavailable'] });
   });
 });
