@@ -9,8 +9,10 @@
  *
  * The key is shown by Meridian once. It is read from MERIDIAN_KEY, else from
  * a file OUTSIDE the repository ($XDG_STATE_HOME/fitadapt-meridian/<host>.key,
- * mode 0600). With neither, the integration is created (or its key rotated)
- * through the admin session and the new key is written to that file.
+ * mode 0600). With neither, a new integration is created through the admin
+ * session and its key written to that file. An EXISTING integration's key is
+ * rotated only with --rotate-key or MERIDIAN_ROTATE_KEY=1 (OPS-02): rotation
+ * disables the old key at once, wherever it is used.
  */
 
 import { mkdirSync, readFileSync, writeFileSync, existsSync, chmodSync } from "node:fs";
@@ -77,6 +79,14 @@ export async function integration(api) {
   }
   const { integrations } = await api.call("GET", "/api/admin/integrations");
   const mine = integrations.find((i) => i.name === INTEGRATION_NAME);
+  /* OPS-02 (assessment 03): rotating kills the old key at once, and another
+     machine or CI job may hold it. A missing local key is no reason to cut
+     them off: say so, and rotate only when asked. */
+  if (mine && !(process.argv.includes("--rotate-key") || process.env.MERIDIAN_ROTATE_KEY === "1")) {
+    throw new Error(`integration "${INTEGRATION_NAME}" exists but no working key is available here ` +
+      `(MERIDIAN_KEY unset, ${file} missing or refused). Set MERIDIAN_KEY to the key in use, ` +
+      "or re-run with --rotate-key (or MERIDIAN_ROTATE_KEY=1) to replace it — which disables the old key everywhere.");
+  }
   const out = mine
     ? await api.call("POST", `/api/admin/integrations/${mine.id}/rotate`, { version: mine.row_version })
     : await api.call("POST", "/api/admin/integrations", {

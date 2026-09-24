@@ -41,7 +41,7 @@ node pmo/meridian/drive.mjs [--as-of YYYY-MM-DD] [--in-progress M11[:YYYY-MM-DD]
 | `--as-of` | Meridian's status date and the agenda's reference day (default: today, UTC). |
 | `--in-progress Mxx[:date]` | Mark a module started before its first `feat(mxx)` commit exists (repeatable). Once a module has commits, the flag is not needed. |
 | `--dry-run` | Read everything, write nothing, print the pack to stdout. |
-| `MERIDIAN_KEY` | The integration key. Without it the key is read from `$XDG_STATE_HOME/fitadapt-meridian/<host>.key` (mode 0600, outside the repository); without that, the integration is created or its key rotated and saved there. |
+| `MERIDIAN_KEY` | The integration key. Without it the key is read from `$XDG_STATE_HOME/fitadapt-meridian/<host>.key` (mode 0600, outside the repository); without that, a new integration is created and its key saved there. An existing integration's key is rotated **only** with `--rotate-key` or `MERIDIAN_ROTATE_KEY=1`, because rotation disables the old key everywhere it is used (assessment OPS-02). |
 | `MERIDIAN_HOME` | A checkout of the **same** Meridian version (default `../meridian`); its `shared/*.js` computes gates and the master schedule exactly as the screens do (dogfood DF-19). |
 
 What it reads, and what it writes:

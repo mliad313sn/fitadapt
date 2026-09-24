@@ -54,6 +54,7 @@ Setup: Meridian `main` 5.36.0 (0687333), Node 22, PGlite in the default `server/
 | DF-19 | Writing the weekly review | Gate state per programme, the programme critical chain and "can this phase advance" are computed in the browser; no endpoint serves them. `drive.mjs` imports `shared/*.js` from a checkout of the same version (`MERIDIAN_HOME`) to get Meridian's own answer. | Design question | To file (issue): a read endpoint for the master schedule and gate state | Open |
 | DF-20 | Loading the dogfood backlog | `PUT /api/v1/workitems` cannot say when an item was done; items loaded already done read as done today. | Design question, P3 | To file (issue) | Open |
 | DF-21 | Running the sweep | CONTRIBUTING says twelve sweep warnings are documented and expected; `main` shows eleven (5.23.0's changelog says eleven too). F15 does not read numbers written as words. | Defect (docs), P3 | To file with the 5.36.1 PR, or separately | Open |
+| DF-22 | Verifying the 5.36.1 fix | `journey.test.js` I-6 ("la sauvegarde se prouve ailleurs") failed once in `npm run verify` with `fetch failed` after 6 s, at load average 8.5 on 4 CPUs; passes 3/3 alone, with and without the change. A timing-sensitive test, not a defect of the change — to root-cause, not to call flaky. | Test robustness | to file | Logged |
 
 ### What worked well (session 2)
 
