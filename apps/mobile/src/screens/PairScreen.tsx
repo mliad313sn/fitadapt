@@ -19,6 +19,8 @@ import { PartnerSetup, SharingChoices } from '../pair/PartnerSetup';
 import { useConsents } from '../privacy/PrivacyProvider';
 import { useCapacity, useFirstWorkoutAccess, useIntensityLock, useJointFlags, useLegal, useProfile, useProgram, useReadinessChecks, useReflows, useSafetyProfile, useSessionHistory } from '../profile/ProfileProvider';
 import { localIsoDate, selectDeload, selectReadiness } from '../profile/selectors';
+import { reportError } from '../observability';
+import { useProgressContext } from '../progress/ProgressProvider';
 import { useRestRemaining } from '../workout/rest-timer';
 import { seedFrom, todayInput } from '../workout/today';
 
@@ -82,6 +84,7 @@ export function PairScreen({ onExit }: PairScreenProps) {
   const { t, locale, unitSystem } = i18n;
   const theme = useTheme();
   const pairStore = usePairStore();
+  const { io } = useProgressContext();
   usePair((s) => s.revision);
   const guests = usePair((s) => s.guests);
   const ownerName = usePair((s) => s.ownerName);
@@ -491,9 +494,15 @@ export function PairScreen({ onExit }: PairScreenProps) {
               label={t('pair.partner.export', { name: g.displayName })}
               hint={t('pair.partner.exportHint')}
               variant="secondary"
-              onPress={() => {
-                pairStore.getState().exportGuest(g.id);
-                setMessage(t('pair.partner.exported', { name: g.displayName }));
+              onPress={async () => {
+                // MOB-06: the partner's export is handed to the share sheet (save or send); "exported" only once that worked.
+                try {
+                  await io.shareFile(`partner-export-${localIsoDate(clock.now())}.json`, pairStore.getState().exportGuest(g.id), 'application/json');
+                  setMessage(t('pair.partner.exported', { name: g.displayName }));
+                } catch (error) {
+                  reportError(error, { area: 'ui' });
+                  setMessage(t('pair.partner.exportFailed', { name: g.displayName }));
+                }
               }}
               testID={`pair-export-${g.displayName}`}
             />

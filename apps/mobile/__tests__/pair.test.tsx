@@ -4,7 +4,7 @@ import { verifyChain } from '@fitadapt/legal';
 import { intensityLockStatus } from '@fitadapt/safety';
 import { SCREENING_QUESTION_IDS, type PairSharingScope, type SetLog, type WorkoutSessionRecord } from '@fitadapt/shared';
 import { InMemoryTransport, MemoryLocalStore, MemoryServerStore, SyncClient, SyncServer } from '@fitadapt/sync';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { randomUUID } from 'node:crypto';
 import { AppProviders } from '../src/AppProviders';
 import { createLegalStore } from '../src/legal/legal-store';
@@ -12,6 +12,7 @@ import { createPairStore } from '../src/pair/pair-store';
 import { createAgeGateStore } from '../src/privacy/age-gate';
 import { createConsentStore } from '../src/privacy/consents';
 import { createProfileStore } from '../src/profile/profile-store';
+import { expoProgressDeviceIo } from '../src/progress/device-io';
 import { CalendarScreen } from '../src/screens/CalendarScreen';
 import { PairScreen } from '../src/screens/PairScreen';
 import { MemoryKeyValueStore } from '../src/storage/app-state';
@@ -357,7 +358,7 @@ describe('each person’s safety applies on its own (S2, S3) and logs stay per p
 });
 
 describe('the partner’s data is theirs: export and delete', () => {
-  it('exports everything this phone holds about Awa, then deletes it all (ledgers, logs and the pair sessions naming her)', () => {
+  it('exports everything this phone holds about Awa, then deletes it all (ledgers, logs and the pair sessions naming her)', async () => {
     const d = device();
     start(d);
     logTurn();
@@ -369,9 +370,18 @@ describe('the partner’s data is theirs: export and delete', () => {
     expect((exported.consents as unknown[]).length).toBe(2);
     expect((exported.setLogs as unknown[]).length).toBe(1);
     expect((exported.pairSessions as unknown[]).length).toBe(1);
+    // MOB-06: the export is actually handed to the share sheet (to save or send), and only then reported as done.
+    const share = jest.spyOn(expoProgressDeviceIo, 'shareFile');
     renderWith(d, <PairScreen onExit={() => undefined} />);
     press('pair-export-Awa');
-    expect(screen.getByTestId('pair-message').props.children).toBe(tr('en').t('pair.partner.exported', { name: 'Awa' }));
+    await waitFor(() => expect(screen.getByTestId('pair-message').props.children).toBe(tr('en').t('pair.partner.exported', { name: 'Awa' })));
+    expect(share).toHaveBeenCalledTimes(1);
+    const [fileName, content, mimeType] = share.mock.calls[0]!;
+    expect(fileName).toMatch(/^partner-export-\d{4}-\d{2}-\d{2}\.json$/);
+    expect(mimeType).toBe('application/json');
+    expect(JSON.parse(content)).toMatchObject({ format: 'pair-partner-export', profile: { displayName: 'Awa', bodyweightKg: 60 } });
+    expect(JSON.parse(content).setLogs).toEqual(exported.setLogs);
+    share.mockRestore();
     press('pair-delete-Awa');
     expect(screen.queryByTestId('pair-choose-Awa')).toBeNull();
     expect(d.pair.getState().guest(d.awa.id)).toBeNull();
@@ -379,6 +389,15 @@ describe('the partner’s data is theirs: export and delete', () => {
     expect([...d.kv.data.keys()].filter((k) => k.includes(d.awa.id))).toEqual([]);
     // The owner's own records are untouched.
     expect(outbox(d, 'set_logs')).toHaveLength(1);
+  });
+
+  it('MOB-06: when the share sheet fails, the partner is told nothing was exported', async () => {
+    const d = device();
+    const share = jest.spyOn(expoProgressDeviceIo, 'shareFile').mockRejectedValue(new Error('share sheet unavailable'));
+    renderWith(d, <PairScreen onExit={() => undefined} />);
+    press('pair-export-Awa');
+    await waitFor(() => expect(screen.getByTestId('pair-message').props.children).toBe(tr('en').t('pair.partner.exportFailed', { name: 'Awa' })));
+    share.mockRestore();
   });
 });
 
