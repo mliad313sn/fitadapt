@@ -1,79 +1,105 @@
 #!/usr/bin/env node
 /**
- * Stands up the FitAdapt book on a Meridian instance, in the only order that works:
+ * Stands up the FitAdapt book on an EMPTY Meridian 5.36+ instance. Run it once.
  *
- *   1. import fitadapt-book.json  (the import REPLACES the whole book, meetings included)
- *   2. create the three meeting series  (docs/governance/04-meridian-operating-model.md §4)
- *   3. allow github.com as an evidence host, so a document can point at a pinned commit
+ *   1. dry-run, then import fitadapt-book.json (a REPLACE: it erases the
+ *      whole book, meeting register included — which is why it runs once);
+ *   2. settings: github.com as the trusted evidence host, the gate lock on;
+ *   3. the named baseline "v2.1 plan" on every project, taken BEFORE any
+ *      actual is recorded, so Meridian can compare the plan with what happened;
+ *   4. one account per role and per council seat, all INACTIVE with an
+ *      unusable random password, linked to their person row. A council seat
+ *      carries an evidence-review grant on programme FAD (C1, non-voting:
+ *      on the governance project only) (Meridian 5.26,
+ *      #16 · DF-10): the member approves sign-off records in their own name.
+ *      The administrator activates an account when the role is filled
+ *      (docs/governance/04 §3) — nobody can sign in as an open seat.
  *
- * Needs Meridian >= 5.9.1 (earlier versions answer 400 to every import:
- * https://github.com/mliad313sn/Meridian/pull/14). Run it once, on an empty instance.
- * Running it again wipes whatever the team has recorded since.
+ * Then run drive.mjs, which lays the repository's truth on top through the
+ * API (never through another import).
  *
  *   MERIDIAN_URL=http://localhost:4173 MERIDIAN_EMAIL=… MERIDIAN_PASSWORD=… \
  *     node pmo/meridian/bootstrap.mjs [--yes]
  */
 
+import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { SEATS } from "./build-book.mjs";
+import { session } from "./meridian-client.mjs";
 
-const BASE = process.env.MERIDIAN_URL ?? "http://localhost:4173";
-const EMAIL = process.env.MERIDIAN_EMAIL;
-const PASSWORD = process.env.MERIDIAN_PASSWORD;
-if (!EMAIL || !PASSWORD) {
-  console.error("Set MERIDIAN_EMAIL and MERIDIAN_PASSWORD (an administrator account).");
-  process.exit(2);
-}
+const HERE = dirname(fileURLToPath(import.meta.url));
+const api = await session();
 
-let cookie = "";
-async function call(method, path, body) {
-  const res = await fetch(BASE + path, {
-    method,
-    headers: { ...(body ? { "content-type": "application/json" } : {}), ...(cookie ? { cookie } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  for (const c of res.headers.getSetCookie?.() ?? []) {
-    const [pair] = c.split(";");
-    if (pair.startsWith("meridian_sid=")) cookie = pair;
-  }
-  const text = await res.text();
-  let json = null;
-  try { json = text ? JSON.parse(text) : null; } catch { json = { raw: text }; }
-  if (!res.ok) throw new Error(`${method} ${path} → ${res.status}: ${json?.error ?? text}`);
-  return json;
-}
-
-const health = await call("GET", "/api/health");
-console.log(`Meridian ${health.version} on ${health.engine}`);
-await call("POST", "/api/auth/login", { email: EMAIL, password: PASSWORD });
-
-const existing = await call("GET", "/api/admin/export");
-const foreign = (existing.projects ?? []).filter((p) => !String(p.id).startsWith("PRJ-2"));
-if ((existing.projects ?? []).length && !process.argv.includes("--yes")) {
-  console.error(`This instance already holds ${existing.projects.length} project(s)` +
+const existing = await api.call("GET", "/api/admin/export");
+const held = existing.projects ?? [];
+if (held.length && !process.argv.includes("--yes")) {
+  const foreign = held.filter((p) => !String(p.id).startsWith("PRJ-2"));
+  const meetings = (existing.meetings ?? []).length + (existing.decisions ?? []).length;
+  console.error(`This instance already holds ${held.length} project(s)` +
     (foreign.length ? `, ${foreign.length} of them not FitAdapt's` : "") +
-    ". The import replaces everything. Re-run with --yes to proceed.");
+    (meetings ? ` and ${meetings} meeting/decision row(s)` : "") +
+    ". The import replaces everything. To keep an instance in step, run drive.mjs instead." +
+    " Re-run with --yes to replace it anyway.");
   process.exit(1);
 }
 
-const book = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fitadapt-book.json"), "utf8"));
-const imported = await call("POST", "/api/admin/import", book);
-console.log("imported", imported.counts);
+const book = JSON.parse(readFileSync(join(HERE, "fitadapt-book.json"), "utf8"));
+const dry = await api.call("POST", "/api/admin/import?dryRun=1", book);
+if (dry.rejects?.length) {
+  console.error("The dry run refused rows — nothing was written:");
+  for (const r of dry.rejects) console.error(`  ${r.table} ${r.id}: ${r.reason}`);
+  process.exit(1);
+}
+if (dry.wouldErase && Object.values(dry.wouldErase).some((n) => n > 0)) {
+  console.log("the replace erases:", JSON.stringify(dry.wouldErase));
+}
+const imported = await api.call("POST", "/api/admin/import", book);
+if (imported.rejects?.length) {
+  for (const r of imported.rejects) console.error(`  refused ${r.table} ${r.id}: ${r.reason}`);
+  process.exit(1);
+}
+console.log("imported", JSON.stringify(imported.counts));
 
-const SERIES = [
-  { name: "FitAdapt weekly delivery review", scopeKind: "programme", programmeId: "FAD", cadence: "weekly",
-    chairId: "PE-02", weekday: 1, startTime: "09:30", timeboxMin: 30 },
-  { name: "Expert Advisory Council — monthly session", scopeKind: "programme", programmeId: "FAD", cadence: "monthly",
-    chairId: "PE-02", weekday: 3, startTime: "16:00", timeboxMin: 90 },
-  { name: "Sponsor steering — monthly", scopeKind: "group", cadence: "monthly",
-    chairId: "PE-01", weekday: 5, startTime: "11:00", timeboxMin: 45 },
-];
-for (const s of SERIES) {
-  const { id } = await call("POST", "/api/meetings/series", s);
-  console.log("series", id, s.name);
+await api.call("PATCH", "/api/admin/settings", { documentHosts: "github.com", gateLock: true });
+console.log("documentHosts = github.com, gateLock on");
+
+for (const p of book.db.projects) {
+  const out = await api.call("POST", `/api/projects/${p.id}/baselines`, {
+    name: "v2.1 plan",
+    reason: "The original 36-week plan of goal pack v2.1 (GOALS.md), frozen before any actual date was recorded.",
+  });
+  console.log(`baseline ${out.id} "v2.1 plan" on ${p.id}`);
 }
 
-await call("PATCH", "/api/admin/settings", { documentHosts: "github.com" });
-console.log("documentHosts = github.com");
-console.log("Done. Next: create accounts in Administration (docs/governance/04 §3).");
+/* Accounts: roles and seats, inactive. The password is random and not
+   kept: activating an account is the administrator setting a password the
+   holder must change at first sign-in. */
+const ACCOUNTS = [
+  { person: "PE-01", email: "sponsor@fitadapt.example", role: "group", grants: [{ kind: "programme", target: "FAD" }] },
+  { person: "PE-02", email: "product-owner@fitadapt.example", role: "group", grants: [{ kind: "programme", target: "FAD" }] },
+  ...["PE-03", "PE-04", "PE-05", "PE-06", "PE-07", "PE-08", "PE-09", "PE-10", "PE-11", "PE-12", "PE-13"].map((pe) => (
+    { person: pe, email: `${pe.toLowerCase()}@fitadapt.example`, role: "site", grants: [{ kind: "site", target: "HQ" }] })),
+  { person: "PE-14", email: "delivery-lead@fitadapt.example", role: "admin", grants: [] },
+  ...SEATS.map((s) => ({ person: s.seatPerson, email: `council-${s.code.toLowerCase()}@fitadapt.example`, role: "viewer",
+    /* C1 is non-voting: it reviews the insurance record on governance only. */
+    grants: [], review: s.code === "C1" ? { kind: "project", target: "PRJ-206" } : { kind: "programme", target: "FAD" } })),
+];
+const people = new Map(book.db.people.map((p) => [p.id, p.name]));
+const { users } = await api.call("GET", "/api/admin/users");
+for (const a of ACCOUNTS) {
+  let u = users.find((x) => x.email.toLowerCase() === a.email);
+  if (!u) {
+    const { id } = await api.call("POST", "/api/admin/users", {
+      email: a.email, displayName: people.get(a.person), role: a.role, personId: a.person,
+      password: randomBytes(24).toString("base64url"), grants: a.grants,
+    });
+    u = (await api.call("GET", "/api/admin/users")).users.find((x) => x.id === id);
+  }
+  if (a.review) await api.call("POST", `/api/admin/users/${u.id}/grants`, { ...a.review, power: "review" });
+  if (u.active) await api.call("PATCH", `/api/admin/users/${u.id}`, { active: false, version: u.version });
+  console.log(`account ${a.email} (${a.role}${a.review ? ", review grant on " + a.review.target : ""}) — inactive until the role is filled`);
+}
+
+console.log("Done. Next: node pmo/meridian/drive.mjs (docs/governance/04 §6).");

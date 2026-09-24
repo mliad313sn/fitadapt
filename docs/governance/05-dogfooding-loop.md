@@ -1,6 +1,6 @@
 # 05 — Dogfooding Meridian and contributing back
 
-> Status: **draft**, owned by the delivery lead (PE-14). Meridian document DOC-05 (PRJ-206, Gate 1).
+> Status: **draft**, owned by the delivery lead (PE-14). Meridian document DOC-05 (PRJ-206, Gate 0).
 > Running log of findings: [`pmo/meridian/dogfood-log.md`](../../pmo/meridian/dogfood-log.md).
 
 ## 1. The loop
@@ -25,7 +25,8 @@ Meridian has its own non-negotiable rules ([`CONTRIBUTING.md`](https://github.co
 - a regression test that **fails without the fix**;
 - a CHANGELOG entry under `[Unreleased]` that says what changed **and why it was wrong before**, plus a version bump (PATCH for a defect);
 - never weaken a test or an authority check; never edit an applied migration; `shared/engine.js` is behaviour-frozen, so a change to a number it produces is argued for in the PR;
-- target `main`: that is what people clone. Check the other branches first. On 23 Sep 2026 three unmerged lines existed, and two already fixed defects we hit ([#15](https://github.com/mliad313sn/Meridian/issues/15)). Port rather than duplicate, and say where the fix came from.
+- target `main`: that is what people clone. Check the other branches first; since 5.18.1 Meridian's gate F14 fails the build when a proven line waits on a branch, so `main` is normally complete, but on 23 Sep 2026 three unmerged lines existed and two already fixed defects we hit ([#15](https://github.com/mliad313sn/Meridian/issues/15), closed by 5.16–5.17). Port rather than duplicate, and say where the fix came from.
+- the delivery lead prepares a fix on a local branch (e.g. `fix/fitadapt-session-2`) and the maintainer of our side reviews it before any PR is opened.
 - defects become PRs. Design questions (a new role, a new link source, a change to the authority model) become issues, because Meridian's committees decide those, not us.
 
 ## 3. What counts as friction

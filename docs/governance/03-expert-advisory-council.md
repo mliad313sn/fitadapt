@@ -1,6 +1,6 @@
 # 03 — Expert Advisory Council
 
-> Status: **draft charter.** Meridian document DOC-03 (PRJ-206, Gate 1). Needs counsel review of §7 before any agreement is signed.
+> Status: **draft charter.** Meridian document DOC-03 (PRJ-206, Gate 0). Needs counsel review of §7 before any agreement is signed.
 > All eleven seats are **open** (RAID ISS-02). No member names appear here until a signed agreement allows it.
 
 ## 1. Why the council exists
@@ -50,7 +50,7 @@ B-seats cover the **primary jurisdiction**. Each additional launch market needs 
 2. Verify credentials against the issuing register and keep the evidence in the company file, not in git.
 3. Run a conflict-of-interest declaration (§8).
 4. Send the agreement (§7), reviewed by counsel (Meridian DOC "Advisory-board agreement").
-5. On signature, rename the seat's Meridian person-row from "(open)" to the member's name (or "Seat A1" if name use is not agreed), and give them a Meridian account (§6).
+5. On signature, rename the seat's Meridian person-row from "(open)" to the member's name (or "Seat A1" if name use is not agreed), name them as the holder of the Meridian seat, and activate the seat's account (§6).
 
 Deadline that matters: **A1, A2, A3 and A5 seated and under agreement by week 12**, or the Gate 1 review slips (RAID DEP-02).
 
@@ -74,7 +74,7 @@ Any config value, threshold, coefficient, text or dataset carrying `validated: f
 2. The PO puts it into a **sign-off record** (`templates/council-sign-off-record.md`) under `docs/governance/sign-offs/`, one file per review, e.g. `2027-01-12-A2-pain-model.md`.
 3. The seat member reviews it and returns a position: *approve*, *approve with conditions* (the new value or the condition), or *withhold* (with reasons). The member's own signed statement is the evidence. The PO transcribes it; the PO never paraphrases a position into an approval.
 4. Only then does a PR change `validated: false` → `true`, and it must add `validatedBy: "<seat>"` and `signOff: "<record file>"` next to it. A reviewer rejects any PR that flips `validated` without both.
-5. In Meridian, the record is attached as the `uri` of the gate's evidence document. For now the PO approves it there on the member's behalf and names the member in the comment, because Meridian can't yet give a reviewer approval rights without edit rights (Meridian issue [#16](https://github.com/mliad313sn/Meridian/issues/16)).
+5. In Meridian, the record is attached (pinned to its commit) as the `uri` of the council document that waits on the member's seat, on the governance project PRJ-206. The member approves it **from their own account**, which carries an evidence-review grant (Meridian 5.26, issue [#16](https://github.com/mliad313sn/Meridian/issues/16)): it can approve and read, nothing else. Nobody approves on a member's behalf.
 
 A **withheld** item stays `validated: false`. If it's safety-relevant, the gate doesn't clear. The PO's options are to change the item and resubmit it, or to remove the feature from the release.
 
@@ -87,7 +87,7 @@ A **withheld** item stays `validated: false`. If it's safety-relevant, the gate 
 | Async review packets | Any time; 10 working days to respond | Relevant seat | Document status *In review* |
 | Urgent safety question | Within 48 h | A1 or A2 | RAID issue, escalated |
 
-Each session ends with decisions and actions recorded in Meridian's minutes, so they land on the projects they concern. Members get a **viewer** account (read the book, gates and minutes; change nothing).
+Each session ends with decisions and actions recorded in Meridian's minutes, so they land on the projects they concern. Members get a **viewer** account with an evidence-review grant on programme FAD (read the book, gates and minutes; approve the sign-off records waiting on their seat; change nothing). The account exists from day one, inactive, and is activated when the seat is filled (`04` §3).
 
 ## 7. Agreement terms (outline for counsel)
 

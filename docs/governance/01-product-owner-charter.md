@@ -1,6 +1,6 @@
 # 01 — Product Owner charter and appointment
 
-> Status: **draft for the sponsor's signature.** Meridian document DOC-01 (project PRJ-206, Gate 1).
+> Status: **draft for the sponsor's signature.** Meridian document DOC-01 (project PRJ-206, Gate 0).
 > Until it is signed, the founder acts as interim Product Owner (RAID ISS-01).
 
 ## 1. Appointment

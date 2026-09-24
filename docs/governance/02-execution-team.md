@@ -1,6 +1,6 @@
 # 02 — End-to-end execution team
 
-> Status: **draft**, owned by the Product Owner. Meridian document DOC-02 (PRJ-206, Gate 1).
+> Status: **draft**, owned by the Product Owner. Meridian document DOC-02 (PRJ-206, Gate 0).
 > Every role below is a person-row in the Meridian book (`PE-01`…`PE-14`) with an allocation. Names are filled in as roles are appointed.
 
 ## 1. How the team works
@@ -12,7 +12,7 @@ PO picks the next module (GOALS.md order)
   → module owner opens branch, runs the /goal
   → agent builds until conditions are met or the turn cap is hit; writes docs/status/Mxx.md
   → tech lead + QA review the PR against the definition of done (CLAUDE.md)
-  → merge; Meridian activity % and gate evidence updated
+  → merge; pmo/meridian/drive.mjs updates the Meridian stage, references and gate evidence
   → validated:false items listed in the status file go to the council sign-off queue
 ```
 

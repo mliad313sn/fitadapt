@@ -11,6 +11,6 @@ How FitAdapt is owned, staffed, advised and run, from an empty repository to the
 | [05 — Dogfooding and contributing back](05-dogfooding-loop.md) | The friction → triage → upstream loop and its rules | DOC-05 |
 | [templates/council-sign-off-record.md](templates/council-sign-off-record.md) | The record a council position is written on | — |
 
-All five are **drafts until the sponsor approves them** in Meridian (project PRJ-206, Gate 1 — Mandate). Legal wording in 03 §7 needs counsel review (L5).
+All five are **drafts until the sponsor approves them** in Meridian (project PRJ-206, Gate 0 — Legal foundation). Legal wording in 03 §7 needs counsel review (L5).
 
-The portfolio itself is in [`pmo/meridian/`](../../pmo/meridian/): the book generator, the bootstrap script and the dogfooding log.
+The portfolio itself is in [`pmo/meridian/`](../../pmo/meridian/): the book generator, the one-time bootstrap, `drive.mjs` (keeps Meridian in step with the repository and writes the weekly review pack) and the dogfooding log.

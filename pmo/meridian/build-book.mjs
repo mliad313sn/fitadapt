@@ -1,42 +1,85 @@
 #!/usr/bin/env node
 /**
- * Builds the FitAdapt book for Meridian (https://github.com/mliad313sn/Meridian).
+ * Builds the FitAdapt book for Meridian 5.36+ (https://github.com/mliad313sn/Meridian).
  *
- * The output, fitadapt-book.json, is in the shape Meridian's whole-book
- * import reads (POST /api/admin/import with body { db: <book> }). It is
- * generated from the tables below, and those tables come from
- * GOALS.md, docs/specs/00-legal-framework.md and docs/governance/, so the
- * portfolio and the repository describe the same plan.
+ * The output, fitadapt-book.json, is the book as it stood when the v2.1
+ * plan was written: the plan, the registers and the governance. It is in
+ * the shape Meridian's whole-book import reads (POST /api/admin/import,
+ * body { db: <book> }), and it is imported ONCE, by bootstrap.mjs, on an
+ * empty instance. Everything that happened since — actual dates, progress,
+ * evidence, references, human acts, the council backlog — is laid on top
+ * by drive.mjs through the API, never by re-importing this file.
+ *
+ * Repo truth this file reads (and refuses to build if they disagree):
+ *   - GOALS.md: the module order, which phase each module belongs to, and
+ *     the text of Gate 0 … Gate 4 (the programme's gate ladder);
+ *   - the v2.1 plan below (weeks, owners, dependencies): the plan exists
+ *     only here, and bootstrap.mjs freezes it as the named baseline
+ *     "v2.1 plan" before drive.mjs adds any actual.
  *
  * Rules this file keeps:
  *   - no real people: every person row is a role or an open council seat (L8, L12);
  *   - no invented money: budgets stay 0 until the sponsor baselines them at Gate 0;
- *   - risk scores are the Product Owner's opening scores, for the council to challenge.
+ *   - risk scores are the Product Owner's opening scores, for the council to challenge;
+ *   - nothing is approved, validated or counsel-approved here.
  *
  * Usage: node pmo/meridian/build-book.mjs [--start 2026-09-28] [--status 2026-09-23]
  */
 
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(HERE, "..", "..");
 
 const arg = (name, dflt) => {
   const i = process.argv.indexOf(name);
   return i > 0 ? process.argv[i + 1] : dflt;
 };
-const START = arg("--start", "2026-09-28"); // Monday of programme week 1
-const STATUS = arg("--status", "2026-09-23");
+const START = arg("--start", "2026-09-28"); // Monday of programme week 1 (v2.1 plan)
+const STATUS = arg("--status", "2026-09-23"); // the day the v2.1 plan was written
 
 const DAY = 86400000;
 const iso = (d) => new Date(d).toISOString().slice(0, 10);
 const weekStart = (n) => iso(Date.parse(START) + (n - 1) * 7 * DAY); // Monday
 const weekEnd = (n) => iso(Date.parse(START) + ((n - 1) * 7 + 4) * DAY); // Friday
+const PLAN_WEEKS = 36;
+
+/* ── GOALS.md: module order, phases and the gate ladder ─────────────── */
+
+export function readGoals(text) {
+  const modules = [];
+  const gates = [];
+  let phase = 0;
+  for (const line of text.split("\n")) {
+    const m = /^\d+\.\s+\*\*(M\d{2})\s+—\s+(.+?)\*\*/.exec(line);
+    if (m) { modules.push({ id: m[1], name: m[2].trim(), phase }); continue; }
+    const g = /^>\s*\*\*Gate\s+(\d)\s+—\s+([^:]+):\s*(.+?)\*\*\s*$/.exec(line);
+    if (g) {
+      gates.push({ k: Number(g[1]), title: g[2].trim(), text: g[3].trim().replace(/\.$/, "") });
+      phase = Number(g[1]) + 1;
+    }
+  }
+  return { modules, gates };
+}
+const GOALS = readGoals(readFileSync(join(ROOT, "GOALS.md"), "utf8"));
+if (GOALS.gates.length !== 5) throw new Error(`GOALS.md: expected Gate 0 … Gate 4, found ${GOALS.gates.length}`);
 
 /* ── reference ─────────────────────────────────────────────────────── */
 
+/* A team, not a place (Meridian 5.28.0, #18 · DF-12): no city, no timezone,
+   absent from Locations and from plant windows, still the unit of authority. */
 const SITES = [
-  { id: "HQ", city: "Distributed team", region: "FitAdapt core", tz: 0, tzName: "UTC", headcount: 14, fte: 12,
-    role: "Single delivery unit. Meridian models authority by site; FitAdapt has one team, so one site (see pmo/meridian/dogfood-log.md, DF-12)." },
+  { id: "HQ", kind: "team", city: "FitAdapt core team", region: "Distributed", tz: null, tzName: null,
+    headcount: 14, fte: 12, calendar: "CAL-FAD",
+    role: "The single delivery team. A Meridian team (site kind 'team'), not a place: it is distributed and has no office." },
+];
+
+/* Working days only; no holiday is typed because none has been agreed. */
+const CALENDARS = [
+  { id: "CAL-FAD", name: "FitAdapt — Monday to Friday", workdays: 62, isDefault: true, holidays: [],
+    note: "Five working days. No public holidays are declared until the team agrees its calendar." },
 ];
 
 /* Roles, not people. The founder replaces each name with the appointee's
@@ -70,8 +113,51 @@ const PEOPLE = [
   ["PE-31", "Council seat C1 — insurance broker (open)", "Council: insurance adviser (non-voting)"],
 ].map(([id, name, role]) => ({ id, name, role, site: "HQ", rate: 0 }));
 
+/* The council seats as Meridian seats (052, D-36.12). Every seat is open:
+   no holder is recorded. A document names the seat it waits on, so the
+   gate reads "waiting on seat A1". A and B seats may stop a release on a
+   safety or legal ground (03 §2) — a veto domain that names no gate holds
+   every gate; C1 is non-voting. */
+export const SEATS = [
+  ["A1", "PE-21", "Screening wording and flags (S1), red-flag stop (S3), special populations (S7), M11 medical boundary"],
+  ["A2", "PE-22", "Pain model and thresholds (S2), substitutions, joint-load profiles (M06)"],
+  ["A3", "PE-23", "Progression rules, increments, load ceiling (S5), assessments, periodization, Fair Pair scaling"],
+  ["A4", "PE-24", "Energy and protein targets, nutrition floors (S4), disordered-eating guardrails, food data"],
+  ["A5", "PE-25", "Relative-load coefficients, e1RM models, HR zones, WHO weekly minutes, evidence references"],
+  ["A6", "PE-26", "Notifications, streaks, community mechanics, dark-pattern check (L4, L8)"],
+  ["B1", "PE-27", "DPIA, health-data consent (L9), filings, transfers, store privacy labels"],
+  ["B2", "PE-28", "Terms, risk acknowledgment (L2), point-of-risk notices (L3), subscription terms (L8), coach agreement (L10)"],
+  ["B3", "PE-29", "Name clearance (L7), licences (L6), IP assignments"],
+  ["B4", "PE-30", "Wellness vs medical-device boundary for M05, M10, M11 (L1)"],
+  ["C1", "PE-31", "Product/professional liability, cyber, D&O (non-voting)"],
+].map(([id, row, domain]) => ({
+  id: "SEAT-" + id, code: id, seatPerson: row,
+  name: `Council seat ${id} (open)`, person: null, domain,
+  vetoDomain: id === "C1" ? null : "safety and legal sign-off (every gate)",
+  observer: id === "C1", active: true,
+}));
+
+/* FitAdapt's own ladder on programme FAD (Meridian 5.17 D-36.02, #3/#15).
+   Gate k of GOALS.md is rung k+1. Every rung is PROGRAMME-scoped: it clears
+   only when the evidence of every project of FAD for it is approved and no
+   standing human act (5.27) holds it — "Gate 0 must clear before Phase 1"
+   is one gate for the programme, not one per project. `at` is where the
+   gate sits in the 36-week window (Meridian needs it for scaffolding). */
+const GATE_OWNER = ["Sponsor", "Sponsor + council A1–A5", "Sponsor + council A1, A4, B4", "Sponsor + counsel B1, B2", "Sponsor + all seats + local counsel"];
+const EXIT_WEEK = [3, 14, 22, 29, 36];
+export const LADDER = GOALS.gates.map((g) => ({
+  k: g.k, n: g.k + 1,
+  name: `Gate ${g.k} — ${g.title}`,
+  owner: GATE_OWNER[g.k],
+  evidence: g.text,
+  at: Math.min(0.99, Math.round((EXIT_WEEK[g.k] / PLAN_WEEKS) * 1000) / 1000),
+  week: EXIT_WEEK[g.k],
+}));
+
 const PROGRAMMES = [
-  { id: "FAD", name: "FitAdapt (codename) — to market readiness", sponsor: "Founder", managerId: "PE-02" },
+  { id: "FAD", name: "FitAdapt (codename) — to market readiness", sponsor: "Founder", managerId: "PE-02",
+    gateModel: LADDER.map(({ name, owner, evidence, at }) => ({ name, owner, evidence, at, scope: "programme" }))
+      .map((r, i) => ({ n: i + 1, ...r })) },
 ];
 
 const COLUMNS = [
@@ -82,12 +168,12 @@ const COLUMNS = [
   { id: "done", name: "Done", wip: 0 },
 ];
 
-/* ── delivery: one project per phase, one activity per module ─────── */
+/* ── delivery: the v2.1 plan, one project per phase, one stage per module ── */
 
-// [module, name, fromWeek, toWeek, owner, deps(module ids within the project)]
-const PHASES = [
+// [module, name, fromWeek, toWeek, owner, deps(module ids within the project; see addProject)]
+export const PHASES = [
   {
-    id: "PRJ-201", name: "Phase 0 — Foundation", weeks: [1, 3], exitGate: "Gate 0 — Legal foundation",
+    id: "PRJ-201", name: "Phase 0 — Foundation", weeks: [1, 3], k: 0,
     desc: "M00 platform, M17 privacy baseline, M20 legal framework. Exit: architecture review and Gate 0 (docs/governance/03, §6).",
     modules: [
       ["M00", "Platform Foundation & Design System", 1, 2, "PE-03", []],
@@ -96,7 +182,7 @@ const PHASES = [
     ],
   },
   {
-    id: "PRJ-202", name: "Phase 1 — Safe MVP", weeks: [4, 14], exitGate: "Gate 1 — Safe MVP",
+    id: "PRJ-202", name: "Phase 1 — Safe MVP", weeks: [4, 14], k: 1,
     desc: "A single user can onboard, get assessed, follow a periodized home/gym program offline and see progress. Exit: council sign-off on screening wording, engine coefficients and pain model; internal alpha with the six personas.",
     modules: [
       ["M06", "Exercise Library & Knowledge Graph", 4, 5, "PE-10", []],
@@ -110,7 +196,7 @@ const PHASES = [
     ],
   },
   {
-    id: "PRJ-203", name: "Phase 2 — Differentiation", weeks: [15, 22], exitGate: "Gate 2 — Differentiation",
+    id: "PRJ-203", name: "Phase 2 — Differentiation", weeks: [15, 22], k: 2,
     desc: "Fair Pair, nutrition with guardrails, AI coach, wearables. Exit: dietitian and physician review M10 guardrails and M11 eval results; closed beta of Fair Pair.",
     modules: [
       ["M09", "Fair Pair — Partner & Group Training", 15, 17, "PE-06", []],
@@ -120,7 +206,7 @@ const PHASES = [
     ],
   },
   {
-    id: "PRJ-204", name: "Phase 3 — Business & scale", weeks: [23, 29], exitGate: "Gate 3 — Business",
+    id: "PRJ-204", name: "Phase 3 — Business & scale", weeks: [23, 29], k: 3,
     desc: "Engagement loops, subscriptions, analytics/CMS, coach portal. Exit: counsel reviews pricing, payment flows, claims and consent texts.",
     modules: [
       ["M13", "Engagement, Habits & Community", 23, 24, "PE-09", []],
@@ -130,7 +216,7 @@ const PHASES = [
     ],
   },
   {
-    id: "PRJ-205", name: "Phase 4 — Innovation & launch", weeks: [30, 36], exitGate: "Gate 4 — Launch go/no-go",
+    id: "PRJ-205", name: "Phase 4 — Innovation & launch", weeks: [30, 36], k: 4,
     desc: "Voice and camera execution, full privacy/security programme with pen-test, store launch. Exit: launch:check green including legal gates, pen-test findings closed, council and counsel sign-off for every launch jurisdiction.",
     modules: [
       ["M14", "Smart Execution — Voice Coach & On-Device Motion Sensing", 30, 32, "PE-07", []],
@@ -140,15 +226,27 @@ const PHASES = [
   },
 ];
 
+/* The plan and GOALS.md must describe the same programme. */
+{
+  const planned = new Map(PHASES.flatMap((ph) => ph.modules.map(([key]) => [key.replace(/[ab]$/, ""), ph.k])));
+  const bad = [];
+  for (const m of GOALS.modules) {
+    if (!planned.has(m.id)) bad.push(`${m.id} is in GOALS.md but not in the plan`);
+    else if (m.id !== "M17" && planned.get(m.id) !== m.phase) bad.push(`${m.id}: GOALS.md puts it in Phase ${m.phase}, the plan in Phase ${planned.get(m.id)}`);
+  }
+  if (bad.length) throw new Error("GOALS.md and the v2.1 plan disagree:\n  " + bad.join("\n  "));
+}
+const goalName = new Map(GOALS.modules.map((m) => [m.id, m.name]));
+
 /* Governance: Gate 0 founder protections and the Expert Advisory Council. */
 const GOVERNANCE = {
   id: "PRJ-206", name: "Governance — Gate 0, counsel & Expert Advisory Council", weeks: [1, 36],
-  desc: "Founder protections (Gate 0), counsel per launch market, and the real advisory board required by decision C10. Owns every sign-off of a validated:false item.",
+  desc: "Founder protections (Gate 0), counsel per launch market, and the real advisory board required by decision C10. Owns every sign-off of a validated:false item, and the standing human acts that hold each gate.",
   activities: [
     ["G01", "Appoint the Product Owner and sign the appointment", 1, 1, "PE-01", []],
     ["G02", "Founder employment-contract check (IP, outside activity)", 1, 1, "PE-01", []],
     ["G03", "Incorporate the limited-liability company", 1, 3, "PE-01", ["G02"]],
-    ["G04", "IP assignment from every contributor; start the register", 2, 36, "PE-12", ["G03"]],
+    ["G04", "IP assignment from every contributor; start the register", 2, 36, "PE-12", [["G03", "SS", 10]]],
     ["G05", "Engage counsel for the primary jurisdiction and launch markets", 1, 3, "PE-12", []],
     ["G06", "Trademark clearance search (Nice 9, 41, 42, 44) and two fallback names", 2, 8, "PE-12", ["G05"]],
     ["G07", "Insurance quotes: product/professional liability, cyber", 2, 6, "PE-12", ["G03"]],
@@ -170,15 +268,15 @@ const DOGFOOD = {
     ["D01", "Stand up the FitAdapt Meridian instance and import this book", 1, 1, "PE-14", []],
     ["D02", "Backup, restore test and second instance (Meridian SECURITY.md blockers)", 1, 3, "PE-11", ["D01"]],
     ["D03", "Weekly feedback triage (delivery review agenda item)", 2, 36, "PE-14", ["D01"]],
-    ["D04", "Monthly contribution cycle: PRs to Meridian, npm run verify green", 4, 36, "PE-14", ["D03"]],
-    ["D05", "Quarterly dogfooding retrospective to the council and sponsor", 13, 36, "PE-02", ["D03"]],
+    ["D04", "Monthly contribution cycle: PRs to Meridian, npm run verify green", 4, 36, "PE-14", [["D03", "SS", 10]]],
+    ["D05", "Quarterly dogfooding retrospective to the council and sponsor", 13, 36, "PE-02", [["D03", "SS", 55]]],
   ],
 };
 
 /* ── registers ─────────────────────────────────────────────────────── */
 
 // Legal risk register (00-legal-framework.md) + section 11 risks of the committee review.
-// [id, project, title, p, i, response, owner, detail]
+// [id, project, title, p, i, response, owner, detail, gateRung?]
 const RAID = [
   ["RSK-01", "PRJ-202", "Personal injury following a prescription or partner challenge", 3, 5, "Mitigate", "PE-04",
     "Controls: S1–S7, L3, L4, conservative defaults, expert-validated content, L11 audit trail, insurance, terms with lawful limitation clauses. Modules M01–M05, M09, M20."],
@@ -209,11 +307,11 @@ const RAID = [
   ["RSK-14", "PRJ-205", "Store removal over health-data, payments or account-deletion rules", 3, 4, "Mitigate", "PE-13",
     "Store compliance checklists, in-app account deletion, accurate privacy labels. Modules M16, M17, M19."],
   ["RSK-15", "PRJ-206", "Founder personal exposure or employer IP conflict", 3, 5, "Avoid", "PE-01",
-    "C12: company structure, IP assignments, employment-contract check, insurance. Gate 0."],
+    "C12: company structure, IP assignments, employment-contract check, insurance. Gate 0.", 1],
   ["RSK-16", "PRJ-204", "Cross-border VAT on digital services", 2, 3, "Transfer", "PE-06",
     "Stores as merchant of record for in-app sales; merchant-of-record provider for web checkout. Module M16."],
   ["RSK-17", "PRJ-202", "Engine coefficients or thresholds inaccurate", 3, 5, "Mitigate", "PE-25",
-    "Every value carries source + validated flag; remote-config versioning with rollback (M18); council sign-off before public launch (C10)."],
+    "Every value carries source + validated flag; remote-config versioning with rollback (M18); council sign-off before public launch (C10).", 2],
   ["RSK-18", null, "Scope creep across 21 modules", 3, 3, "Mitigate", "PE-02",
     "Phase gates; each /goal has a turn cap and a status file; later modules can slip without blocking the MVP. Change requests go through Meridian change control."],
   ["RSK-19", "PRJ-203", "LLM running cost exceeds plan", 3, 3, "Mitigate", "PE-07",
@@ -223,118 +321,132 @@ const RAID = [
   ["ISS-01", "PRJ-206", "Product Owner not yet named", 5, 4, "Fix", "PE-01",
     "The appointment instrument is drafted (docs/governance/01). Until it is signed the founder acts as interim Product Owner."],
   ["ISS-02", "PRJ-206", "All eleven council seats are open", 5, 5, "Fix", "PE-02",
-    "No validated:false item can be signed off until the seats are filled. Recruitment brief: docs/governance/03, §4."],
+    "No validated:false item can be signed off until the seats are filled. Recruitment brief: docs/governance/03, §4. Each seat has a Meridian seat and a review-grant account, inactive until the seat is filled."],
   ["ASM-01", null, "The v2.1 committee was a simulated panel", 5, 5, "Monitor", "PE-02",
     "Its findings are hypotheses. Every item marked validated:false needs a real, qualified council member's signature before public launch (C10)."],
   ["ASM-02", null, "Timings are indicative and assume a small team driving Claude Code /goal runs", 3, 3, "Monitor", "PE-14",
-    "Re-plan and re-baseline after Phase 0, using the turn counts and status files of M00, M17 and M20."],
+    "Re-plan and re-baseline after Phase 0, using the turn counts and status files of M00, M17 and M20. The named baseline 'v2.1 plan' keeps the original 36 weeks for comparison."],
   ["ASM-03", null, "Budget is not yet baselined", 5, 3, "Monitor", "PE-01",
     "Budgets in this book are zero on purpose. The sponsor sets them at Gate 0; until then earned value is not meaningful."],
   ["DEP-01", "PRJ-202", "Gate 0 must clear before Phase 1 starts (GOALS.md)", 3, 4, "Monitor", "PE-01",
-    "Company, IP, employment check, counsel, name clearance started, insurance quotes, advisory-board agreements drafted."],
-  ["DEP-02", "PRJ-202", "Council seated before the Gate 1 review", 3, 5, "Mitigate", "PE-02",
-    "Seats A1–A5 at minimum must be filled and under agreement by week 12 to review screening wording, coefficients and pain model."],
+    "Company, IP, employment check, counsel, name clearance started, insurance quotes, advisory-board agreements drafted. The acts themselves are the standing human acts that hold Gate 0.", 1],
+  ["DEP-02", "PRJ-206", "Council seated before the Gate 1 review", 3, 5, "Mitigate", "PE-02",
+    "Seats A1, A2, A3 and A5 at minimum must be filled and under agreement by week 12 to review screening wording, coefficients and pain model. Standing human act: it holds Gate 1 until the seats sit.", 2, true],
   ["DEP-03", "PRJ-207", "Meridian's three operational blockers are ours to close", 3, 3, "Mitigate", "PE-11",
     "A tested backup, a second instance and a written security policy (Meridian SECURITY.md). Closed by activity D02."],
 ];
 
-const DOCS = [];
+export const DOCS = [];
 let docN = 0;
-const doc = (project, name, type, gate, owner) =>
-  DOCS.push({ id: "DOC-" + String(++docN).padStart(2, "0"), project, name, type, gate, owner, rev: "0.1", status: "Draft", updated: STATUS });
+const doc = (project, name, type, gate, owner, extra = {}) =>
+  DOCS.push({ id: "DOC-" + String(++docN).padStart(2, "0"), project, name, type, gate, owner, rev: "0.1",
+    status: "Draft", updated: STATUS, ...extra });
 
-// Governance (the documents in docs/governance), all Draft until the sponsor approves.
-doc("PRJ-206", "Product Owner charter & appointment", "Charter", 1, "PE-01");
-doc("PRJ-206", "Execution team charter & RACI", "Charter", 1, "PE-02");
-doc("PRJ-206", "Expert Advisory Council charter", "Charter", 1, "PE-02");
-doc("PRJ-206", "Meridian operating model", "Operations", 1, "PE-14");
-doc("PRJ-206", "Dogfooding & contribution loop", "Operations", 1, "PE-14");
-// Gate 0 legal documents (00-legal-framework.md) — counsel review required.
-for (const [n, o] of [
-  ["Terms of Use (requires counsel review)", "PE-28"],
-  ["Privacy Policy + health-data consent (requires counsel review)", "PE-27"],
-  ["Exercise-risk acknowledgment (requires counsel review)", "PE-28"],
-  ["Point-of-risk notices (requires counsel review)", "PE-28"],
-  ["AI coach notice (requires counsel review)", "PE-30"],
-  ["Subscription & refund terms (requires counsel review)", "PE-28"],
-  ["Coach Agreement + data-processing terms (requires counsel review)", "PE-28"],
-  ["Community guidelines (requires counsel review)", "PE-28"],
-  ["Advisory-board agreement (requires counsel review)", "PE-28"],
-  ["Substantiation file (requires counsel review)", "PE-30"],
-]) doc("PRJ-206", n, "Compliance", 2, o);
-// Per-phase gate evidence.
+// Governance (the documents in docs/governance), all Draft until the sponsor approves. Gate 0.
+doc("PRJ-206", "Product Owner charter & appointment", "Charter", 1, "PE-01", { path: "docs/governance/01-product-owner-charter.md" });
+doc("PRJ-206", "Execution team charter & RACI", "Charter", 1, "PE-02", { path: "docs/governance/02-execution-team.md" });
+doc("PRJ-206", "Expert Advisory Council charter", "Charter", 1, "PE-02", { path: "docs/governance/03-expert-advisory-council.md" });
+doc("PRJ-206", "Meridian operating model", "Operations", 1, "PE-14", { path: "docs/governance/04-meridian-operating-model.md" });
+doc("PRJ-206", "Dogfooding & contribution loop", "Operations", 1, "PE-14", { path: "docs/governance/05-dogfooding-loop.md" });
+// Legal drafts (00-legal-framework.md) — counsel review required, at the launch gate (rung 5)
+// except the advisory-board agreement, which Gate 0 needs. Each waits on its counsel seat.
+for (const [n, o, seat, gate, path] of [
+  ["Terms of Use (requires counsel review)", "PE-12", "B2", 5, "docs/legal/document-list.md"],
+  ["Privacy Policy + health-data consent (requires counsel review)", "PE-12", "B1", 5, "docs/legal/drafts/privacy.md"],
+  ["Exercise-risk acknowledgment (requires counsel review)", "PE-12", "B2", 5, "docs/legal/drafts/exercise_risk.md"],
+  ["Point-of-risk notices (requires counsel review)", "PE-12", "B2", 5, "docs/legal/drafts/point-of-risk-notices.md"],
+  ["AI coach notice (requires counsel review)", "PE-12", "B4", 5, "docs/legal/drafts/ai_notice.md"],
+  ["Subscription & refund terms (requires counsel review)", "PE-12", "B2", 4, "docs/legal/document-list.md"],
+  ["Coach Agreement + data-processing terms (requires counsel review)", "PE-12", "B2", 4, "docs/legal/drafts/coach-agreement.md"],
+  ["Community guidelines (requires counsel review)", "PE-12", "B2", 4, "docs/legal/drafts/community_guidelines.md"],
+  ["Advisory-board agreement (requires counsel review)", "PE-12", "B2", 1, "docs/legal/drafts/advisory-board-agreement.md"],
+  ["Substantiation file (requires counsel review)", "PE-12", "B4", 5, "docs/legal/substantiation-file.md"],
+]) doc("PRJ-206", n, "Compliance", gate, o, { expectedSeat: "SEAT-" + seat, path });
+
+// Council sign-off packs, one per gate and seat (03 §5). Evidence = the signed record
+// under docs/governance/sign-offs/ once it exists. Each waits on its seat.
+for (const [gate, seat, what] of [
+  [1, "B3", "Gate 0 — counsel engagement and IP assignment approach"],
+  [2, "A1", "Gate 1 — screening wording and flags (S1, S3, S7)"],
+  [2, "A2", "Gate 1 — pain model and thresholds, exercise-library physio flags, substitutions"],
+  [2, "A3", "Gate 1 — progression rules, increments, S5 load ceiling, assessments, periodization volume"],
+  [2, "A5", "Gate 1 — relative-load coefficients, e1RM model, HR zones, weekly aerobic minutes"],
+  [3, "A4", "Gate 2 — M10 guardrails, energy and protein formulas, food data"],
+  [3, "A1", "Gate 2 — M11 eval results and red-team set (medical boundary)"],
+  [3, "B4", "Gate 2 — wellness boundary of M05, M10, M11"],
+  [4, "B2", "Gate 3 — pricing display, payment flows, cancellation parity, claims"],
+  [4, "B1", "Gate 3 — consent texts"],
+  [5, "A6", "Gate 4 — engagement mechanics, dark-pattern check"],
+  [5, "C1", "Gate 4 — insurance bound (non-voting)"],
+]) doc("PRJ-206", `Council sign-off record — ${what} (seat ${seat})`, "Assurance", gate, "PE-02", { expectedSeat: "SEAT-" + seat });
+
+// Per-phase exit evidence: the plan and the sign-off records of the exit gate.
 for (const ph of PHASES) {
-  doc(ph.id, `${ph.name}: plan and /goal files`, "Charter", 1, "PE-02");
-  doc(ph.id, `${ph.name}: ADRs and module status files`, "Design", 2, "PE-03");
-  doc(ph.id, `${ph.exitGate}: exit evidence and sign-off records`, "Assurance", 3, "PE-02");
-  doc(ph.id, `${ph.name}: KPI review and lessons learned`, "Closure", 4, "PE-14");
+  const rung = ph.k + 1;
+  doc(ph.id, `${ph.name}: plan and /goal files`, "Charter", rung, "PE-02", { path: "GOALS.md" });
+  doc(ph.id, `${LADDER[ph.k].name}: exit evidence and sign-off records`, "Assurance", rung, "PE-02");
 }
 
-/* Dogfooding backlog: the verified findings of the first session
-   (pmo/meridian/dogfood-log.md), each tied to its upstream record on
-   github.com/mliad313sn/Meridian. "review" = fix is in an open PR. */
-const ITEMS = [
-  ["WI-01", "done", "DF-01 Import answered 400 for every book ('\\D' in a template literal) — merged in Meridian 5.9.1 (PR #14)", "PE-14", 3, "P1"],
-  ["WI-02", "done", "DF-02 Import dropped document uri, so imported evidence stopped counting — merged in Meridian 5.9.1 (PR #14)", "PE-14", 2, "P1"],
-  ["WI-03", "done", "DF-03 Quick start seeded an in-memory database; nobody could sign in — merged in Meridian 5.9.1 (PR #14)", "PE-14", 2, "P1"],
-  ["WI-04", "done", "DF-04 Import refused the bare book GET /export returns — merged in Meridian 5.9.1 (PR #14)", "PE-14", 1, "P2"],
-  ["WI-05", "done", "DF-05 restart.sh worked on Windows only — merged in Meridian 5.9.1 (PR #14)", "PE-14", 2, "P2"],
-  ["WI-06", "done", "DF-06 Unbudgeted project reported green and SPI/CPI 1.00 (MER-04 ported) — merged in Meridian 5.9.1 (PR #14)", "PE-14", 2, "P1"],
-  ["WI-07", "done", "DF-07 A refused import did not say which row — merged in Meridian 5.9.1 (PR #14)", "PE-14", 1, "P2"],
-  ["WI-08", "done", "DF-08 qs 6.15.3 moderate advisories on the request parsers — merged in Meridian 5.9.1 (PR #14)", "PE-14", 1, "P2"],
-  ["WI-09", "backlog", "DF-09 main is behind three unmerged lines (gate ladder, MER-13) — issue #15", "PE-14", 5, "P1"],
-  ["WI-10", "backlog", "DF-10 Council members cannot approve evidence without write authority — issue #16", "PE-14", 5, "P1"],
-  ["WI-11", "backlog", "DF-11 No way to link a GitHub issue or PR to an activity or RAID row — issue #17", "PE-14", 5, "P2"],
-  ["WI-12", "backlog", "DF-12 'Site' is the only unit of authority; teams must pretend to be places — issue #18", "PE-14", 3, "P3"],
-];
+/* Dogfooding backlog: drive.mjs reads pmo/meridian/dogfood-log.md and writes
+   one work item per finding (DF-nn) through PUT /api/v1/workitems. */
 
 /* ── assemble ──────────────────────────────────────────────────────── */
 
 const projects = [], activities = [], milestones = [], allocations = [], crossDeps = [];
 
-/* Phase and dogfooding projects are governed at SITE level, so the team
-   (site grant on HQ) can update schedule, RAID and work items, while
+/* Phase and dogfooding projects are governed at SITE (team) level, so the
+   team (site grant on HQ) can update schedule, RAID and work items, while
    re-baselining, cost and gate-evidence approval stay with group level
-   (PO, sponsor). Governance is group-governed: the team does not edit it. */
-function addProject(p, pm, list, weight, governanceLevel = "site") {
+   (PO, sponsor). Governance is group-governed: the team does not edit it,
+   and council members approve its sign-off records under a review grant. */
+function addProject(p, pm, list, governanceLevel = "site") {
   const [w0, w1] = p.weeks;
   projects.push({
     id: p.id, name: p.name, programme: "FAD", site: "HQ", governanceLevel, pm,
     method: "Agile", start: weekStart(w0), finish: weekEnd(w1), baselineFinish: weekEnd(w1),
     budget: 0, contingency: 0, contingencyUsed: 0, desc: p.desc, phase: "Initiation", gate: 0, closed: false,
+    scaffoldedGates: LADDER.length, calendar: "CAL-FAD",
   });
   const ids = {};
+  const weight = Math.round((1 / list.length) * 1000) / 1000;
   list.forEach(([key, name, a, b, owner, deps], stage) => {
     const id = `ACT-${p.id.slice(4)}-${String(stage + 1).padStart(2, "0")}`;
     ids[key] = { id, stage };
+    const base = key.replace(/[ab]$/, "");
+    const label = /^M\d/.test(key) ? `${base} — ${key === "M17a" || key === "M17b" ? name : goalName.get(base) ?? name}` : name;
     activities.push({
-      id, project: p.id, name: /^M\d/.test(key) ? `${key.replace(/[ab]$/, "")} — ${name}` : name,
-      stage, start: weekStart(a), end: weekEnd(b), weight: weight(list.length), pct: 0, owner,
-      deps: deps.map((d) => ids[d].id),
+      id, project: p.id, name: label,
+      stage, start: weekStart(a), end: weekEnd(b), baseStart: weekStart(a), baseEnd: weekEnd(b),
+      weight, pct: 0, owner,
+      /* A dependency is "KEY" (finish-to-start) or [KEY, type, lag in working days]
+         (Meridian 5.29 typed links). The standing activities that run the whole
+         programme start a fixed time after their predecessor starts (SS): the
+         v2.1 plan drew them FS, which Meridian's critical path showed pushing
+         the programme to 2028. */
+      deps: deps.map((d) => ids[[d].flat()[0]].id),
+      links: deps.map((d) => { const [k, type = "FS", lag = 0] = [d].flat(); return { pred: ids[k].id, type, lag }; }),
     });
   });
-  // Meridian's four gates per project (engine GATES): Mandate, Design authority, Readiness, Benefits.
-  const span = w1 - w0;
-  const gates = [
-    [1, w0, "Gate 1 — Mandate: plan approved by the Product Owner"],
-    [2, w0 + Math.max(0, Math.round(span * 0.25)), "Gate 2 — Design authority: ADRs reviewed by the tech lead"],
-    [3, w1, p.exitGate ? `Gate 3 — Readiness: ${p.exitGate}` : "Gate 3 — Readiness"],
-    [4, Math.min(36, w1 + 1), "Gate 4 — Benefits: KPI review and lessons"],
-  ];
-  for (const [g, w, name] of gates) {
-    milestones.push({ id: `MS-${p.id.slice(4)}-G${g}`, project: p.id, name, date: weekEnd(w), gate: g, kind: "gate", owner: pm, done: false });
-  }
   return ids;
 }
 
-const even = (n) => Math.round((1 / n) * 1000) / 1000;
-const phaseIds = PHASES.map((ph) => addProject(ph, "PE-02", ph.modules, even));
-const govIds = addProject(GOVERNANCE, "PE-02", GOVERNANCE.activities, even, "group");
-addProject(DOGFOOD, "PE-14", DOGFOOD.activities, even);
+const phaseIds = PHASES.map((ph) => addProject(ph, "PE-02", ph.modules));
+const govIds = addProject(GOVERNANCE, "PE-02", GOVERNANCE.activities, "group");
+addProject(DOGFOOD, "PE-14", DOGFOOD.activities);
 
-// Cross-project dependencies, in Meridian's (project, stage) form.
+// Gate milestones: each rung is dated on the phase it closes, and on
+// governance where the council or counsel reviews it.
+for (const g of LADDER) {
+  const ph = PHASES[g.k];
+  milestones.push({ id: `MS-${ph.id.slice(4)}-G${g.n}`, project: ph.id, name: `${g.name} — phase exit`,
+    date: weekEnd(g.week), gate: g.n, kind: "gate", owner: "PE-02", done: false });
+  milestones.push({ id: `MS-206-G${g.n}`, project: "PRJ-206", name: `${g.name} — ${g.k === 0 ? "founder protections" : "council / counsel review"}`,
+    date: weekEnd(g.week), gate: g.n, kind: "gate", owner: g.k === 0 ? "PE-01" : "PE-02", done: false });
+}
+
+// Cross-project links (FX-15, typed): finish-to-start, no lag, in Meridian's (project, stage) form.
 const x = (fromP, fromIds, fromK, toP, toIds, toK, label) =>
-  crossDeps.push({ from: fromP, fromStage: fromIds[fromK].stage, to: toP, toStage: toIds[toK].stage, label });
+  crossDeps.push({ from: fromP, fromStage: fromIds[fromK].stage, to: toP, toStage: toIds[toK].stage, label, type: "FS", lag: 0 });
 x("PRJ-201", phaseIds[0], "M20", "PRJ-202", phaseIds[1], "M06", "Phase 0 complete before Phase 1");
 x("PRJ-206", govIds, "G10", "PRJ-202", phaseIds[1], "M06", "Gate 0: advisory-board agreements drafted");
 x("PRJ-201", phaseIds[0], "M17a", "PRJ-203", phaseIds[2], "M11", "M11 depends on the M17 baseline");
@@ -357,10 +469,13 @@ allocations.push({ person: "PE-02", project: gov.id, from: gov.start, to: gov.fi
 allocations.push({ person: "PE-12", project: gov.id, from: gov.start, to: gov.finish, pct: 80 });
 allocations.push({ person: "PE-14", project: dog.id, from: dog.start, to: dog.finish, pct: 30 });
 for (const pe of core) allocations.push({ person: pe, project: dog.id, from: dog.start, to: dog.finish, pct: 5 });
+allocations.forEach((a, i) => { a.id = String(i + 1); }); // Meridian allocation ids are integers
 
-const book = {
+export const book = {
   orgName: "FitAdapt (codename)",
+  currencyUnit: "millions", // Meridian 5.17 D-36.04: money declares its unit; every budget is 0
   statusDate: STATUS,
+  calendars: CALENDARS,
   sites: SITES,
   people: PEOPLE,
   programmes: PROGRAMMES,
@@ -370,20 +485,33 @@ const book = {
   crossDeps,
   milestones,
   ledger: [],
-  raid: RAID.map(([id, project, title, p, i, response, owner, detail]) => ({
+  seats: SEATS.map(({ id, name, person, domain, vetoDomain, observer, active }) => ({ id, name, person, domain, vetoDomain, observer, active })),
+  raid: RAID.map(([id, project, title, p, i, response, owner, detail, gate, blocksGate]) => ({
     id, project, type: { RSK: "Risk", ISS: "Issue", ASM: "Assumption", DEP: "Dependency" }[id.slice(0, 3)],
     title, detail, p, i, response, owner, opened: STATUS, review: weekEnd(3), status: "Open",
+    gate: gate ?? null, blocksGate: blocksGate === true, category: blocksGate ? "Human act" : "",
   })),
   crs: [],
+  /* The three meeting series of docs/governance/04 §4, in the book so a
+     re-bootstrap does not depend on the order of API calls. */
+  meetingSeries: [
+    { id: "MS-FAD-WDR", name: "FitAdapt weekly delivery review", cadence: "weekly", scopeKind: "programme",
+      programme: "FAD", chair: "PE-02", weekday: 1, startTime: "09:30", timeboxMin: 30, active: true },
+    { id: "MS-FAD-EAC", name: "Expert Advisory Council — monthly session", cadence: "monthly", scopeKind: "programme",
+      programme: "FAD", chair: "PE-02", weekday: 3, startTime: "16:00", timeboxMin: 90, active: true },
+    { id: "MS-FAD-SST", name: "Sponsor steering — monthly", cadence: "monthly", scopeKind: "group",
+      chair: "PE-01", weekday: 5, startTime: "11:00", timeboxMin: 45, active: true },
+  ],
   allocations,
-  docs: DOCS,
-  items: ITEMS.map(([id, column, title, assignee, points, priority]) => ({
-    id, project: "PRJ-207", column, title, assignee, points, priority, created: STATUS,
-  })),
+  docs: DOCS.map(({ path, ...d }) => d),
+  items: [],
 };
 
-const out = join(dirname(fileURLToPath(import.meta.url)), "fitadapt-book.json");
-writeFileSync(out, JSON.stringify({ db: book }, null, 2) + "\n");
-console.log(`wrote ${out}: ${projects.length} projects, ${activities.length} activities, ` +
-  `${milestones.length} gate milestones, ${book.raid.length} RAID, ${DOCS.length} documents, ` +
-  `${ITEMS.length} work items, ${PEOPLE.length} roles/seats`);
+/* Written only when run, so drive.mjs can import the plan without side effects. */
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const out = join(HERE, "fitadapt-book.json");
+  writeFileSync(out, JSON.stringify({ db: book }, null, 2) + "\n");
+  console.log(`wrote ${out}: ${projects.length} projects, ${activities.length} activities, ` +
+    `${milestones.length} gate milestones on a ${LADDER.length}-rung programme ladder, ${book.raid.length} RAID, ` +
+    `${DOCS.length} documents, ${SEATS.length} council seats (all open), ${PEOPLE.length} roles/seats`);
+}
