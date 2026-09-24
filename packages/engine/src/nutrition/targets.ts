@@ -57,6 +57,8 @@ export function targetDue(latest: NutritionTarget | null, guardrailEvents: reado
 const SUPPORTIVE_REASON: Record<string, string> = {
   'safety.s4.minor': 'nutrition.supportive.minor',
   'safety.s4.deficit_disabled': 'nutrition.supportive.advised_against',
+  // FIX-B (A4 M10-20): a self-reported eating disorder gets its own supportive copy with signposting.
+  'safety.s4.eating_disorder': 'nutrition.supportive.eating_disorder',
   'safety.s4.not_screened': 'nutrition.supportive.not_screened',
   'safety.s4.invalid_profile': 'nutrition.supportive.not_screened',
   'safety.s4.check_failed': 'nutrition.supportive.not_screened',

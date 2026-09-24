@@ -48,6 +48,9 @@ export interface DeficitFeatures {
   readonly reasonCodes: readonly string[];
 }
 
+/** SafetyProfile reason code of the self-reported eating-disorder answer (packages/safety screening.config). */
+export const S4_EATING_DISORDER_PROFILE_REASON = 'safety_profile.s4.eating_disorder' as const;
+
 /** Whether deficit features (a fat-loss target, a planned loss) may be offered at all. */
 export function deficitFeatures(safetyProfile: SafetyProfile, birthDate: CalendarDate, today: CalendarDate): DeficitFeatures {
   try {
@@ -55,7 +58,10 @@ export function deficitFeatures(safetyProfile: SafetyProfile, birthDate: Calenda
     if (!parsed.success) return { allowed: false, reasonCodes: ['safety.s4.invalid_profile'] };
     const profile = parsed.data;
     const reasons: string[] = [];
-    if (!profile.deficitNutritionAllowed) reasons.push('safety.s4.deficit_disabled');
+    // FIX-B (A4 M10-20): a self-reported eating disorder has its own reason (signposting copy), not "advised against".
+    const eatingDisorder = profile.reasonCodes.includes(S4_EATING_DISORDER_PROFILE_REASON);
+    if (eatingDisorder) reasons.push('safety.s4.eating_disorder');
+    if (!profile.deficitNutritionAllowed && (!eatingDisorder || profile.reasonCodes.includes('safety_profile.s4.advised_against_calorie_restriction'))) reasons.push('safety.s4.deficit_disabled');
     if (profile.screeningOutcome === 'not_screened' || profile.screeningOutcome === 'blocked') reasons.push('safety.s4.not_screened');
     if (profile.specialPopulation !== 'none') reasons.push('safety.s4.special_population');
     if (!isValidCalendarDate(birthDate) || !isValidCalendarDate(today) || !(ageInYears(birthDate, today) >= S4_DEFICIT_MINIMUM_AGE_YEARS)) reasons.push('safety.s4.minor');

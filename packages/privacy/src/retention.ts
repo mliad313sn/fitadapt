@@ -23,7 +23,14 @@ export const retentionConfig = defineConfig({
   /** Completed data-request records (pseudonymous). */
   dataRequestRetentionDays: { value: 2190, unit: 'days (6 years)', source: ENGINEERING, validated: false },
   /** Accounts with no sign-in and no sync for this long are flagged for deletion after notice. */
-  inactiveAccountDays: { value: 1095, unit: 'days (3 years)', source: ENGINEERING, validated: false },
+  // FIX-B (B pre-review §3.4): shorter (stricter) — CNIL's 2-year reference for inactive accounts giving access to digital content.
+  inactiveAccountDays: {
+    value: 730,
+    unit: 'days (2 years)',
+    source:
+      'docs/governance/ai-reviews/B-legal-regulatory.md §3.4: CNIL, "Achat de contenus numériques : quelle durée de conservation des comptes inactifs ?" (2-year reference, search excerpt only). AI pre-review, not legal advice; period to be set by counsel (B1).',
+    validated: false,
+  },
   /** Application logs (which carry no personal data by design). */
   applicationLogRetentionDays: { value: 30, unit: 'days', source: ENGINEERING, validated: false },
 });

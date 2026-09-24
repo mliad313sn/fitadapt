@@ -41,15 +41,36 @@ export interface Restrictions {
  */
 export type QuestionKind = 'clearance_flag' | 'restriction' | 'special_population' | 'nutrition';
 
+/**
+ * What a `clearance_flag` does BEFORE the clearance is attested:
+ * - 's1_caps': the S1 caps (RPE ≤ 7, no HIIT, no maximal tests) — the invariant's floor;
+ * - 'hold': stricter than S1 — no session, no assessment and no program at all until the
+ *   clearance is attested (FIX-B, CS-1: ACSM 2015 preparticipation screening refers anyone with
+ *   signs or symptoms before starting or resuming ANY exercise). A hold is never configurable
+ *   down to the caps by a lower-level switch: it is read from this table only.
+ */
+export type BeforeClearance = 's1_caps' | 'hold';
+
 export interface QuestionRule extends ReviewedRule {
   readonly kind: QuestionKind;
   readonly afterClearance: Restrictions;
   readonly reasonCode: string;
+  /** Only for `clearance_flag`; absent means 's1_caps'. */
+  readonly beforeClearance?: BeforeClearance;
+  /**
+   * FIX-B (CS-7): a yes means heart-rate zones are not reliable for this person (a medicine may blunt the
+   * heart-rate response): effort (RPE) and the talk test instead. Applies before and after clearance.
+   */
+  readonly effortBasedZones?: true;
 }
 
 const ENGINEER_DEFAULT = 'M01 engineering default (conservative choice by the engineer); original question wording; no external source. Requires seat A1 review.';
+/** FIX-B: the hold before clearance (stricter than S1), from the AI pre-review; stays validated:false until seat A1 signs. */
+const HOLD_SOURCE =
+  'M01 engineering default for the question and the after-clearance tags; the HOLD before clearance is a stricter correction from docs/governance/ai-reviews/A1-A2-clinical-safety.md (M01-02/03/04/07, M07-44: ACSM preparticipation screening, Riebe et al. 2015, Med Sci Sports Exerc 47(11):2473-2479, read through search summaries only). AI pre-review, not a sign-off. Requires seat A1 review.';
 
-export const SCREENING_RULES_VERSION = '0.1.0';
+/** 0.2.0 (FIX-B): symptom flags hold training until clearance; heart-rate medicine and eating-disorder questions. */
+export const SCREENING_RULES_VERSION = '0.2.0';
 
 /** In display order. */
 export const SCREENING_RULES: Readonly<Record<ScreeningQuestionId, QuestionRule>> = Object.freeze({
@@ -63,25 +84,28 @@ export const SCREENING_RULES: Readonly<Record<ScreeningQuestionId, QuestionRule>
   },
   chest_discomfort: {
     kind: 'clearance_flag',
+    beforeClearance: 'hold',
     afterClearance: { avoidTags: ['breath_hold_bracing'] },
     reasonCode: 'safety_profile.flag.chest_discomfort',
-    source: ENGINEER_DEFAULT,
+    source: HOLD_SOURCE,
     validated: false,
     reviewSeat: 'A1',
   },
   fainting_or_dizziness: {
     kind: 'clearance_flag',
+    beforeClearance: 'hold',
     afterClearance: { avoidTags: ['inversion', 'high_balance_demand'] },
     reasonCode: 'safety_profile.flag.fainting_or_dizziness',
-    source: ENGINEER_DEFAULT,
+    source: HOLD_SOURCE,
     validated: false,
     reviewSeat: 'A1',
   },
   unusual_breathlessness: {
     kind: 'clearance_flag',
+    beforeClearance: 'hold',
     afterClearance: {},
     reasonCode: 'safety_profile.flag.unusual_breathlessness',
-    source: ENGINEER_DEFAULT,
+    source: HOLD_SOURCE,
     validated: false,
     reviewSeat: 'A1',
   },
@@ -96,16 +120,18 @@ export const SCREENING_RULES: Readonly<Record<ScreeningQuestionId, QuestionRule>
   medication_affecting_effort: {
     kind: 'clearance_flag',
     afterClearance: {},
+    effortBasedZones: true,
     reasonCode: 'safety_profile.flag.medication_affecting_effort',
-    source: ENGINEER_DEFAULT,
+    source: `${ENGINEER_DEFAULT} Effort-based zones (no heart-rate zones): stricter correction from docs/governance/ai-reviews/A1-A2-clinical-safety.md (M01-06, M03-53; AHA consumer page on beta-blockers and exercise, search summary only). AI pre-review, not a sign-off.`,
     validated: false,
     reviewSeat: 'A1',
   },
   advised_to_limit_activity: {
     kind: 'clearance_flag',
+    beforeClearance: 'hold',
     afterClearance: {},
     reasonCode: 'safety_profile.flag.advised_to_limit_activity',
-    source: ENGINEER_DEFAULT,
+    source: HOLD_SOURCE,
     validated: false,
     reviewSeat: 'A1',
   },
@@ -138,7 +164,32 @@ export const SCREENING_RULES: Readonly<Record<ScreeningQuestionId, QuestionRule>
     validated: false,
     reviewSeat: 'A1',
   },
+  medication_affecting_heart_rate: {
+    kind: 'restriction',
+    afterClearance: {},
+    effortBasedZones: true,
+    reasonCode: 'safety_profile.restriction.medication_affecting_heart_rate',
+    source:
+      'FIX-B (CS-7) stricter correction from docs/governance/ai-reviews/A1-A2-clinical-safety.md (M01-06, M03-53): a medicine that may slow the heart rate or limit its rise (AHA consumer page on beta-blockers and exercise, search summary only) → effort (RPE) and the talk test instead of heart-rate zones. Original question wording. AI pre-review, not a sign-off. Requires seat A1 (with A5) review.',
+    validated: false,
+    reviewSeat: 'A1',
+  },
+  eating_disorder: {
+    kind: 'nutrition',
+    afterClearance: {},
+    reasonCode: 'safety_profile.s4.eating_disorder',
+    source:
+      'FIX-B stricter correction from docs/governance/ai-reviews/A4-A6-nutrition-behaviour.md (M10-20): a self-reported current or past eating disorder works like "advised against calorie restriction" (deficit features off, supportive mode, signposting); NICE NG69, Levinson et al. 2017 and Simpson & Mazzeo 2017 as cited there (abstracts only). No scored questionnaire. Original question wording. AI pre-review, not a sign-off. Requires seat A4 (with A1) review.',
+    validated: false,
+    reviewSeat: 'A4',
+  },
 });
+
+/** FIX-B (CS-1): the clearance flags that hold ALL training (sessions, assessments, programs) until clearance. */
+export function holdsUntilClearance(q: ScreeningQuestionId): boolean {
+  const rule = SCREENING_RULES[q];
+  return rule.kind === 'clearance_flag' && rule.beforeClearance === 'hold';
+}
 
 /** Numbers used by the screening. */
 export const SCREENING_CONFIG = defineConfig({

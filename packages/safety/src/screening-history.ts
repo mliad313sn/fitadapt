@@ -74,6 +74,8 @@ export function strictestSafetyProfile(profiles: readonly SafetyProfile[]): Safe
     lowIntensityLibraryOnly: all('lowIntensityLibraryOnly').some(Boolean),
     professionalGuidance: all('professionalGuidance').some(Boolean),
     limitedJoints: inOrder(JOINTS, profiles.flatMap((p) => p.limitedJoints)),
+    // FIX-B (CS-7): heart-rate zones only if every candidate allows them (absent = not allowed).
+    heartRateZonesAllowed: profiles.every((p) => p.heartRateZonesAllowed === true),
     reasonCodes: reasons,
     rulesVersion: [...all('rulesVersion')].sort()[0],
   });
@@ -96,18 +98,37 @@ export function isAtLeastAsStrict(a: SafetyProfile, b: SafetyProfile): boolean {
     (!a.automaticProgrammingAllowed || b.automaticProgrammingAllowed) &&
     (a.lowIntensityLibraryOnly || !b.lowIntensityLibraryOnly) &&
     (a.professionalGuidance || !b.professionalGuidance) &&
-    covers(a.limitedJoints, b.limitedJoints)
+    covers(a.limitedJoints, b.limitedJoints) &&
+    (a.heartRateZonesAllowed !== true || b.heartRateZonesAllowed === true)
   );
+}
+
+/** Reason code when the server rejected the device's latest screening (FR/EN in packages/i18n `reason.*`). */
+export const REJECTED_SCREENING_REASON = 'safety_profile.not_screened.rejected' as const;
+
+export interface ScreeningHistoryOptions {
+  /**
+   * FIX-B (with FIX-E): the device knows its latest screening was rejected by the server (sync removed it, so
+   * the history only holds the previous, accepted one, which may be looser). Fail closed: the result is at least
+   * as strict as "not screened" (S1 caps, no automatic programming, no assessment, no deficit features) until the
+   * user screens again. Wired from the sync client's rejected mutations at merge.
+   */
+  readonly screeningRejected?: boolean;
 }
 
 /**
  * The SafetyProfile a history of screenings gives (no health-consent check:
- * callers apply it first). None → "not screened".
+ * callers apply it first). None → "not screened". A rejected latest screening
+ * never lets an older, looser one count (options.screeningRejected).
  */
-export function safetyProfileFromScreenings(screenings: readonly ScreeningEntry[]): SafetyProfile {
+export function safetyProfileFromScreenings(screenings: readonly ScreeningEntry[], options: ScreeningHistoryOptions = {}): SafetyProfile {
   const { heads } = orderScreenings(screenings);
-  if (heads.length === 0) return notScreenedSafetyProfile('safety_profile.not_screened.incomplete');
-  return strictestSafetyProfile(heads.map((h) => evaluateScreening(h.data.responses)));
+  if (heads.length === 0) return notScreenedSafetyProfile(options.screeningRejected ? REJECTED_SCREENING_REASON : 'safety_profile.not_screened.incomplete');
+  const profile = strictestSafetyProfile(heads.map((h) => evaluateScreening(h.data.responses)));
+  if (!options.screeningRejected) return profile;
+  const combined = strictestSafetyProfile([profile, notScreenedSafetyProfile(REJECTED_SCREENING_REASON)]);
+  // Not an ambiguity between screenings: say why (the rejection), keeping every reason of the older screening.
+  return { ...combined, reasonCodes: combined.reasonCodes.filter((c) => c !== AMBIGUOUS_SCREENING_REASON) };
 }
 
 /**

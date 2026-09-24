@@ -256,7 +256,7 @@ describe('equipment profile of each scheduled location (M01) and the SafetyProfi
 
   it('property: every planned slot has at least one exercise the place and the SafetyProfile allow', () => {
     const places = [[], HOME_EQUIPMENT, GYM_EQUIPMENT, ['resistance_band'], ['dumbbell']] as const;
-    const profiles = [profileFrom(), profileFrom(['bone_joint_back']), profileFrom(['chest_discomfort']), profileFrom(['heart_or_blood_pressure'], { clearanceAttested: true })];
+    const profiles = [profileFrom(), profileFrom(['bone_joint_back']), profileFrom(['heart_or_blood_pressure']), profileFrom(['heart_or_blood_pressure'], { clearanceAttested: true })];
     fc.assert(
       fc.property(fc.constantFrom(...GOAL_IDS), fc.integer({ min: 1, max: 7 }), fc.constantFrom(...places), fc.constantFrom(...profiles), fc.constantFrom(20, 30, 45, 60, 90), (goal, days, equipment, profile, minutes) => {
         const program = ok(gen(programInput({ goal, days, minutes, profile, locations: [{ equipmentProfileId: HOME, location: 'home', equipment: [...equipment] }] })));
@@ -277,7 +277,7 @@ describe('equipment profile of each scheduled location (M01) and the SafetyProfi
   });
 
   it('S1: an unresolved screening flag caps every week at RPE 7 and replaces intervals with steady work, with safety events', () => {
-    const flagged = profileFrom(['chest_discomfort']);
+    const flagged = profileFrom(['heart_or_blood_pressure']);
     const r = gen(programInput({ goal: 'fat_loss', days: 4, minutes: 60, profile: flagged }));
     const program = ok(r);
     expect(program.reasonCodes).toEqual(expect.arrayContaining(['program.rpe.s1_capped', 'program.conditioning.intervals_not_allowed']));
@@ -335,7 +335,7 @@ describe('determinism, stamping and reason codes', () => {
     const seen = new Set<string>();
     for (const goal of GOAL_IDS) {
       for (const days of [1, 2, 3, 4, 5, 6, 7]) {
-        for (const profile of [profileFrom(), profileFrom(['chest_discomfort'])]) {
+        for (const profile of [profileFrom(), profileFrom(['heart_or_blood_pressure'])]) {
           for (const previousGoal of [null, 'strength' as const]) {
             const program = ok(gen(programInput({ goal, days, profile, previousGoal, minutes: days % 2 ? 30 : 60, trainingDays: days === 3 ? ['mon', 'tue', 'wed'] : null })));
             program.reasonCodes.forEach((c) => seen.add(c));

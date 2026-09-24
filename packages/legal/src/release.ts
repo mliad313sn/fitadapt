@@ -16,11 +16,19 @@ export interface LegalReleaseConfig {
   readonly notices: readonly NoticeId[];
 }
 
-/** What a production build enables today: every text in every jurisdiction variant. */
+/**
+ * FIX-B (B pre-review §3.1): notices whose claim is not built yet. They can never be enabled in a production
+ * release, whatever their approval, until the feature and its evidence exist (docs/legal/substantiation-file.md).
+ */
+export const NOTICES_BLOCKED_UNTIL_BUILT: Readonly<Partial<Record<NoticeId, string>>> = Object.freeze({
+  camera_mode: 'SUB-C7/SUB-C8 "No video leaves your device": M14 on-device camera mode and its network test are not built',
+});
+
+/** What a production build enables today: every text in every jurisdiction variant, except notices of features not built. */
 export const DEFAULT_RELEASE: LegalReleaseConfig = Object.freeze({
   variants: DOCUMENT_VARIANTS,
   documents: DEFAULT_REGISTRY.documents.map((d) => d.id),
-  notices: NOTICES.map((n) => n.id),
+  notices: NOTICES.map((n) => n.id).filter((id) => NOTICES_BLOCKED_UNTIL_BUILT[id] === undefined),
 });
 
 export function isApproved(approvals: readonly CounselApproval[], variant: DocumentVariant): boolean {
@@ -31,6 +39,14 @@ export function isApproved(approvals: readonly CounselApproval[], variant: Docum
 export interface UnapprovedText {
   readonly text: string;
   readonly variant: DocumentVariant;
+}
+
+/** Notices a release enables although their feature is not built (always refused in production). */
+export function blockedNotices(release: LegalReleaseConfig = DEFAULT_RELEASE): UnapprovedText[] {
+  return release.notices.flatMap((id) => {
+    const why = NOTICES_BLOCKED_UNTIL_BUILT[id];
+    return why ? release.variants.map((variant) => ({ text: `notice ${id} (${why})`, variant })) : [];
+  });
 }
 
 export function unapprovedTexts(
@@ -74,7 +90,7 @@ export function assertLegalReleaseReady(
   notices: readonly NoticeDefinition[] = NOTICES,
 ): void {
   if (profile !== 'production') return;
-  const unapproved = unapprovedTexts(release, registry, notices);
+  const unapproved = [...blockedNotices(release), ...unapprovedTexts(release, registry, notices)];
   if (unapproved.length) throw new LegalReleaseError(unapproved);
 }
 

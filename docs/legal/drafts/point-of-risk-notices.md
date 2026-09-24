@@ -21,8 +21,8 @@
 
 ## `nutrition_deficit` v1 — trigger `nutrition.deficit_setup`, once per version, acknowledgement required
 
-- **EN** — Eating less to lose weight: The app keeps targets above safe floors and a slow rate of loss. This is general guidance, not a diet prescription. If you have or had an eating disorder, or a health condition, talk to a professional first.
-- **FR** — Manger moins pour perdre du poids: L’application maintient des objectifs au-dessus de seuils sûrs et une perte lente. Il s’agit de conseils généraux, pas d’un régime prescrit. Si vous avez ou avez eu un trouble du comportement alimentaire, ou un problème de santé, parlez-en d’abord à un professionnel.
+- **EN** — Eating less to lose weight: The app keeps targets above minimum floors and a slow rate of loss. This is general guidance, not a diet prescription. If you have or had an eating disorder, or a health condition, talk to a professional first.
+- **FR** — Manger moins pour perdre du poids: L’application maintient des objectifs au-dessus de seuils minimaux et une perte lente. Il s’agit de conseils généraux, pas d’un régime prescrit. Si vous avez ou avez eu un trouble du comportement alimentaire, ou un problème de santé, parlez-en d’abord à un professionnel.
 
 ## `ai_coach` v1 — trigger `ai_coach.conversation_start`, every time
 
@@ -36,12 +36,22 @@
 
 ## `seek_care` v1 — trigger `safety.red_flag`, every time, acknowledgement required
 
-- **EN** — Stop now: You reported a symptom that needs medical attention. The session has ended. Please contact a doctor before exercising again. If this is an emergency, call your local emergency number now.
-- **FR** — Arrêtez maintenant: Vous avez signalé un symptôme qui nécessite un avis médical. La séance est terminée. Consultez un médecin avant de reprendre l’exercice. En cas d’urgence, appelez maintenant le numéro d’urgence local.
+- **EN** — Stop now: You reported a symptom that needs medical attention, and the session has ended. Call the emergency number below now if chest pain or pressure does not ease within a few minutes of rest, or spreads to your arm, jaw, neck or back; if your face droops, an arm feels weak or numb, or your speech is slurred or hard to understand; if you have a sudden severe headache or a sudden change in your vision; or if you fainted. Do not drive yourself: ask someone to call for you or to take you. Otherwise, stop exercising and contact a doctor today, before you exercise again. Emergency number: call your local emergency number.
+- **FR** — Arrêtez maintenant: Vous avez signalé un symptôme qui demande un avis médical, et la séance est terminée. Appelez maintenant le numéro d’urgence ci-dessous si la douleur ou la pression dans la poitrine ne passe pas après quelques minutes de repos, ou s’étend au bras, à la mâchoire, au cou ou au dos ; si votre visage s’affaisse, si un bras est faible ou engourdi, ou si vous avez du mal à parler ou à comprendre ; si vous avez un mal de tête soudain et intense ou un trouble soudain de la vue ; ou si vous avez perdu connaissance. Ne conduisez pas vous-même : demandez à quelqu’un d’appeler pour vous ou de vous accompagner. Sinon, arrêtez l’exercice et contactez un médecin aujourd’hui, avant de reprendre. Numéro d’urgence : appelez le numéro d’urgence local.
 
 ## `pair_challenge` v1 — trigger `pair.challenge.start`, once per version, acknowledgement required
 
 - **EN** — Before the Fair Challenge: The challenge compares each of you with your own plan, never with each other’s loads. Train at your own pace: you can skip or stop at any time, and nothing counts once you report pain. Stop at once if you feel chest pain, faintness or unusual breathlessness.
 - **FR** — Avant le Défi équitable: Le défi compare chacun à son propre programme, jamais aux charges de l’autre. Entraînez-vous à votre rythme : vous pouvez passer ou arrêter à tout moment, et plus rien ne compte dès que vous signalez une douleur. Arrêtez-vous immédiatement en cas de douleur thoracique, de malaise ou d’essoufflement inhabituel.
+
+## `pregnancy_warning` v1 — trigger `safety.pregnancy_warning`, every time, acknowledgement required
+
+- **EN** — Stop now: You reported a warning sign during pregnancy or after a birth, and the session has ended. Contact your midwife, your maternity unit or a doctor now. Call the emergency number below if you are bleeding heavily, have chest pain or severe breathlessness, or fainted. Do not drive yourself. Do not exercise again until a professional agrees. Emergency number: call your local emergency number.
+- **FR** — Arrêtez maintenant: Vous avez signalé un signe d’alerte pendant la grossesse ou après un accouchement, et la séance est terminée. Contactez maintenant votre sage-femme, votre maternité ou un médecin. Appelez le numéro d’urgence ci-dessous si vous saignez beaucoup, avez une douleur dans la poitrine ou un essoufflement important, ou avez perdu connaissance. Ne conduisez pas vous-même. Ne reprenez pas l’exercice sans l’accord d’un professionnel. Numéro d’urgence : appelez le numéro d’urgence local.
+
+## `urgent_care` v1 — trigger `safety.urgent_msk`, every time, acknowledgement required
+
+- **EN** — Stop and get urgent care: You reported a sign that needs urgent care, and the session has ended. Stop using this part of your body and get medical care today, for example at an urgent care service or an emergency department. If you have numbness around the genitals or buttocks, new problems passing urine or controlling your bladder or bowels, or leg weakness that is getting worse, call the emergency number below now. Do not drive yourself. Emergency number: call your local emergency number.
+- **FR** — Arrêtez et consultez en urgence: Vous avez signalé un signe qui demande des soins urgents, et la séance est terminée. N’utilisez plus cette partie du corps et consultez aujourd’hui, par exemple un service de soins non programmés ou les urgences. Si vous avez un engourdissement autour des parties génitales ou des fesses, de nouveaux troubles pour uriner ou pour contrôler la vessie ou les intestins, ou une faiblesse des jambes qui s’aggrave, appelez maintenant le numéro d’urgence ci-dessous. Ne conduisez pas vous-même. Numéro d’urgence : appelez le numéro d’urgence local.
 
 Persistent AI label (every AI coach screen): EN "AI assistant", FR "Assistant IA".

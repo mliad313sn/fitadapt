@@ -109,20 +109,25 @@ function M01Entries({ onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, o
         <Button label={started ? t('home.onboarding.continue') : t('home.onboarding.start')} hint={t('home.onboarding.startHint')} onPress={onStartOnboarding} testID="start-onboarding" />
       ) : null}
       {access.allowed && onOpenFirstWorkout ? <Button label={t('home.firstWorkout.open')} hint={t('home.firstWorkout.openHint')} onPress={onOpenFirstWorkout} testID="open-first-workout" /> : null}
-      {access.allowed && onOpenWorkout ? <Button label={t('home.workout.open')} hint={t('home.workout.openHint')} onPress={onOpenWorkout} testID="open-workout" /> : null}
-      {access.allowed && onOpenPair ? <Button label={t('home.pair.open')} hint={t('home.pair.openHint')} onPress={onOpenPair} testID="open-pair" /> : null}
+      {access.allowed && access.trainingHold ? (
+        <Card testID="training-hold">
+          <Text style={text}>{t('firstWorkout.hold')}</Text>
+        </Card>
+      ) : null}
+      {access.training && onOpenWorkout ? <Button label={t('home.workout.open')} hint={t('home.workout.openHint')} onPress={onOpenWorkout} testID="open-workout" /> : null}
+      {access.training && onOpenPair ? <Button label={t('home.pair.open')} hint={t('home.pair.openHint')} onPress={onOpenPair} testID="open-pair" /> : null}
       {access.allowed && onOpenNutrition ? <Button label={t('nutrition.home.open')} hint={t('nutrition.home.openHint')} variant="secondary" onPress={onOpenNutrition} testID="open-nutrition" /> : null}
-      {access.allowed && onOpenCalendar ? <Button label={t('home.calendar.open')} hint={t('home.calendar.openHint')} onPress={onOpenCalendar} testID="open-calendar" /> : null}
-      {access.allowed && onOpenAssessment && capacity === null ? (
+      {access.training && onOpenCalendar ? <Button label={t('home.calendar.open')} hint={t('home.calendar.openHint')} onPress={onOpenCalendar} testID="open-calendar" /> : null}
+      {access.training && onOpenAssessment && capacity === null ? (
         <Button label={t('home.assessment.start')} hint={t('home.assessment.startHint')} variant="secondary" onPress={onOpenAssessment} testID="open-assessment" />
       ) : null}
-      {access.allowed && onOpenAssessment && capacity !== null && reassessment.status === 'due' ? (
+      {access.training && onOpenAssessment && capacity !== null && reassessment.status === 'due' ? (
         <Card testID="reassessment-prompt">
           <Text style={text}>{t('home.assessment.due')}</Text>
           <Button label={t('home.assessment.retest')} onPress={onOpenAssessment} testID="reassess" />
         </Card>
       ) : null}
-      {access.allowed && onOpenAssessment && capacity !== null && reassessment.status !== 'due' ? (
+      {access.training && onOpenAssessment && capacity !== null && reassessment.status !== 'due' ? (
         <Button label={t('home.assessment.again')} variant="secondary" onPress={onOpenAssessment} testID="reassess-on-demand" />
       ) : null}
       {access.onboardingComplete && !access.allowed && access.missingLegal.length > 0 && onReviewLegal ? (
@@ -133,8 +138,9 @@ function M01Entries({ onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, o
       ) : null}
       {access.onboardingComplete && rescreen.status === 'due' && onRescreen ? (
         <Card testID="rescreen-prompt">
-          <Text style={text}>{rescreen.reason === 'annual' ? t('home.rescreen.annual') : t('home.rescreen.newCondition')}</Text>
-          <Button label={t('home.rescreen.button')} onPress={() => onRescreen(rescreen.reason)} testID="rescreen" />
+          <Text style={text}>{rescreen.reason === 'annual' ? t('home.rescreen.annual') : rescreen.reason === 'rejected' ? t('home.rescreen.rejected') : t('home.rescreen.newCondition')}</Text>
+          {/* FIX-B: a re-screen after a rejected screening is recorded as a new-condition re-screen. */}
+          <Button label={t('home.rescreen.button')} onPress={() => onRescreen(rescreen.reason === 'rejected' ? 'new_condition' : rescreen.reason)} testID="rescreen" />
         </Card>
       ) : null}
       {access.onboardingComplete && rescreen.status !== 'due' ? (

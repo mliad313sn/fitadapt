@@ -1,7 +1,7 @@
 import type { MessageKey } from '@fitadapt/i18n';
 import { useI18n } from '@fitadapt/i18n/react';
-import { notice, renderNotice } from '@fitadapt/legal';
-import { JOINTS, RED_FLAG_SYMPTOMS, type Joint, type RedFlagSymptom, type SessionPlan } from '@fitadapt/shared';
+import { notice, renderNotice, type NoticeId } from '@fitadapt/legal';
+import { JOINTS, PREGNANCY_WARNING_SIGNS, RED_FLAG_SYMPTOMS, URGENT_MSK_SIGNS, type Joint, type RedFlagSymptom, type SessionPlan } from '@fitadapt/shared';
 import { Button, Card, Chip, useTheme } from '@fitadapt/ui';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
@@ -17,36 +17,64 @@ import { useLegal } from '../profile/ProfileProvider';
 
 const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => from + i);
 
-/** S3: stop and seek care — the notice (L3, every time), the emergency guidance of the jurisdiction, an acknowledgement. */
-export function SeekCare({ after }: { after?: string }) {
+/**
+ * S3: stop and seek care — the notice (L3, every time), the emergency guidance of the jurisdiction, an acknowledgement.
+ * FIX-B: the notice depends on the sign (seek care; pregnancy warning sign → midwife or doctor now; urgent joint or
+ * back sign → urgent care). The emergency line comes right after the title and the body, before anything else.
+ */
+export function SeekCare({ after, noticeId = 'seek_care' }: { after?: string; noticeId?: Extract<NoticeId, 'seek_care' | 'pregnancy_warning' | 'urgent_care'> }) {
   const { t, locale } = useI18n();
   const theme = useTheme();
   const jurisdiction = useLegal((s) => s.jurisdiction);
   const impressions = useLegal((s) => s.notices);
   const recordNotice = useLegal((s) => s.recordNotice);
-  const seekCare = renderNotice(notice('seek_care'), locale, jurisdiction);
-  const acknowledged = impressions.some((i) => i.noticeId === 'seek_care' && i.kind === 'acknowledged');
+  const seekCare = renderNotice(notice(noticeId), locale, jurisdiction);
+  const acknowledged = impressions.some((i) => i.noticeId === noticeId && i.kind === 'acknowledged');
   const text = { color: theme.colors.text, fontSize: theme.fontSize.body } as const;
   return (
-    <Card title={seekCare.title} testID="notice-seek_care">
-      <Text style={{ color: theme.colors.danger, fontSize: theme.fontSize.label }}>{seekCare.draftBanner}</Text>
-      <Text style={text}>{seekCare.body}</Text>
+    <Card title={seekCare.title} testID={`notice-${noticeId}`}>
       {seekCare.emergency ? (
-        <Text style={{ ...text, fontWeight: theme.fontWeight.bold }} testID="notice-seek_care-emergency">
+        <Text style={{ ...text, fontWeight: theme.fontWeight.bold }} testID={`notice-${noticeId}-emergency`}>
           {seekCare.emergency}
         </Text>
       ) : null}
+      <Text style={text}>{seekCare.body}</Text>
+      <Text style={{ color: theme.colors.danger, fontSize: theme.fontSize.label }}>{seekCare.draftBanner}</Text>
       {after ? <Text style={text}>{after}</Text> : null}
-      {!acknowledged ? <Button label={t('legal.action.acknowledge')} hint={t('legal.action.acknowledgeHint')} onPress={() => recordNotice(notice('seek_care'), 'acknowledged', locale)} testID="notice-seek_care-ack" /> : null}
+      {!acknowledged ? <Button label={t('legal.action.acknowledge')} hint={t('legal.action.acknowledgeHint')} onPress={() => recordNotice(notice(noticeId), 'acknowledged', locale)} testID={`notice-${noticeId}-ack`} /> : null}
     </Card>
   );
+}
+
+/**
+ * FIX-B (CS-5): after a pain rating of S2 red (≥ 6), a short "does any of these apply?" step for signs that need
+ * urgent care. Separate from the pain traffic light: a sign ends the session (S3); "none" continues as before.
+ */
+export function UrgentSignsCheck({ onSign, onNone }: { onSign: (s: RedFlagSymptom) => void; onNone: () => void }) {
+  const { t } = useI18n();
+  const theme = useTheme();
+  const text = { color: theme.colors.text, fontSize: theme.fontSize.body } as const;
+  return (
+    <Card title={t('workout.urgent.title')} testID="workout-urgent-check">
+      <Text style={text}>{t('workout.urgent.body')}</Text>
+      {URGENT_MSK_SIGNS.map((s) => (
+        <Button key={s} label={t(`workout.stop.symptom.${s}` as MessageKey)} hint={t('workout.urgent.signHint')} variant="danger" onPress={() => onSign(s)} testID={`workout-urgent-${s}`} />
+      ))}
+      <Button label={t('workout.urgent.none')} hint={t('workout.urgent.noneHint')} variant="secondary" onPress={onNone} testID="workout-urgent-none" />
+    </Card>
+  );
+}
+
+/** FIX-B (CS-4): the stop signs a person sees — the S3 list, plus the pregnancy warning signs on the S7 pregnancy path. */
+export function stopSignsFor(pregnancyPath: boolean): readonly RedFlagSymptom[] {
+  return pregnancyPath ? [...RED_FLAG_SYMPTOMS, ...PREGNANCY_WARNING_SIGNS] : RED_FLAG_SYMPTOMS;
 }
 
 type Answer = 'sleep' | 'soreness' | 'stress' | 'energy';
 const QUESTIONS: readonly Answer[] = ['sleep', 'soreness', 'stress', 'energy'];
 
 /** The optional 10-second readiness check (never blocking: it can be skipped) and the red-flag screen. */
-export function ReadinessCheckCard({ onSave, onSkip, onRedFlag }: { onSave: (answers: Record<Answer, number>) => void; onSkip: () => void; onRedFlag: (s: RedFlagSymptom) => void }) {
+export function ReadinessCheckCard({ onSave, onSkip, onRedFlag, pregnancyPath = false }: { onSave: (answers: Record<Answer, number>) => void; onSkip: () => void; onRedFlag: (s: RedFlagSymptom) => void; pregnancyPath?: boolean }) {
   const { t } = useI18n();
   const theme = useTheme();
   const [answers, setAnswers] = useState<Partial<Record<Answer, number>>>({});
@@ -73,7 +101,7 @@ export function ReadinessCheckCard({ onSave, onSkip, onRedFlag }: { onSave: (ans
       <Button label={t('recovery.readiness.skip')} hint={t('recovery.readiness.skipHint')} variant="secondary" onPress={onSkip} testID="recovery-readiness-skip" />
       <Text style={{ ...text, fontWeight: theme.fontWeight.bold }}>{t('recovery.redFlag.checkin.title')}</Text>
       <Text style={muted}>{t('recovery.redFlag.checkin.body')}</Text>
-      {RED_FLAG_SYMPTOMS.map((s) => (
+      {stopSignsFor(pregnancyPath).map((s) => (
         <Button key={s} label={t(`workout.stop.symptom.${s}` as MessageKey)} hint={t('recovery.redFlag.checkin.symptomHint')} variant="danger" onPress={() => onRedFlag(s)} testID={`recovery-redflag-${s}`} />
       ))}
     </Card>

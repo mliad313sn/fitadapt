@@ -112,6 +112,11 @@ describe('age gate at 16 (E2E, goal condition 6)', () => {
     const future = birthDate(-1);
     enter(future);
     expect(screen.getByText('This date is in the future.')).toBeTruthy();
+    // FIX-B (MOB-13): an absurd year (age 2025) is not a real date either; it used to pass as "allowed".
+    enter({ day: '1', month: '1', year: '0001' });
+    expect(screen.getByText('Please enter a real date.')).toBeTruthy();
+    enter(birthDate(121));
+    expect(screen.getByText('Please enter a real date.')).toBeTruthy();
     expect(screen.getByRole('header', { name: 'Before you start' })).toBeTruthy();
     // Still undecided: an adult can then pass.
     enter(birthDate(40));

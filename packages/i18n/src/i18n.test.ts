@@ -143,7 +143,8 @@ describe('M01 screening content', () => {
       expect(readFileSync(new URL(`./catalogues/${file}`, import.meta.url), 'utf8')).toContain('licence check pending');
     }
     const keys = Object.keys(en).filter((k) => k.startsWith('screening.question.'));
-    expect(keys).toHaveLength(10);
+    // 10 M01 questions + FIX-B: heart-rate medicine (CS-7) and eating disorder (A4 M10-20).
+    expect(keys).toHaveLength(12);
     for (const k of keys) expect(fr[k as keyof typeof fr].length).toBeGreaterThan(0);
   });
 });

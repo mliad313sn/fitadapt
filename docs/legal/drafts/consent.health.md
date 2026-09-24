@@ -12,14 +12,14 @@ Counsel approval: pending (see counsel-signoff-tracker.md).
 
 > DRAFT — requires counsel review. This text is not final and is not legal advice.
 
-I agree that the app processes my health data (screening answers, pain check-ins and related safety information) to adapt my training and keep it safe. This data is never used for advertising or sold.
+I agree that the app processes my health data to adapt my training and nutrition guidance and keep them safe: my screening answers, my pain and readiness check-ins, the safety stops I report and the reviews I confirm after them, my assessment results, and the body measurements (weight, height, body fat) and food logs I enter. This data is stored on my device and, when I sign in, on the app’s servers in [region to be chosen]. It is never used for advertising or sold.
 
-You can withdraw this consent at any time in Privacy settings. Without it, the app considers your screening not completed and only offers the most cautious training.
+You can withdraw this consent at any time in Privacy settings. Without it, the app cannot use your health answers, so it cannot check that training is safe for you: sessions, assessments, programmes and nutrition targets are not available. The exercise library and your account stay available. Withdrawing does not affect processing done before.
 
 ### FR — Consentement aux données de santé
 
 > PROJET — revue par un avocat requise (requires counsel review). Ce texte n’est pas définitif et ne constitue pas un conseil juridique.
 
-J’accepte que l’application utilise mes données de santé (réponses au questionnaire, suivis de douleur et informations de sécurité liées) pour adapter mon entraînement et le rendre sûr. Ces données ne sont jamais utilisées pour la publicité ni vendues.
+J’accepte que l’application traite mes données de santé pour adapter mon entraînement et mes conseils alimentaires et les rendre sûrs : mes réponses au questionnaire de santé, mes suivis de douleur et de forme du jour, les arrêts de sécurité que je signale et les examens que je confirme ensuite, les résultats de mes évaluations, ainsi que les mesures corporelles (poids, taille, masse grasse) et les journaux alimentaires que je saisis. Ces données sont conservées sur mon appareil et, quand je me connecte, sur les serveurs de l’application en [région à choisir]. Elles ne sont jamais utilisées pour la publicité ni vendues.
 
-Vous pouvez retirer ce consentement à tout moment dans les paramètres de confidentialité. Sans lui, l’application considère votre questionnaire comme non rempli et ne propose que l’entraînement le plus prudent.
+Vous pouvez retirer ce consentement à tout moment dans les paramètres de confidentialité. Sans lui, l’application ne peut pas utiliser vos réponses de santé et ne peut donc pas vérifier que l’entraînement est sûr pour vous : les séances, les évaluations, les programmes et les objectifs nutritionnels ne sont pas disponibles. La bibliothèque d’exercices et votre compte restent accessibles. Le retrait n’affecte pas les traitements effectués avant.

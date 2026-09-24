@@ -36,6 +36,8 @@ export interface AppServicesDeps {
   readonly photoFiles: PhotoFiles;
   readonly tokenVault: TokenVault;
   readonly platform: DeviceInfo['platform'];
+  /** FIX-B: the app version and native build, recorded with every acceptance (never personal data). */
+  readonly appBuild?: string;
 }
 
 /**
@@ -43,7 +45,7 @@ export interface AppServicesDeps {
  * AppRoot mounts), built in one place so the whole local data lifecycle —
  * in particular the account wipe — can be tested end to end.
  */
-export function createAppServices({ db, jurisdiction, initialLocale, apiUrl, randomUUID, randomBytes, now, keys, photoFiles, tokenVault, platform }: AppServicesDeps) {
+export function createAppServices({ db, jurisdiction, initialLocale, apiUrl, randomUUID, randomBytes, now, keys, photoFiles, tokenVault, platform, appBuild }: AppServicesDeps) {
   const kv = new SqliteKeyValueStore(db);
   // M06: the exercise library lives in the on-device database (offline); installed or refreshed at start.
   const library = new LibraryStore(db);
@@ -53,8 +55,10 @@ export function createAppServices({ db, jurisdiction, initialLocale, apiUrl, ran
   const sessionRef: { current?: SessionStore } = {};
   const getAccessToken = () => sessionRef.current!.getState().getAccessToken();
   const syncClient = createDeviceSyncClient({ openDatabase: () => db, randomUUID, apiUrl, getAccessToken });
-  const consents = createConsentStore({ kv, newId: randomUUID, now, jurisdiction });
-  const legal = createLegalStore({ kv, newId: randomUUID, now, jurisdiction });
+  // FIX-B (B pre-review §1.5 item 1): the country the user confirmed ("Where do you live?") wins over the device locale;
+  // the legal store keeps it, and consents follow it.
+  const legal = createLegalStore({ kv, newId: randomUUID, now, jurisdiction, ...(appBuild ? { appBuild } : {}) });
+  const consents = createConsentStore({ kv, newId: randomUUID, now, jurisdiction, getJurisdiction: () => legal.getState().jurisdiction });
   const profile = createProfileStore({ sync: syncClient, kv, now });
   // M10: nutrition plans, intake logs and habits (sync records in the encrypted database); it handles every M04 hand-off as it arrives.
   const nutritionStore = createNutritionStore({ sync: syncClient, kv, now, newSeed: () => new DataView(randomBytes(4).buffer).getUint32(0) >>> 1 });

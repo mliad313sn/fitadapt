@@ -421,6 +421,10 @@ export const SCREENING_QUESTION_IDS = [
   'bone_joint_back',
   'pregnancy_or_recent_birth',
   'advised_against_calorie_restriction',
+  // FIX-B (A1/A2 pre-review CS-7): a medicine that slows the heart rate or limits how far it rises → effort-based zones.
+  'medication_affecting_heart_rate',
+  // FIX-B (A4/A6 pre-review M10-20): a self-reported current or past eating disorder → deficit features off, signposting.
+  'eating_disorder',
 ] as const;
 export const ScreeningQuestionIdSchema = z.enum(SCREENING_QUESTION_IDS);
 export type ScreeningQuestionId = z.infer<typeof ScreeningQuestionIdSchema>;
@@ -463,6 +467,12 @@ export const SafetyProfileSchema = z.strictObject({
   professionalGuidance: z.boolean(),
   /** Body regions the user reported as limited (M01 limitations); M05 treats them with caution. */
   limitedJoints: z.array(JointSchema),
+  /**
+   * FIX-B (CS-7): false when a medicine may change the heart-rate response (effort, RPE and the talk test instead
+   * of heart-rate zones). Optional so profiles stored before it still parse; ABSENT MEANS NOT ALLOWED (fail closed):
+   * only `true` lets a consumer use heart-rate zones. evaluateScreening always sets it.
+   */
+  heartRateZonesAllowed: z.boolean().optional(),
   /** Why the profile is what it is, for the "why" explanation. */
   reasonCodes: z.array(SafetyReasonCodeSchema),
   /** Version of the screening rules that produced it (packages/safety). */

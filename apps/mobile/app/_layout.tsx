@@ -1,5 +1,6 @@
 import { resolveLocale } from '@fitadapt/i18n';
 import { resolveJurisdiction } from '@fitadapt/privacy';
+import Constants from 'expo-constants';
 import { getRandomBytes, randomUUID } from 'expo-crypto';
 import { getLocales } from 'expo-localization';
 import { Stack } from 'expo-router';
@@ -32,7 +33,10 @@ import { DatabaseOpenError } from '../src/storage/encrypted-db';
  */
 function GatedStack() {
   const passed = useAgeGate((s) => s.status === 'allowed');
-  const workout = useFirstWorkoutAccess().allowed;
+  const access = useFirstWorkoutAccess();
+  const workout = access.allowed;
+  // FIX-B (CS-1): while training is on hold (a symptom flag before clearance), no session, assessment, calendar or pair route.
+  const training = access.training;
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={passed}>
@@ -49,8 +53,13 @@ function GatedStack() {
         ))}
       </Stack.Protected>
       <Stack.Protected guard={passed && workout}>
+        {/* FIX-B (CS-1): reachable during a training hold, to explain it (the engine refuses any session there). */}
         <Stack.Screen name="first-workout" />
-        {/* M07: the assessment is a workout activity: same L2 gate as the first workout. */}
+        {/* M10: nutrition behind the same L2 gate (screening done, Terms, Privacy and health consent accepted); deficit set-up shows its own L3 notice. */}
+        <Stack.Screen name="nutrition" />
+      </Stack.Protected>
+      <Stack.Protected guard={passed && workout && training}>
+        {/* M07: the assessment is a workout activity: same L2 gate as the first workout, and no training hold. */}
         <Stack.Screen name="assessment" />
         {/* M08: the training calendar is a workout activity too. */}
         <Stack.Screen name="calendar" />
@@ -58,14 +67,24 @@ function GatedStack() {
         <Stack.Screen name="workout" />
         {/* M09: Fair Pair on one phone; the owner's L2 gate here, the partner's own gate inside the screen. */}
         <Stack.Screen name="pair" />
-        {/* M10: nutrition behind the same L2 gate (screening done, Terms, Privacy and health consent accepted); deficit set-up shows its own L3 notice. */}
-        <Stack.Screen name="nutrition" />
       </Stack.Protected>
       <Stack.Protected guard={!passed}>
         <Stack.Screen name="age-gate" />
       </Stack.Protected>
     </Stack>
   );
+}
+
+/** FIX-B: the app version and native build, recorded with every acceptance (never personal data). */
+function appBuild(): string {
+  try {
+    const version = Constants.expoConfig?.version ?? '0.0.0';
+    const build = Constants.nativeBuildVersion ?? 'dev';
+    const value = `${version}+${build}`;
+    return /^[0-9A-Za-z.+_-]{1,40}$/.test(value) ? value : 'unknown';
+  } catch {
+    return 'unknown';
+  }
 }
 
 const platform = (): 'ios' | 'android' | 'web' => (Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'web');
@@ -97,6 +116,7 @@ function AppRoot({ db }: { db: SyncSqliteDatabase }) {
     const services = createAppServices({
       db,
       jurisdiction: resolveJurisdiction(locales[0]?.regionCode),
+      appBuild: appBuild(),
       initialLocale: resolveLocale(locales.map((l) => l.languageTag)),
       apiUrl: process.env.EXPO_PUBLIC_API_URL,
       randomUUID,

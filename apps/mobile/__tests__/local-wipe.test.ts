@@ -205,3 +205,15 @@ describe('MOB-07: the device data and the upload ledger belong to one account', 
     expect(ledger.has('record-1')).toBe(false);
   });
 });
+
+describe('integration FIX-B × FIX-D: the confirmed country of residence through the app services', () => {
+  it('consents follow the residence the user confirmed; the wipe forgets it and the device locale applies again', async () => {
+    const app = services();
+    expect(app.legal.getState().jurisdiction).toBe('FR');
+    app.legal.getState().confirmResidence('GB');
+    expect(app.consents.getState().decide('health', true, 'en').jurisdiction).toBe('GB');
+    await app.wipeLocalData();
+    expect(app.legal.getState()).toMatchObject({ jurisdiction: 'FR', jurisdictionSource: 'device_locale' });
+    expect(app.consents.getState().decide('health', true, 'en').jurisdiction).toBe('FR');
+  });
+});

@@ -126,6 +126,8 @@ async function onboard(j: ReturnType<typeof journey>, options: Options = {}) {
 
   await j.at(t('onboarding.healthConsent.title'));
   expect(screen.getByText(t('legal.consent.health.v1.body'))).toBeTruthy();
+  // FIX-B: the country of residence is asked explicitly.
+  press(`residence-${mockLanguage.endsWith('SN') ? 'SN' : 'GB'}`);
   press('health-consent-agree');
 
   await j.at(t('onboarding.about.title'));
@@ -148,7 +150,8 @@ async function onboard(j: ReturnType<typeof journey>, options: Options = {}) {
 
   await screen.findByTestId(/^onboarding-result-/);
   const outcome = String(screen.getByTestId(/^onboarding-result-/).props.testID).replace('onboarding-result-', '');
-  await j.at(t(`onboarding.result.title.${outcome}` as Parameters<typeof t>[0]));
+  // FIX-B (CS-1): a training hold has its own title.
+  await j.at(screen.queryByTestId('result-hold') ? t('onboarding.result.hold.title') : t(`onboarding.result.title.${outcome}` as Parameters<typeof t>[0]));
   press('onboarding-next');
 
   await j.at(t('onboarding.terms.title'));
@@ -161,6 +164,8 @@ async function onboard(j: ReturnType<typeof journey>, options: Options = {}) {
 
   await j.at(t('legal.exerciseRisk.v1.title'));
   if (options.stopAt === 'exercise-risk') return;
+  // FIX-B: each exercise-risk statement is ticked on its own.
+  for (const s of ['risk', 'stop', 'honest', 'control']) press(`risk-statement-${s}`);
   press('onboarding-next');
   await j.at(t('firstWorkout.title'));
 }
@@ -255,6 +260,14 @@ describe('L2: first workout gated by recorded acceptance (goal condition 7, devi
     expect(screen.queryByRole('header', { name: j.t.t('firstWorkout.title') })).toBeNull();
     press('onboarding-next');
     await j.at(j.t.t('legal.exerciseRisk.v1.title'));
+    // FIX-B (B pre-review §1.5 item 3): every statement is off until the user turns it on; continuing without all is refused.
+    for (const s of ['risk', 'stop', 'honest', 'control']) expect(screen.getByTestId(`risk-statement-${s}`).props.accessibilityState).toMatchObject({ checked: false });
+    expect(screen.getByText(j.t.t('legal.exerciseRisk.v1.rights'))).toBeTruthy();
+    for (const s of ['risk', 'stop', 'honest']) press(`risk-statement-${s}`);
+    press('onboarding-next');
+    expect(screen.getByText(j.t.t('legal.risk.incomplete'))).toBeTruthy();
+    expect(screen.queryByRole('header', { name: j.t.t('firstWorkout.title') })).toBeNull();
+    press('risk-statement-control');
     press('onboarding-next');
     await j.at(j.t.t('firstWorkout.title'));
 
@@ -266,6 +279,12 @@ describe('L2: first workout gated by recorded acceptance (goal condition 7, devi
       expect(Number.isNaN(Date.parse(String(a.acceptedAt)))).toBe(false);
       expect(String(a.contentHash)).toMatch(/^[0-9a-f]{64}$/);
     }
+    // FIX-B (§1.5 item 2): and how assent was given: screen and flow version, method, text opened, build, how the country was known.
+    const evidence = Object.fromEntries(acceptances.map((a) => [a.documentId, a.evidence]));
+    expect(evidence.terms).toMatchObject({ presentation: 'onboarding.terms@2', assentMethod: 'button_after_open', textOpened: true, jurisdictionSource: 'user_confirmed' });
+    expect(evidence.privacy).toMatchObject({ presentation: 'onboarding.terms@2', assentMethod: 'read_acknowledged', textOpened: true });
+    expect(evidence.exercise_risk).toMatchObject({ presentation: 'onboarding.exercise_risk@2', assentMethod: 'statements_ticked', statementIds: ['risk', 'stop', 'honest', 'control'] });
+    for (const e of Object.values(evidence)) expect(String((e as { appBuild: string }).appBuild)).toMatch(/^[0-9A-Za-z.+_-]{1,40}$/);
     // ...and each goes to the device defensibility buffer, hash-chained (L11).
     const log = JSON.parse(String(mockDb.exec("SELECT value FROM app_kv WHERE key = 'defensibility_device_log'")[0]!.values[0]![0]));
     expect(verifyChain(log)).toMatchObject({ ok: true });
@@ -323,7 +342,8 @@ describe('L2: first workout gated by recorded acceptance (goal condition 7, devi
     press('review-legal');
     await j.at(j.t.t('onboarding.terms.title'));
     expect(screen.getByTestId('legal-terms-status').props.children).toBe(j.t.t('legal.status.needsReacceptance'));
-    expect(screen.getByTestId('legal-privacy-status').props.children).toBe(j.t.t('onboarding.terms.accepted', { version: 1 }));
+    // FIX-B: the Privacy Policy is recorded as read, not accepted.
+    expect(screen.getByTestId('legal-privacy-status').props.children).toBe(j.t.t('legal.status.read', { version: 1 }));
     press('legal-terms-read');
     press('legal-terms-accept');
     expect(screen.getByTestId('legal-terms-status').props.children).toBe(j.t.t('onboarding.terms.accepted', { version: 2 }));
@@ -334,16 +354,69 @@ describe('L2: first workout gated by recorded acceptance (goal condition 7, devi
   });
 });
 
+describe('FIX-B (B pre-review §1.5 item 1): the country of residence is asked, never inferred from the phone', () => {
+  it('a UK phone of someone living in France: consent and texts follow the confirmed country, and the record says the user confirmed it', async () => {
+    launch();
+    const j = journey('en');
+    await passAgeGate(j);
+    press('start-onboarding');
+    await j.at(j.t.t('onboarding.goals.title'));
+    act(() => router.push('/onboarding/health-consent'));
+    await j.at(j.t.t('onboarding.healthConsent.title'));
+    // Nothing is chosen for the user; agreeing first is refused.
+    for (const c of ['FR', 'GB', 'US', 'SN', 'CI', 'ZZ']) expect(screen.getByTestId(`residence-${c}`).props.accessibilityState).toMatchObject({ selected: false });
+    press('health-consent-agree');
+    expect(screen.getByTestId('residence-required')).toBeTruthy();
+    expect(mockDb.exec("SELECT value FROM app_kv WHERE key = 'consent_records'")).toEqual([]);
+    press('residence-FR');
+    press('health-consent-agree');
+    const consents = JSON.parse(String(mockDb.exec("SELECT value FROM app_kv WHERE key = 'consent_records'")[0]!.values[0]![0])) as Array<Record<string, unknown>>;
+    expect(consents.at(-1)).toMatchObject({ dataType: 'health', decision: 'granted', jurisdiction: 'FR' });
+    const residence = JSON.parse(String(mockDb.exec("SELECT value FROM app_kv WHERE key = 'legal_residence'")[0]!.values[0]![0])) as Record<string, unknown>;
+    expect(residence).toMatchObject({ jurisdiction: 'FR', source: 'user_confirmed' });
+  });
+});
+
 describe('S1/S7 routing in onboarding', () => {
   it('a screening flag shows "talk to a professional" with the S1 reason and the clearance path', async () => {
     launch();
     const j = journey('en');
     await passAgeGate(j);
-    await onboard(j, { yes: ['chest_discomfort'], stopAt: 'terms' });
+    await onboard(j, { yes: ['heart_or_blood_pressure'], stopAt: 'terms' });
     act(() => router.back());
     await j.at(j.t.t('onboarding.result.title.consult_professional'));
     expect(screen.getByText(j.t.t('reason.safety_profile.s1.unresolved_flag'))).toBeTruthy();
     expect(screen.getByText(j.t.t('onboarding.result.clearanceLater'))).toBeTruthy();
+  });
+
+  it('FIX-B (CS-1): a symptom flag holds all training until clearance — the hold is explained with the emergency line, and no session, assessment or calendar is offered', async () => {
+    launch();
+    const j = journey('en');
+    await passAgeGate(j);
+    await onboard(j, { yes: ['chest_discomfort'], stopAt: 'terms' });
+    act(() => router.back());
+    await j.at(j.t.t('onboarding.result.hold.title'));
+    expect(screen.getByText(j.t.t('onboarding.result.hold.body'))).toBeTruthy();
+    expect(screen.getByText(j.t.t('reason.safety_profile.s1.training_hold'))).toBeTruthy();
+    expect(screen.getByTestId('result-hold-emergency').props.children).toBe('Emergency number: call 999.');
+    press('onboarding-next');
+    await j.at(j.t.t('onboarding.terms.title'));
+    for (const doc of ['terms', 'privacy']) {
+      press(`legal-${doc}-read`);
+      press(`legal-${doc}-accept`);
+    }
+    press('onboarding-next');
+    await j.at(j.t.t('legal.exerciseRisk.v1.title'));
+    for (const s of ['risk', 'stop', 'honest', 'control']) press(`risk-statement-${s}`);
+    press('onboarding-next');
+    await j.at(j.t.t('firstWorkout.title'));
+    expect(screen.getByTestId('first-workout-hold')).toBeTruthy();
+    expect(screen.queryByTestId('first-session-plan')).toBeNull();
+    expect(screen.queryByTestId('first-workout-assess')).toBeNull();
+    press('first-workout-home');
+    await j.at(j.t.t('home.title'));
+    expect(screen.getByTestId('training-hold')).toBeTruthy();
+    for (const id of ['open-workout', 'open-calendar', 'open-assessment', 'open-pair']) expect(screen.queryByTestId(id)).toBeNull();
   });
 
   it('pregnancy routes to professional guidance and the low-intensity library', async () => {

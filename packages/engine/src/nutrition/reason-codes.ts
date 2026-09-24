@@ -38,6 +38,7 @@ export const M10_REASON_PARAMS: Readonly<Record<string, readonly string[]>> = Ob
     'nutrition.supportive.chosen',
     'nutrition.supportive.minor',
     'nutrition.supportive.advised_against',
+    'nutrition.supportive.eating_disorder',
     'nutrition.supportive.not_screened',
     'nutrition.supportive.special_population',
     // A4/A6: the target would be below the absolute energy floor (1,200 kcal/day)

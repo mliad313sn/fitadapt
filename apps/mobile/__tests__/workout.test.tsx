@@ -328,8 +328,68 @@ describe('today’s session on the device (offline)', () => {
     expect(screen.getByTestId('workout-start')).toBeTruthy();
   });
 
+  it('FIX-B (CS-5): a pain rating ≥ 6 asks about urgent signs; a back sign ends the session with the urgent-care notice and its emergency line (S3)', () => {
+    const d = withPlan();
+    openAndStart(d);
+    press('workout-pain');
+    press('workout-pain-joint-lumbar');
+    press('workout-pain-score-5');
+    press('workout-pain-save');
+    // Below S2 red: no urgent-signs step.
+    expect(screen.queryByTestId('workout-urgent-check')).toBeNull();
+    press('workout-pain');
+    press('workout-pain-joint-lumbar');
+    press('workout-pain-score-8');
+    press('workout-pain-save');
+    expect(screen.getByTestId('workout-urgent-check')).toBeTruthy();
+    press('workout-urgent-back_saddle_numbness');
+    expect(screen.getByTestId('workout-red_flag')).toBeTruthy();
+    expect(screen.getByTestId('notice-urgent_care')).toBeTruthy();
+    expect(screen.getByTestId('notice-urgent_care-emergency').props.children).toBe('Emergency number: call 999.');
+    expect(outbox(d, 'execution_logs').slice(-2)).toMatchObject([{ kind: 'red_flag', symptom: 'back_saddle_numbness' }, { kind: 'ended', reason: 'red_flag' }]);
+    expect(d.legal.getState().notices.at(-1)).toMatchObject({ noticeId: 'urgent_care', kind: 'shown' });
+    press('notice-urgent_care-ack');
+    expect(d.legal.getState().notices.at(-1)).toMatchObject({ noticeId: 'urgent_care', kind: 'acknowledged' });
+  });
+
+  it('FIX-B (CS-5): "none of these" keeps the session going with the pain rating only (the S2 traffic light is unchanged)', () => {
+    const d = withPlan();
+    openAndStart(d);
+    press('workout-pain');
+    press('workout-pain-joint-knee');
+    press('workout-pain-score-7');
+    press('workout-pain-save');
+    press('workout-urgent-none');
+    expect(screen.queryByTestId('workout-urgent-check')).toBeNull();
+    expect(screen.queryByTestId('workout-red_flag')).toBeNull();
+    expect(outbox(d, 'execution_logs').some((e) => (e as { kind: string }).kind === 'red_flag')).toBe(false);
+  });
+
+  it('FIX-B (CS-3): the stop sheet lists the stroke signs, a sudden severe headache and a sudden change of vision', () => {
+    const d = withPlan();
+    openAndStart(d);
+    press('workout-stop');
+    for (const s of ['face_drooping_speech', 'sudden_severe_headache', 'sudden_vision_change']) expect(screen.getByTestId(`workout-stop-symptom-${s}`)).toBeTruthy();
+    // The pregnancy list is only for the S7 pregnancy path.
+    expect(screen.queryByTestId('workout-stop-symptom-pregnancy_bleeding')).toBeNull();
+    press('workout-stop-symptom-sudden_vision_change');
+    expect(screen.getByTestId('notice-seek_care')).toBeTruthy();
+  });
+
+  it('FIX-B (CS-4): on the pregnancy path, the check-in lists the pregnancy warning signs; one shows "contact your midwife or doctor now" with the emergency line', () => {
+    jest.useFakeTimers({ now: new Date(MON), doNotFake: ['nextTick', 'setImmediate'] });
+    const d = device({ yes: ['pregnancy_or_recent_birth'] });
+    renderWith(d, <WorkoutScreen onExit={() => undefined} />);
+    expect(screen.getByTestId('recovery-redflag-chest_pain_pressure')).toBeTruthy();
+    press('recovery-redflag-pregnancy_bleeding');
+    expect(screen.getByTestId('notice-pregnancy_warning')).toBeTruthy();
+    expect(screen.getByTestId('notice-pregnancy_warning-emergency')).toBeTruthy();
+    expect(outbox(d, 'execution_logs').at(-1)).toMatchObject({ kind: 'red_flag', planId: null, symptom: 'pregnancy_bleeding' });
+    expect(d.legal.getState().notices.at(-1)).toMatchObject({ noticeId: 'pregnancy_warning', kind: 'shown' });
+  });
+
   it('S1: a flagged user’s session is capped at RPE 7 (at least 3 reps in reserve)', () => {
-    const d = withPlan({ yes: ['chest_discomfort'] });
+    const d = withPlan({ yes: ['heart_or_blood_pressure'] });
     openAndStart(d);
     const p = plan(d);
     expect(p.targetRir).toBeGreaterThanOrEqual(3);

@@ -1,5 +1,5 @@
 import { createTranslator, type MessageKey } from '@fitadapt/i18n';
-import type { Locale } from '@fitadapt/shared';
+import { stopSignCategory, type Locale, type RedFlagSymptom } from '@fitadapt/shared';
 import type { CounselApproval } from './documents.js';
 import { DOCUMENT_VARIANTS, JURISDICTION_MATRIX, jurisdictionProfile } from './jurisdictions.js';
 import { sha256Hex } from './sha256.js';
@@ -9,7 +9,7 @@ import { sha256Hex } from './sha256.js';
  * not buried in the terms. Wording: packages/i18n `legal.notice.*` (drafts,
  * require counsel review).
  */
-export const NOTICE_IDS = ['first_workout', 'first_hiit', 'assessment', 'nutrition_deficit', 'ai_coach', 'camera_mode', 'seek_care', 'pair_challenge'] as const;
+export const NOTICE_IDS = ['first_workout', 'first_hiit', 'assessment', 'nutrition_deficit', 'ai_coach', 'camera_mode', 'seek_care', 'pair_challenge', 'pregnancy_warning', 'urgent_care'] as const;
 export type NoticeId = (typeof NOTICE_IDS)[number];
 
 export const NOTICE_TRIGGERS = [
@@ -22,6 +22,10 @@ export const NOTICE_TRIGGERS = [
   'safety.red_flag',
   /** M09: a Fair Challenge between partners is a point of risk (legal risk register: injury during a partner challenge). */
   'pair.challenge.start',
+  /** FIX-B (CS-4): a pregnancy warning sign (S7 path) ended the session. */
+  'safety.pregnancy_warning',
+  /** FIX-B (CS-5): an urgent joint or back sign ended the session. */
+  'safety.urgent_msk',
 ] as const;
 export type NoticeTrigger = (typeof NOTICE_TRIGGERS)[number];
 
@@ -57,7 +61,17 @@ export const NOTICES: readonly NoticeDefinition[] = Object.freeze([
   { id: 'seek_care', trigger: 'safety.red_flag', frequency: 'every_time', version: 1, title: 'legal.notice.seekCare.v1.title', body: 'legal.notice.seekCare.v1.body', requiresAcknowledgement: true, emergencyGuidance: true, approvals: pending() },
   // M09: shown to each participant (in their own ledger) before a Fair Challenge; once per version until acknowledged.
   { id: 'pair_challenge', trigger: 'pair.challenge.start', frequency: 'once_per_version', version: 1, title: 'legal.notice.pairChallenge.v1.title', body: 'legal.notice.pairChallenge.v1.body', requiresAcknowledgement: true, emergencyGuidance: false, approvals: pending() },
+  // FIX-B (CS-4): pregnancy warning signs → contact the midwife or doctor now; the emergency guidance is shown with it.
+  { id: 'pregnancy_warning', trigger: 'safety.pregnancy_warning', frequency: 'every_time', version: 1, title: 'legal.notice.pregnancyWarning.v1.title', body: 'legal.notice.pregnancyWarning.v1.body', requiresAcknowledgement: true, emergencyGuidance: true, approvals: pending() },
+  // FIX-B (CS-5): urgent joint or back signs → stop and get urgent care (separate from the pain traffic light).
+  { id: 'urgent_care', trigger: 'safety.urgent_msk', frequency: 'every_time', version: 1, title: 'legal.notice.urgentCare.v1.title', body: 'legal.notice.urgentCare.v1.body', requiresAcknowledgement: true, emergencyGuidance: true, approvals: pending() },
 ] satisfies NoticeDefinition[]);
+
+/** FIX-B: the S3 stop notice that goes with a stop sign (general red flag, pregnancy warning sign, urgent joint or back sign). */
+export function stopNoticeFor(sign: RedFlagSymptom): NoticeDefinition {
+  const category = stopSignCategory(sign);
+  return notice(category === 'pregnancy' ? 'pregnancy_warning' : category === 'urgent_msk' ? 'urgent_care' : 'seek_care');
+}
 
 /** L5: persistent label shown on every AI coach screen, in addition to the conversation-start notice. */
 export const AI_PERSISTENT_LABEL: MessageKey = 'legal.notice.aiCoach.label';
@@ -98,10 +112,23 @@ export interface RenderedNotice {
   readonly contentHash: string;
 }
 
+/**
+ * The emergency line of a jurisdiction (FIX-B, CS-2/CS-6): unconditional ("call now"), the medical-emergency
+ * number first where one is configured (France: 15 beside 112), and the generic line kept wherever no general
+ * number is confirmed (Senegal, Côte d'Ivoire: unconfirmed SAMU numbers, validated:false; unknown markets).
+ */
+export function renderEmergencyGuidance(locale: Locale, jurisdiction: string, matrix = JURISDICTION_MATRIX): string {
+  const t = createTranslator(locale);
+  const { number, medical } = jurisdictionProfile(jurisdiction, matrix).emergency;
+  const numbers = medical && medical.numbers.length > 0 ? medical.numbers.join(t.t('legal.emergency.or')) : null;
+  if (numbers && number) return t.t('legal.emergency.medicalOrGeneral', { medical: numbers, number });
+  if (numbers) return t.t('legal.emergency.medicalThenLocal', { medical: numbers });
+  return number ? t.t('legal.emergency.withNumber', { number }) : t.t('legal.emergency.generic');
+}
+
 export function renderNotice(n: NoticeDefinition, locale: Locale, jurisdiction: string, matrix = JURISDICTION_MATRIX): RenderedNotice {
   const t = createTranslator(locale);
-  const number = jurisdictionProfile(jurisdiction, matrix).emergency.number;
-  const emergency = n.emergencyGuidance ? (number ? t.t('legal.emergency.withNumber', { number }) : t.t('legal.emergency.generic')) : null;
+  const emergency = n.emergencyGuidance ? renderEmergencyGuidance(locale, jurisdiction, matrix) : null;
   const title = t.t(n.title);
   const body = t.t(n.body);
   const draftBanner = t.t('legal.draft.banner');

@@ -1,3 +1,4 @@
+import { defineConfig } from '@fitadapt/shared';
 import type { SafetyCheck } from './evaluate.js';
 
 /**
@@ -8,6 +9,19 @@ import type { SafetyCheck } from './evaluate.js';
  * raise it (see `minimumAgeFor`).
  */
 export const AGE_GATE_MINIMUM_YEARS = 16 as const;
+
+/**
+ * FIX-B (review/mobile.md MOB-13): an input plausibility bound, not a safety threshold — a date of birth
+ * more than this many years ago is a typing error (year 0001 used to pass as "allowed", age 2025).
+ */
+export const AGE_GATE_CONFIG = defineConfig({
+  maxPlausibleAgeYears: {
+    value: 120,
+    unit: 'years',
+    source: 'engineering default: input plausibility bound for a date of birth (MOB-13, docs review), no external source',
+    validated: false,
+  },
+});
 
 /** A calendar date as the user entered it (no time zone, no clock). */
 export interface CalendarDate {
@@ -65,14 +79,19 @@ export function minimumAgeFor(_jurisdiction: string): number {
   return AGE_GATE_MINIMUM_YEARS;
 }
 
-/** Fails closed: anything that is not a real past date never passes. */
-export function evaluateAgeGate(birth: CalendarDate, today: CalendarDate, jurisdiction = 'ZZ'): AgeGateOutcome {
+/**
+ * Fails closed: anything that is not a real, plausible past date never passes.
+ * FIX-B (MOB-13): `localMinimumAge` is the jurisdiction's own minimum (packages/legal effectiveMinimumAge),
+ * which can only raise the S7 floor; a date of birth older than the plausibility bound is not a date.
+ */
+export function evaluateAgeGate(birth: CalendarDate, today: CalendarDate, jurisdiction = 'ZZ', localMinimumAge = 0): AgeGateOutcome {
   if (!isValidCalendarDate(birth) || !isValidCalendarDate(today)) {
     return { status: 'invalid', reasonCode: 'age_gate.not_a_date' };
   }
   if (compare(birth, today) > 0) return { status: 'invalid', reasonCode: 'age_gate.in_future' };
   const age = ageInYears(birth, today);
-  const minimum = Math.max(AGE_GATE_MINIMUM_YEARS, minimumAgeFor(jurisdiction));
+  if (age > AGE_GATE_CONFIG.maxPlausibleAgeYears.value) return { status: 'invalid', reasonCode: 'age_gate.not_a_date' };
+  const minimum = Math.max(AGE_GATE_MINIMUM_YEARS, minimumAgeFor(jurisdiction), Number.isFinite(localMinimumAge) ? localMinimumAge : 0);
   if (age < minimum) return { status: 'blocked', reasonCode: 'safety.s7.under_minimum_age' };
   return { status: 'allowed', age };
 }

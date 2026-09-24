@@ -22,7 +22,8 @@ export function createAccountApi(post: JsonPost, getAccessToken: () => Promise<s
       await post('/v1/privacy/consents', { id: r.id, dataType: r.dataType, decision: r.decision, version: r.version, locale: r.locale, jurisdiction: r.jurisdiction, source: r.source, recordedAt: r.recordedAt, ...(r.supersedes === undefined ? {} : { supersedes: r.supersedes }) }, await getAccessToken());
     },
     async postAcceptance(r) {
-      await post('/v1/legal/acceptances', { id: r.id, documentId: r.documentId, version: r.version, locale: r.locale, jurisdiction: r.jurisdiction, source: r.source, contentHash: r.contentHash, acceptedAt: r.acceptedAt }, await getAccessToken());
+      // FIX-B: how assent was given travels with the record (the API stores it once FIX-C adds the column).
+      await post('/v1/legal/acceptances', { id: r.id, documentId: r.documentId, version: r.version, locale: r.locale, jurisdiction: r.jurisdiction, source: r.source, contentHash: r.contentHash, acceptedAt: r.acceptedAt, ...(r.evidence ? { evidence: r.evidence } : {}) }, await getAccessToken());
     },
     async postNotice(n) {
       await post('/v1/legal/notices', { id: n.id, noticeId: n.noticeId, version: n.version, kind: n.kind, locale: n.locale, jurisdiction: n.jurisdiction, contentHash: n.contentHash, occurredAt: n.occurredAt }, await getAccessToken());

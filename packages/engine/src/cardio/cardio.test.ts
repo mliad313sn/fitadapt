@@ -283,7 +283,7 @@ describe('zones (goal condition 3)', () => {
 
 describe('gating (goal condition 4)', () => {
   it('allowHIIT=false or an unresolved screening flag (S1) → no HIIT or Tabata', () => {
-    for (const profile of [with_(cleared(), { allowHIIT: false }), profileFrom(['chest_discomfort'])]) {
+    for (const profile of [with_(cleared(), { allowHIIT: false }), profileFrom(['heart_or_blood_pressure'])]) {
       for (const protocol of ['hiit', 'tabata'] as const) {
         expect(generateSession(cardioInput(protocol, { safetyProfile: profile }), CARDIO_LIBRARY, ctx())).toEqual({ status: 'unavailable', reasonCodes: ['cardio.session.standalone', 'cardio.unavailable.hiit_s1'] });
       }
@@ -366,7 +366,7 @@ describe('gating (goal condition 4)', () => {
           minutes: fc.integer({ min: 5, max: 120 }),
           weeks: fc.integer({ min: 0, max: 3 }),
           perWeek: fc.integer({ min: 0, max: 4 }),
-          flags: fc.subarray(['chest_discomfort', 'bone_joint_back'] as const),
+          flags: fc.subarray(['heart_or_blood_pressure', 'bone_joint_back'] as const),
           allowHIIT: fc.boolean(),
           ceiling: fc.constantFrom('low', 'moderate', 'high' as const),
           limited: fc.subarray([...JOINTS]),

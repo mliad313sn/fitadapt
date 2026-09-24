@@ -6,6 +6,8 @@ import { ScrollView, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { localToday } from '../privacy/age-gate';
 import { useAgeGate } from '../privacy/PrivacyProvider';
+import { effectiveMinimumAge } from '@fitadapt/legal';
+import { useLegal } from '../profile/ProfileProvider';
 
 type ErrorKey = 'ageGate.error.not_a_date' | 'ageGate.error.in_future';
 
@@ -20,6 +22,8 @@ export function AgeGateScreen({ today = localToday }: { today?: () => CalendarDa
   const { t } = useI18n();
   const status = useAgeGate((s) => s.status);
   const submit = useAgeGate((s) => s.submit);
+  // FIX-B (MOB-13): the gate applies the jurisdiction's own minimum age, like the partner's gate does.
+  const jurisdiction = useLegal((s) => s.jurisdiction);
   const [day, setDay] = useState('');
   const [month, setMonth] = useState('');
   const [year, setYear] = useState('');
@@ -42,7 +46,7 @@ export function AgeGateScreen({ today = localToday }: { today?: () => CalendarDa
   }
 
   const onContinue = () => {
-    const outcome = submit({ year: toInt(year), month: toInt(month), day: toInt(day) }, today());
+    const outcome = submit({ year: toInt(year), month: toInt(month), day: toInt(day) }, today(), jurisdiction, effectiveMinimumAge(jurisdiction));
     setError(outcome.status === 'invalid' ? (`ageGate.error.${outcome.reasonCode.replace('age_gate.', '')}` as ErrorKey) : null);
   };
 

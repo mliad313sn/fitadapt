@@ -7,9 +7,14 @@ import {
   GLOBAL_CHAIN,
   LegalRegistry,
   LegalReleaseError,
+  AUTO_LEGAL_HOLD_REASON,
   MemoryDefensibilityLog,
+  automaticLegalHold,
+  openLegalHolds,
   NOTICES,
+  NOTICES_BLOCKED_UNTIL_BUILT,
   assertLegalReleaseReady,
+  blockedNotices,
   buildLegalHoldExport,
   buildProfileFrom,
   catalogueTargets,
@@ -34,7 +39,8 @@ const fixtureApproved = (approvals: readonly CounselApproval[]): CounselApproval
 describe('production build refuses unapproved legal texts', () => {
   it('fails today: every enabled text is a draft pending counsel review', () => {
     const unapproved = unapprovedTexts();
-    const texts = DEFAULT_REGISTRY.documents.reduce((sum, d) => sum + d.versions.length, 0) + NOTICES.length;
+    // FIX-B: notices of features not built (camera_mode) are not even enabled in the default release.
+    const texts = DEFAULT_REGISTRY.documents.reduce((sum, d) => sum + d.versions.length, 0) + NOTICES.length - Object.keys(NOTICES_BLOCKED_UNTIL_BUILT).length;
     expect(unapproved).toHaveLength(texts * DEFAULT_RELEASE.variants.length);
     expect(() => assertLegalReleaseReady('production')).toThrow(LegalReleaseError);
     expect(() => assertLegalReleaseReady('production')).toThrow(/lack counsel approval/);
@@ -51,6 +57,17 @@ describe('production build refuses unapproved legal texts', () => {
     expect(unapprovedTexts(DEFAULT_RELEASE, oneMissing, approvedNotices)).toEqual([{ text: 'terms v1', variant: 'SN' }]);
     const release = { ...DEFAULT_RELEASE, variants: ['GB'] as const };
     expect(() => assertLegalReleaseReady('production', release, oneMissing, approvedNotices)).not.toThrow();
+  });
+
+  it('FIX-B (B pre-review §3.1): the camera_mode notice ("No video leaves your device", SUB-C7) is refused in production even when approved, until M14 exists', () => {
+    expect(DEFAULT_RELEASE.notices).not.toContain('camera_mode');
+    expect(NOTICES_BLOCKED_UNTIL_BUILT.camera_mode).toMatch(/SUB-C7/);
+    const approvedRegistry = new LegalRegistry(DEFAULT_REGISTRY.documents.map((d) => ({ ...d, versions: d.versions.map((v) => ({ ...v, approvals: fixtureApproved(v.approvals) })) })));
+    const approvedNotices = NOTICES.map((x) => ({ ...x, approvals: fixtureApproved(x.approvals) }));
+    const withCamera = { ...DEFAULT_RELEASE, notices: [...DEFAULT_RELEASE.notices, 'camera_mode' as const] };
+    expect(blockedNotices(withCamera)).toHaveLength(DEFAULT_RELEASE.variants.length);
+    expect(() => assertLegalReleaseReady('production', withCamera, approvedRegistry, approvedNotices)).toThrow(/camera_mode/);
+    expect(() => assertLegalReleaseReady('preview', withCamera, approvedRegistry, approvedNotices)).not.toThrow();
   });
 
   it('an approval needs a reviewer, a record and a date', () => {
@@ -184,6 +201,12 @@ describe('claims linter (L1)', () => {
     ['Clinically proven method', 'en.clinically_proven'],
     ['Melt away fat', 'en.melt_fat'],
     ['Heals your knees', 'en.heal'],
+    // FIX-B additions (A4-A6 M10-25, B §3.6).
+    ['Boost your metabolism with this plan', 'en.boost_metabolism'],
+    ['A detox week', 'en.detox'],
+    ['Flush out toxins', 'en.detox'],
+    ['Your knee rehab plan', 'en.rehab'],
+    ['Recover from an injury faster', 'en.recover_from_injury'],
   ])('EN: flags "%s"', (text, rule) => {
     expect(hits(text, 'en')).toContain(rule);
   });
@@ -201,6 +224,11 @@ describe('claims linter (L1)', () => {
     ['Maigrir vite', 'fr.maigrir_vite'],
     ['Faites fondre les graisses', 'fr.fondre'],
     ['Méthode cliniquement prouvée', 'fr.cliniquement_prouve'],
+    // FIX-B additions (A4-A6 M10-25, B §3.6).
+    ['Boostez votre métabolisme', 'fr.booster_metabolisme'],
+    ['Une cure détox', 'fr.detox'],
+    ['Éliminez les toxines', 'fr.detox'],
+    ['Votre programme de rééducation', 'fr.reeducation'],
   ])('FR: flags "%s"', (text, rule) => {
     expect(hits(text, 'fr')).toContain(rule);
   });
@@ -269,5 +297,51 @@ describe('claims linter (L1)', () => {
   it('finds the codename in any spelling', () => {
     expect(findCodename('Welcome to FitAdapt, fit-adapt and Fit Adapt')).toEqual(['FitAdapt', 'fit-adapt', 'Fit Adapt']);
     expect(findCodename('Companion (working title)')).toEqual([]);
+  });
+});
+
+describe('FIX-B (B pre-review §2 item 3): an incident report places a legal hold automatically', () => {
+  const ids = () => {
+    let n = 0;
+    return () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`;
+  };
+  const SUBJ = 'subject-with-incident';
+  const incident = (step: 'received' | 'triaged' | 'closed', incidentId = '00000000-0000-4000-8000-0000000000aa') =>
+    ({ type: 'incident.recorded', chain: SUBJ, occurredAt: '2026-10-01T08:00:00.000Z', payload: { incidentId, category: 'injury_report', step } }) as const;
+
+  it('the first report of an incident places one hold; later steps, a closed step or another open hold add none; the chain verifies', () => {
+    const log = new MemoryDefensibilityLog(ids());
+    log.append({ type: 'notice.shown', chain: SUBJ, occurredAt: '2026-09-30T08:00:00.000Z', payload: { noticeId: 'seek_care', version: 1, locale: 'en', jurisdiction: 'GB', contentHash: 'a'.repeat(64) } });
+    log.append(incident('received'));
+    log.append(incident('triaged'));
+    log.append(incident('closed'));
+    const chain = log.events(SUBJ);
+    expect(chain.map((e) => e.type)).toEqual(['notice.shown', 'incident.recorded', 'legal_hold.placed', 'incident.recorded', 'incident.recorded']);
+    expect(chain[2]!.payload).toMatchObject({ reasonCode: AUTO_LEGAL_HOLD_REASON });
+    expect(openLegalHolds(chain).size).toBe(1);
+    expect(log.verify(SUBJ)).toMatchObject({ ok: true });
+    expect(buildLegalHoldExport(SUBJ, chain, '2026-10-02T00:00:00.000Z').legalHolds).toHaveLength(1);
+  });
+
+  it('integration FIX-B × FIX-E: the anchored head covers the automatic hold (the hold is the chain head, and the chain verifies against it)', () => {
+    const log = new MemoryDefensibilityLog(ids());
+    log.append(incident('received'));
+    const chain = log.events(SUBJ);
+    expect(chain.map((e) => e.type)).toEqual(['incident.recorded', 'legal_hold.placed']);
+    expect(log.head(SUBJ)).toEqual({ length: 2, head: chain[1]!.hash });
+    expect(log.verify(SUBJ)).toMatchObject({ ok: true, length: 2 });
+  });
+
+  it('after counsel released the hold, a new report holds the chain again; a closed step alone never does', () => {
+    const log = new MemoryDefensibilityLog(ids());
+    log.append(incident('received'));
+    const holdId = (log.events(SUBJ)[1]!.payload as { holdId: string }).holdId;
+    log.append({ type: 'legal_hold.released', chain: SUBJ, occurredAt: '2026-10-05T08:00:00.000Z', payload: { holdId, reasonCode: 'legal_hold.released.counsel' } });
+    expect(openLegalHolds(log.events(SUBJ)).size).toBe(0);
+    log.append(incident('closed'));
+    expect(openLegalHolds(log.events(SUBJ)).size).toBe(0);
+    log.append(incident('received', '00000000-0000-4000-8000-0000000000bb'));
+    expect(openLegalHolds(log.events(SUBJ)).size).toBe(1);
+    expect(automaticLegalHold([], { type: 'notice.shown', chain: SUBJ, occurredAt: '2026-10-01T08:00:00.000Z', payload: {} as never }, 'x')).toBeNull();
   });
 });

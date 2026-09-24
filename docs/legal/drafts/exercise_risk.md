@@ -12,22 +12,30 @@ Counsel approval: pending (see counsel-signoff-tracker.md).
 
 > DRAFT — requires counsel review. This text is not final and is not legal advice.
 
-Exercise is good for most people, but it carries risks, including soreness, injury and, rarely, serious heart problems.
+I understand that exercise is good for most people but carries risks, including soreness, injury and, rarely, serious heart problems.
 
-Stop at once and seek medical help if you feel chest pain or pressure, faintness, unusual breathlessness, a racing or irregular heartbeat, or sudden numbness or weakness.
+I will stop at once and seek medical help if I feel chest pain or pressure, faintness, much more breathlessness than the effort explains, a racing or irregular heartbeat, sudden numbness or weakness, face drooping or trouble speaking, a sudden severe headache or a sudden change of vision.
 
 If you have a health condition, are pregnant, or are unsure whether exercise is right for you, talk to a health professional first.
 
-You decide: you can skip, change or stop any exercise at any time.
+I answered the health questions honestly, and I will update them if my health changes.
+
+I know that I decide: I can skip, change or stop any exercise at any time.
+
+This acknowledgment does not limit your legal rights.
 
 ### FR — Avant votre première séance
 
 > PROJET — revue par un avocat requise (requires counsel review). Ce texte n’est pas définitif et ne constitue pas un conseil juridique.
 
-L’exercice est bénéfique pour la plupart des gens, mais il comporte des risques, notamment courbatures, blessures et, rarement, problèmes cardiaques graves.
+Je comprends que l’exercice est bénéfique pour la plupart des gens, mais qu’il comporte des risques, notamment courbatures, blessures et, rarement, problèmes cardiaques graves.
 
-Arrêtez-vous immédiatement et demandez une aide médicale en cas de douleur ou d’oppression dans la poitrine, de malaise, d’essoufflement inhabituel, de cœur qui s’emballe ou bat irrégulièrement, ou d’engourdissement ou de faiblesse soudains.
+Je m’arrêterai immédiatement et demanderai une aide médicale en cas de douleur ou de pression dans la poitrine, de malaise, d’essoufflement bien plus fort que l’effort ne l’explique, de cœur qui s’emballe ou bat irrégulièrement, d’engourdissement ou de faiblesse soudains, de visage qui s’affaisse ou de difficulté à parler, de mal de tête soudain et intense ou de trouble soudain de la vue.
 
 Si vous avez un problème de santé, êtes enceinte ou n’êtes pas sûr que l’exercice vous convienne, parlez-en d’abord à un professionnel de santé.
 
-Vous décidez : vous pouvez sauter, modifier ou arrêter tout exercice à tout moment.
+J’ai répondu honnêtement aux questions de santé et je les mettrai à jour si ma santé change.
+
+Je sais que c’est moi qui décide : je peux sauter, modifier ou arrêter tout exercice à tout moment.
+
+Cette reconnaissance ne limite pas vos droits.

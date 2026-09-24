@@ -25,6 +25,7 @@ export const nutritionFr: Record<keyof typeof nutritionEn, string> = {
   'engine.reason.nutrition.supportive.chosen': 'Vous avez choisi des habitudes simples, sans chiffres.',
   'engine.reason.nutrition.supportive.minor': 'Avant 18 ans, l’appli ne fixe pas de cible de calories. Elle propose des habitudes simples.',
   'engine.reason.nutrition.supportive.advised_against': 'Vous nous avez dit qu’un professionnel vous a conseillé de ne pas restreindre les calories : l’appli propose des habitudes sans chiffres.',
+  'engine.reason.nutrition.supportive.eating_disorder': 'Vous nous avez dit avoir ou avoir eu un trouble du comportement alimentaire : l’appli propose des habitudes sans chiffres de calories. Si l’alimentation ou votre poids vous inquiète, un médecin ou une structure spécialisée dans les troubles du comportement alimentaire peut vous aider, à tout moment.',
   'engine.reason.nutrition.supportive.not_screened': 'Les cibles de calories demandent d’abord un questionnaire de santé complet : l’appli propose des habitudes simples.',
   'engine.reason.nutrition.supportive.special_population': 'Pendant une grossesse ou après une naissance récente, l’appli ne fixe pas de cible de calories. Un professionnel de santé peut vous conseiller.',
   'engine.reason.nutrition.supportive.low_energy': 'Vos besoins énergétiques estimés sont bas : l’application ne fixe donc pas de chiffre de calories. Des habitudes simples sont proposées à la place ; un ou une diététicienne peut vous aider à construire un plan.',

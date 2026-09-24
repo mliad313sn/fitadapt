@@ -7,7 +7,11 @@ import { describe, expect, it } from 'vitest';
 import {
   AI_PERSISTENT_LABEL,
   CONSENT_DOCUMENT_IDS,
+  AcceptanceEvidenceSchema,
   DEFAULT_REGISTRY,
+  DefensibilityPayloads,
+  expectedAssentMethod,
+  receiveAcceptance,
   DOCUMENT_VARIANTS,
   JURISDICTION_MATRIX,
   LEGAL_DOCUMENTS,
@@ -91,10 +95,14 @@ describe('jurisdiction matrix', () => {
   });
 
   it('emergency numbers are shown only where configured; otherwise generic guidance', () => {
+    // FIX-B (CS-2): the line is unconditional ("call now" triggers are in the notice body), not "if this is an emergency".
     const seek = notice('seek_care');
-    expect(renderNotice(seek, 'en', 'GB').emergency).toBe('If this is an emergency, call 999 now.');
-    expect(renderNotice(seek, 'fr', 'FR').emergency).toBe('En cas d’urgence, appelez le 112 maintenant.');
-    expect(renderNotice(seek, 'fr', 'SN').emergency).toBe('En cas d’urgence, appelez maintenant le numéro d’urgence local.');
+    expect(renderNotice(seek, 'en', 'GB').emergency).toBe('Emergency number: call 999.');
+    // FIX-B (CS-6): France shows 15 (SAMU) beside 112.
+    expect(renderNotice(seek, 'fr', 'FR').emergency).toBe('Numéro d’urgence : appelez le 15 (urgences médicales) ou le 112.');
+    // Senegal: the unconfirmed SAMU numbers (validated:false) always come with the generic guidance.
+    expect(renderNotice(seek, 'fr', 'SN').emergency).toBe('Numéro d’urgence : appelez le 1515 ou le 15 (urgences médicales). Si vous n’arrivez pas à joindre ce numéro, appelez le numéro d’urgence local.');
+    expect(renderNotice(seek, 'fr', 'DE').emergency).toBe('Numéro d’urgence : appelez le numéro d’urgence local.');
     expect(renderNotice(notice('first_workout'), 'en', 'US').emergency).toBeNull();
   });
 });
@@ -272,7 +280,8 @@ describe('point-of-risk notices (L3, L5)', () => {
   it('covers first workout, HIIT, assessment, nutrition deficit, AI coach and camera mode', () => {
     expect(NOTICES.map((x) => x.trigger).sort()).toEqual(
       // M09 adds the Fair Challenge between partners (legal risk register: injury during a partner challenge).
-      ['ai_coach.conversation_start', 'assessment.start', 'camera.start', 'hiit.start', 'nutrition.deficit_setup', 'pair.challenge.start', 'safety.red_flag', 'workout.start'].sort(),
+      // FIX-B adds the pregnancy warning signs (CS-4) and the urgent joint or back signs (CS-5).
+      ['ai_coach.conversation_start', 'assessment.start', 'camera.start', 'hiit.start', 'nutrition.deficit_setup', 'pair.challenge.start', 'safety.red_flag', 'safety.pregnancy_warning', 'safety.urgent_msk', 'workout.start'].sort(),
     );
   });
 
@@ -294,5 +303,76 @@ describe('point-of-risk notices (L3, L5)', () => {
   it('a notice that needs no acknowledgement counts as done once shown', () => {
     const custom = [{ ...notice('camera_mode'), requiresAcknowledgement: false }];
     expect(noticesToShow('camera.start', [impression('camera_mode', 'shown')], custom)).toEqual([]);
+  });
+});
+
+describe('FIX-B (B pre-review §1.5 item 4, §3.1): the texts say what the app really does', () => {
+  const NOW_B = new Date('2026-10-01T00:00:00.000Z');
+  it('health-data consent: refusing locks training features (no "most cautious training" promise) and every dependent data type is named, FR and EN', () => {
+    const doc = DEFAULT_REGISTRY.get('consent.health')!;
+    const text = (locale: 'en' | 'fr') => renderDocument(doc, versionInForce(doc, NOW_B), locale, 'FR').sections.map((s) => s.text).join(' ');
+    // It must match firstWorkoutGate: without the consent the first workout is refused.
+    expect(firstWorkoutGate([], [], { jurisdiction: 'FR', now: NOW_B }).missing).toContain('consent.health');
+    expect(text('en')).not.toMatch(/cautious/i);
+    expect(text('fr')).not.toMatch(/prudent/i);
+    for (const part of ['screening answers', 'pain and readiness check-ins', 'safety stops', 'assessment results', 'body measurements', 'food logs', 'sessions, assessments, programmes and nutrition targets are not available']) expect(text('en')).toContain(part);
+    for (const part of ['questionnaire de santé', 'suivis de douleur et de forme du jour', 'arrêts de sécurité', 'résultats de mes évaluations', 'mesures corporelles', 'journaux alimentaires', 'ne sont pas disponibles']) expect(text('fr')).toContain(part);
+  });
+
+  it('nutrition_deficit notice: "minimum floors", never "safe floors" (the S4 floors are validated:false)', () => {
+    const n = notice('nutrition_deficit');
+    expect(renderNotice(n, 'en', 'GB').body).toContain('above minimum floors');
+    expect(renderNotice(n, 'en', 'GB').body).not.toMatch(/safe floors/i);
+    expect(renderNotice(n, 'fr', 'FR').body).toContain('seuils minimaux');
+    expect(renderNotice(n, 'fr', 'FR').body).not.toMatch(/seuils sûrs/i);
+  });
+});
+
+describe('FIX-B (B pre-review §1.5 items 2, 3, 5): how assent was given is recorded and checked', () => {
+  const NOW_C = new Date('2026-10-01T00:00:00.000Z');
+  const hashOf = (documentId: 'terms' | 'privacy' | 'exercise_risk', locale: 'en' | 'fr' = 'en', jurisdiction = 'GB') => {
+    const doc = DEFAULT_REGISTRY.get(documentId)!;
+    return renderDocument(doc, versionInForce(doc, NOW_C), locale, jurisdiction).contentHash;
+  };
+  const base = (documentId: 'terms' | 'privacy' | 'exercise_risk') => ({ documentId, version: 1, locale: 'en' as const, jurisdiction: 'GB', contentHash: hashOf(documentId) });
+  const evidence = (over: Record<string, unknown> = {}) => ({ presentation: 'onboarding.exercise_risk@2', assentMethod: 'statements_ticked', textOpened: true, appBuild: '1.0.0+42', jurisdictionSource: 'user_confirmed', statementIds: ['risk', 'stop', 'honest', 'control'], ...over });
+
+  it('the exercise-risk acknowledgment is four separate statements plus "does not limit your legal rights", FR and EN', () => {
+    const doc = DEFAULT_REGISTRY.get('exercise_risk')!;
+    expect(doc.statements!.map((s) => s.id)).toEqual(['risk', 'stop', 'honest', 'control']);
+    const en = renderDocument(doc, versionInForce(doc, NOW_C), 'en', 'GB');
+    const fr = renderDocument(doc, versionInForce(doc, NOW_C), 'fr', 'FR');
+    for (const s of doc.statements!) expect(en.sections.map((x) => x.key)).toContain(s.key);
+    expect(en.sections.map((x) => x.text)).toContain('This acknowledgment does not limit your legal rights.');
+    expect(fr.sections.map((x) => x.text)).toContain('Cette reconnaissance ne limite pas vos droits.');
+    // The stop statement names the same warning signs as the S3 list (A1: identical wording across the texts).
+    const stop = en.sections.find((x) => x.key === 'legal.exerciseRisk.v1.stop')!.text;
+    for (const sign of ['chest pain or pressure', 'faintness', 'racing or irregular heartbeat', 'sudden numbness or weakness', 'face drooping or trouble speaking', 'sudden severe headache', 'sudden change of vision']) expect(stop).toContain(sign);
+    for (const text of [...en.sections, ...fr.sections].map((x) => x.text)) expect(text).not.toMatch(/waiver|release|décharge/i);
+  });
+
+  it('every statement must be ticked; the evidence must match the document (statements, read, accept after opening)', () => {
+    const ctx = { jurisdiction: 'GB', now: NOW_C };
+    expect(checkAcceptance({ ...base('exercise_risk'), evidence: evidence() }, ctx)).toEqual({ ok: true });
+    expect(checkAcceptance({ ...base('exercise_risk'), evidence: evidence({ statementIds: ['risk', 'stop', 'control'] }) }, ctx)).toEqual({ ok: false, code: 'legal.statements_incomplete' });
+    expect(checkAcceptance({ ...base('exercise_risk'), evidence: evidence({ statementIds: ['risk', 'stop', 'honest', 'control', 'extra'] }) }, ctx)).toEqual({ ok: false, code: 'legal.statements_incomplete' });
+    expect(checkAcceptance({ ...base('exercise_risk'), evidence: evidence({ assentMethod: 'button_after_open' }) }, ctx)).toEqual({ ok: false, code: 'legal.evidence_invalid' });
+    expect(checkAcceptance({ ...base('privacy'), evidence: evidence({ presentation: 'onboarding.terms@2', assentMethod: 'read_acknowledged', statementIds: undefined }) }, ctx)).toEqual({ ok: true });
+    expect(checkAcceptance({ ...base('privacy'), evidence: evidence({ presentation: 'onboarding.terms@2', assentMethod: 'button_after_open', statementIds: undefined }) }, ctx)).toEqual({ ok: false, code: 'legal.evidence_invalid' });
+    expect(checkAcceptance({ ...base('terms'), evidence: evidence({ presentation: 'onboarding.terms@2', assentMethod: 'button_after_open', textOpened: false, statementIds: undefined }) }, ctx)).toEqual({ ok: false, code: 'legal.evidence_invalid' });
+    expect(checkAcceptance({ ...base('terms'), evidence: { presentation: 'free text!' } }, ctx)).toEqual({ ok: false, code: 'legal.evidence_invalid' });
+    // A record without evidence (other clients, records made before FIX-B) is still checked as before.
+    expect(checkAcceptance(base('terms'), ctx)).toEqual({ ok: true });
+    expect(DEFAULT_REGISTRY.get('privacy')!.assent).toBe('read');
+    expect(expectedAssentMethod(DEFAULT_REGISTRY.get('terms')!)).toBe('button_after_open');
+  });
+
+  it('the server stamps its own receipt time beside the device time; the defensibility payload carries the evidence (and nothing free-form)', () => {
+    const record = { id: '00000000-0000-4000-8000-000000000001', ...base('terms'), source: 'mobile' as const, acceptedAt: '2026-09-01T08:00:00.000Z' };
+    expect(receiveAcceptance(record, NOW_C)).toEqual({ ...record, serverReceivedAt: '2026-10-01T00:00:00.000Z' });
+    const payload = { documentId: 'exercise_risk', version: 1, locale: 'en', jurisdiction: 'GB', contentHash: hashOf('exercise_risk'), source: 'mobile', ...evidence() };
+    expect(DefensibilityPayloads['acceptance.recorded'].safeParse(payload).success).toBe(true);
+    expect(DefensibilityPayloads['acceptance.recorded'].safeParse({ ...payload, note: 'free text' }).success).toBe(false);
+    expect(AcceptanceEvidenceSchema.safeParse(evidence({ jurisdictionSource: 'guessed' })).success).toBe(false);
   });
 });

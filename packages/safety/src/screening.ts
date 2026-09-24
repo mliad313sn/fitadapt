@@ -14,7 +14,7 @@ import {
 } from '@fitadapt/shared';
 import { ageInYears, evaluateAgeGate } from './age-gate.js';
 import type { SafetyCheck } from './evaluate.js';
-import { SCREENING_CONFIG, SCREENING_RULES, SCREENING_RULES_VERSION, type Restrictions } from './screening.config.js';
+import { SCREENING_CONFIG, SCREENING_RULES, SCREENING_RULES_VERSION, holdsUntilClearance, type Restrictions } from './screening.config.js';
 
 /**
  * M01 health screening → SafetyProfile (S1, S4, S7). Pure and fail-closed:
@@ -28,6 +28,9 @@ import { SCREENING_CONFIG, SCREENING_RULES, SCREENING_RULES_VERSION, type Restri
  *   excluded from automatic programming.
  * - S4: deficit nutrition features are off under 18 or when a professional
  *   advised against calorie restriction.
+ * - Stricter than S1 (FIX-B, CS-1): a symptom flag, or a professional's advice to
+ *   limit activity, HOLDS all training (no session, no assessment, no program)
+ *   until the clearance is attested — see `trainingHoldFlags`.
  */
 export const S1_MAX_RPE_WHILE_UNRESOLVED = 7 as const;
 export const S4_DEFICIT_MINIMUM_AGE_YEARS = 18 as const;
@@ -35,6 +38,7 @@ export const S4_DEFICIT_MINIMUM_AGE_YEARS = 18 as const;
 export const SCREENING_QUESTIONS: readonly ScreeningQuestionId[] = SCREENING_QUESTION_IDS;
 
 const OPEN: Omit<SafetyProfile, 'reasonCodes' | 'screeningOutcome' | 'unresolvedFlags' | 'limitedJoints' | 'excludedExerciseIds'> = {
+  heartRateZonesAllowed: true,
   maxRPE: 10,
   allowHIIT: true,
   allowMaxTests: true,
@@ -75,9 +79,31 @@ export function notScreenedSafetyProfile(reasonCode = 'safety_profile.not_screen
     ...apply({ ...OPEN, screeningOutcome: 'not_screened', unresolvedFlags: [], limitedJoints: [], excludedExerciseIds: [], reasonCodes: [] }, { ...S1_CAPS, impactCeiling: 'low' }),
     deficitNutritionAllowed: false,
     automaticProgrammingAllowed: false,
+    heartRateZonesAllowed: false,
     reasonCodes: [reasonCode],
   };
 }
+
+/** Reason code of a profile whose training is held until clearance (FR/EN in packages/i18n `reason.*`). */
+export const TRAINING_HOLD_REASON = 'safety_profile.s1.training_hold' as const;
+/** Reason code a safety check returns while training is held (FR/EN in packages/i18n `reason.*`). */
+export const TRAINING_HOLD_VIOLATION = 'safety.s1.training_hold' as const;
+
+/**
+ * FIX-B (CS-1): the unresolved flags that hold ALL training until the user
+ * attests a professional's clearance (symptom flags and "advised to limit
+ * activity"). Empty = no hold. Read from `unresolvedFlags`, so a profile
+ * combined from several screenings (strictestSafetyProfile, a union) keeps
+ * the hold, and a clearance attested in one screening never lifts a flag
+ * another one raised.
+ */
+export function trainingHoldFlags(profile: Pick<SafetyProfile, 'unresolvedFlags'>): ScreeningQuestionId[] {
+  return profile.unresolvedFlags.filter((q) => holdsUntilClearance(q));
+}
+
+/** The hold as a safety check (first-workout gate, engine inputs): refuses while any holding flag is unresolved. */
+export const trainingHoldCheck: SafetyCheck<{ profile: Pick<SafetyProfile, 'unresolvedFlags'> }> = ({ profile }) =>
+  trainingHoldFlags(profile).length > 0 ? { invariant: 'S1', reasonCode: TRAINING_HOLD_VIOLATION } : null;
 
 /** S7: under the minimum age nothing is offered. */
 export function blockedSafetyProfile(): SafetyProfile {
@@ -124,6 +150,7 @@ export function evaluateScreening(input: ScreeningResponses): SafetyProfile {
   for (const q of yes) {
     const rule = SCREENING_RULES[q];
     reasons.push(rule.reasonCode);
+    if (rule.effortBasedZones) profile = { ...profile, heartRateZonesAllowed: false };
     switch (rule.kind) {
       case 'clearance_flag':
         flags.push(q);
@@ -151,6 +178,11 @@ export function evaluateScreening(input: ScreeningResponses): SafetyProfile {
     } else {
       profile = { ...apply(profile, S1_CAPS), unresolvedFlags: flags };
       reasons.push('safety_profile.s1.unresolved_flag');
+      // Stricter than S1: nothing is programmed or assessed until the clearance is attested.
+      if (trainingHoldFlags(profile).length > 0) {
+        profile = { ...profile, automaticProgrammingAllowed: false };
+        reasons.push(TRAINING_HOLD_REASON);
+      }
     }
   }
 
@@ -179,13 +211,15 @@ export function addMonths(at: Date, months: number): Date {
 export type RescreenStatus =
   | { readonly status: 'never_screened' }
   | { readonly status: 'current'; readonly dueAt: string }
-  | { readonly status: 'due'; readonly reason: 'annual' | 'new_condition'; readonly dueAt: string };
+  | { readonly status: 'due'; readonly reason: 'annual' | 'new_condition' | 'rejected'; readonly dueAt: string };
 
 /**
  * M01: re-screen every 12 months (config) or when the user reports a new
- * condition after the last screening. Clock injected.
+ * condition after the last screening. Clock injected. FIX-B: a latest
+ * screening the server rejected makes a re-screen due now.
  */
-export function rescreenStatus(lastScreenedAt: string | null, now: Date, newConditionReportedAt: string | null = null): RescreenStatus {
+export function rescreenStatus(lastScreenedAt: string | null, now: Date, newConditionReportedAt: string | null = null, screeningRejected = false): RescreenStatus {
+  if (screeningRejected) return { status: 'due', reason: 'rejected', dueAt: now.toISOString() };
   if (lastScreenedAt === null || Number.isNaN(Date.parse(lastScreenedAt))) return { status: 'never_screened' };
   const dueAt = addMonths(new Date(lastScreenedAt), SCREENING_CONFIG.rescreenIntervalMonths.value).toISOString();
   if (newConditionReportedAt !== null && Date.parse(newConditionReportedAt) > Date.parse(lastScreenedAt)) {
@@ -208,6 +242,8 @@ export interface IntensityRequest {
  * whatever the profile's other fields say (defence in depth).
  */
 export const screeningGateCheck: SafetyCheck<{ profile: SafetyProfile; request: IntensityRequest }> = ({ profile, request }) => {
+  // FIX-B (CS-1): a holding flag refuses every request, whatever its effort (defence in depth over the profile fields).
+  if (trainingHoldFlags(profile).length > 0) return { invariant: 'S1', reasonCode: TRAINING_HOLD_VIOLATION };
   const unresolved = profile.unresolvedFlags.length > 0 || profile.screeningOutcome === 'not_screened' || profile.screeningOutcome === 'blocked';
   const maxRPE = unresolved ? Math.min(profile.maxRPE, S1_MAX_RPE_WHILE_UNRESOLVED) : profile.maxRPE;
   if (!(request.rpe <= maxRPE)) return { invariant: 'S1', reasonCode: 'safety.s1.rpe_above_cap' };

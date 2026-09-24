@@ -2,6 +2,7 @@ import { boundSessionInput, createEngineContext } from '@fitadapt/engine';
 import { generateSession } from '@fitadapt/exercise-library';
 import { formatMass, type MessageKey } from '@fitadapt/i18n';
 import { NOTICES, noticesToShow, renderNotice } from '@fitadapt/legal';
+import { trainingHoldFlags } from '@fitadapt/safety';
 import { useI18n } from '@fitadapt/i18n/react';
 import { Button, Card, Chip, useTheme } from '@fitadapt/ui';
 import { useRouter } from 'expo-router';
@@ -39,6 +40,8 @@ export function FirstWorkoutScreen() {
   const minutes = useProfile((s) => s.profile?.schedule.minutesPerSession ?? 30);
 
   const active = equipment.find((p) => p.id === activeId) ?? equipment[0];
+  // FIX-B (CS-1): training on hold until clearance — no plan and no assessment offered (the engine refuses them too).
+  const held = trainingHoldFlags(safety).length > 0;
   const pending = noticesToShow('workout.start', impressions, NOTICES);
   const profile = useProfile((s) => s.profile);
   const history = useSessionHistory();
@@ -89,7 +92,11 @@ export function FirstWorkoutScreen() {
           {t('firstWorkout.available', { count: pool.length })}
         </Text>
         {safety.lowIntensityLibraryOnly ? <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.body }}>{t('firstWorkout.lowIntensity')}</Text> : null}
-        {session?.status === 'ok' ? (
+        {held ? (
+          <Card testID="first-workout-hold">
+            <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.body }}>{t('firstWorkout.hold')}</Text>
+          </Card>
+        ) : session?.status === 'ok' ? (
           <View style={{ gap: theme.spacing.md }} testID="first-session-plan">
             <Text accessibilityRole="header" style={{ color: theme.colors.text, fontSize: theme.fontSize.title, fontWeight: theme.fontWeight.bold }}>
               {t('firstWorkout.plan.title')}

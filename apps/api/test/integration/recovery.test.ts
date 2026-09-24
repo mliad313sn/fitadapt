@@ -238,10 +238,11 @@ describe('M05 red flags on the server (goal condition 7)', () => {
 
   it('the seek-care notice is recorded with the emergency guidance of the user’s jurisdiction: 112 in France, 999 in the UK (two jurisdictions)', async () => {
     const seek = notice('seek_care');
-    for (const [jurisdiction, number] of [['FR', '112'], ['GB', '999']] as const) {
+    // FIX-B (CS-2, CS-6): an unconditional emergency line; France shows 15 (SAMU) beside 112.
+    for (const [jurisdiction, line] of [['FR', 'Emergency number: call 15 (medical emergencies) or 112.'], ['GB', 'Emergency number: call 999.']] as const) {
       const s = await session();
       const rendered = renderNotice(seek, 'en', jurisdiction);
-      expect(rendered.emergency).toBe(`If this is an emergency, call ${number} now.`);
+      expect(rendered.emergency).toBe(line);
       const other = renderNotice(seek, 'en', jurisdiction === 'FR' ? 'GB' : 'FR');
       const post = (contentHash: string) => h.app.inject({ method: 'POST', url: '/v1/legal/notices', headers: bearer(s.token), payload: { noticeId: 'seek_care', version: seek.version, kind: 'shown', locale: 'en', jurisdiction, contentHash, occurredAt: h.clock.now().toISOString() } });
       // What the person saw is provable: the other market's guidance does not match this jurisdiction.

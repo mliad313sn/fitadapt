@@ -14,6 +14,7 @@ export const onboardingEn = {
   'home.legal.reviewHint': 'Some texts changed. Accept the new versions to keep training.',
   'home.rescreen.annual': 'It has been a while since your health answers. Please update them.',
   'home.rescreen.newCondition': 'You told us something changed. Please update your health answers.',
+  'home.rescreen.rejected': 'Your latest health answers could not be saved. Please answer them again; until then, the app stays at its most careful settings.',
   'home.rescreen.button': 'Update my health answers',
   'home.newCondition.report': 'Something changed in my health',
   'home.newCondition.reportHint': 'Asks you to answer the health questions again',
@@ -112,7 +113,7 @@ export const onboardingEn = {
   'onboarding.healthConsent.agree': 'I agree',
   'onboarding.healthConsent.agreeHint': 'Records your consent to the health-data text above',
   'onboarding.healthConsent.decline': 'Not now',
-  'onboarding.healthConsent.declined': 'Without this consent your answers cannot be saved, and your first session stays locked. You can agree later in Privacy settings.',
+  'onboarding.healthConsent.declined': 'Without this consent your answers cannot be saved, so sessions, assessments, programmes and nutrition targets stay locked. The exercise library stays available. You can agree later in Privacy settings.',
 
   // Screening result
   'onboarding.result.title.cleared': 'You are all set',
@@ -123,21 +124,24 @@ export const onboardingEn = {
   'onboarding.result.body.cleared': 'Sessions can use the full range of intensities. You stay in control of every exercise.',
   'onboarding.result.body.cleared_with_restrictions': 'Sessions will avoid some movements and keep impact lower where needed.',
   'onboarding.result.body.consult_professional': 'Before harder training, speak with a doctor or another health professional. Until you confirm they cleared you, sessions stay at a moderate effort, without high-intensity intervals or maximal tests.',
-  'onboarding.result.body.not_screened': 'Sessions stay at the most cautious level until you answer every question.',
+  'onboarding.result.body.not_screened': 'Sessions are not available until you answer every question.',
   'onboarding.result.body.blocked': 'You need to be 16 or older to use this app. Thank you for your interest.',
   'onboarding.result.pregnancy': 'During pregnancy and after giving birth, talk with your midwife, doctor or another health professional before exercising. In the meantime the app offers only a low-intensity exercise library and does not build programmes for you.',
   'onboarding.result.why': 'Why',
   'onboarding.result.clearanceLater': 'Once a professional has cleared you, update your health answers from the home screen.',
+  'onboarding.result.hold.title': 'Training is on hold for now',
+  'onboarding.result.hold.body': 'You reported a symptom, or a professional asked you to limit activity. Please see a doctor before you start exercising. Until a professional agrees you can exercise, the app does not offer sessions, assessments or programmes.',
+  'onboarding.result.hold.urgent': 'If you have chest pain or pressure, feel faint or feel very unwell right now, do not wait:',
 
   // Terms and privacy step
   'onboarding.terms.title': 'Terms and privacy',
-  'onboarding.terms.intro': 'Please read and accept both texts to continue.',
+  'onboarding.terms.intro': 'Please read and accept the Terms of Use, and read the Privacy Policy, to continue.',
   'onboarding.terms.accepted': 'Accepted (version {version})',
   'onboarding.terms.hide': 'Hide the text',
-  'onboarding.terms.required': 'Accept both texts to continue.',
+  'onboarding.terms.required': 'Accept the Terms of Use and confirm you read the Privacy Policy to continue.',
 
   // Exercise-risk step
-  'onboarding.risk.accept': 'I understand and accept',
+  'onboarding.risk.accept': 'I confirm these statements',
 
   // First session
   'firstWorkout.title': 'Your session',
@@ -146,6 +150,7 @@ export const onboardingEn = {
   'firstWorkout.available': '{count, plural, =0 {No exercise available here yet} one {# exercise available here} other {# exercises available here}}',
   'firstWorkout.builderPending': 'Your session is built from your goals and the equipment of this place. The session builder is not part of this version yet.',
   'firstWorkout.lowIntensity': 'Only the low-intensity exercise library is offered for now.',
+  'firstWorkout.hold': 'Training is on hold until a health professional has checked you and agrees you can exercise. Then update your health answers from the home screen.',
   'firstWorkout.noticeAcknowledged': 'Notice read',
   'firstWorkout.home': 'Back to home',
 
@@ -186,10 +191,15 @@ export const onboardingEn = {
   'reason.safety_profile.s7.under_minimum_age': 'The app is only available from age 16.',
   'reason.safety_profile.s1.clearance_attested': 'You confirmed that a professional cleared you to exercise.',
   'reason.safety_profile.s1.unresolved_flag': 'Until a professional clears you, effort stays moderate, without high-intensity intervals or maximal tests.',
+  'reason.safety_profile.s1.training_hold': 'Because of what you reported, sessions, assessments and programmes are on hold until a professional has checked you and agrees you can exercise.',
+  'reason.safety_profile.restriction.medication_affecting_heart_rate': 'You said you take a medicine that may change your heart rate, so effort is guided by how hard it feels and the talk test, not by heart-rate zones.',
+  'reason.safety_profile.s4.eating_disorder': 'You said you have or had an eating disorder, so calorie-deficit features stay off.',
+  'reason.safety.s1.training_hold': 'Training is on hold until a professional has checked you and agrees you can exercise.',
   'reason.safety_profile.limitation.reported': 'You asked to go easy on some body areas.',
   'reason.safety_profile.not_screened.incomplete': 'Not every health question has an answer.',
   'reason.safety_profile.not_screened.invalid': 'The health answers could not be read.',
   'reason.safety_profile.not_screened.invalid_birth_date': 'The date of birth is not a real date.',
   'reason.safety_profile.not_screened.no_consent': 'Health-data consent is off, so health answers are not used.',
+  'reason.safety_profile.not_screened.rejected': 'Your latest health answers could not be saved, so the most careful settings apply until you answer again.',
   'reason.safety_profile.ambiguous_latest': 'Some health screenings could not be put in order (for example, answered on two devices), so the most careful answers apply until your next screening.',
 } as const;

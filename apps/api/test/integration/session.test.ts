@@ -170,7 +170,7 @@ describe('M02 started sessions: re-derived on the server, prescription logged in
   });
 
   it('S1: a flagged user’s session never asks for more than RPE 7, and its prescription is logged after the program’s S1 caps', async () => {
-    const r = await ready({ yes: ['chest_discomfort'] });
+    const r = await ready({ yes: ['heart_or_blood_pressure'] });
     const record = workout(sessionInput(r));
     expect(record.plan.exercises.every((e) => e.sets.every((x) => 10 - x.targetRir <= 7))).toBe(true);
     expect(await push(r.s, [insert('workout_sessions', record)])).toEqual(['applied']);
@@ -182,7 +182,7 @@ describe('M02 started sessions: re-derived on the server, prescription logged in
   });
 
   it('refuses a session that is not what the engine derives, or not for what the server stores', async () => {
-    const r = await ready({ yes: ['chest_discomfort'] });
+    const r = await ready({ yes: ['heart_or_blood_pressure'] });
     const good = workout(sessionInput(r));
     const heavier = { ...good, plan: { ...good.plan, exercises: good.plan.exercises.map((e, i) => (i === 0 ? { ...e, sets: e.sets.map((x) => ({ ...x, loadKg: (x.loadKg ?? 0) + 20 })) } : e)) } };
     const oldEngine = { ...good, plan: { ...good.plan, engineVersion: '0.1.0' } };

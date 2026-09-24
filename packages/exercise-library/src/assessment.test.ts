@@ -206,7 +206,8 @@ describe('every M07 reason code has an FR and EN explanation, and the engine emi
     const known = new Set([...ASSESSMENT_REASON_CODES, ...SESSION_REASON_CODES]);
     const seen = new Set<string>();
     const places: EquipmentId[][] = [[], ['pull_up_bar'], ['pull_up_bar', 'resistance_band', 'dumbbell'], ['sturdy_chair'], [...EQUIPMENT_PRESETS.full_gym], [...EQUIPMENT_PRESETS.park]];
-    const profiles = [profile(), profile(['chest_discomfort']), profile(['bone_joint_back']), profile(['pregnancy_or_recent_birth']), profile([], 2015)];
+    // FIX-B (CS-1): chest_discomfort now holds training (no plan); heart_or_blood_pressure keeps exercising the S1-capped codes.
+    const profiles = [profile(), profile(['heart_or_blood_pressure']), profile(['chest_discomfort']), profile(['bone_joint_back']), profile(['pregnancy_or_recent_birth']), profile([], 2015)];
     for (const p of Object.values(ASSESSMENT_PROTOCOLS)) {
       for (const safetyProfile of profiles) {
         for (const equipment of places) {

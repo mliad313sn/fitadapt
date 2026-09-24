@@ -376,10 +376,64 @@ export const SetLogSchema = z.strictObject({
 });
 export type SetLog = z.infer<typeof SetLogSchema>;
 
-/** S3 symptoms (docs/specs/00-product-vision.md): any of them ends the session and locks intensity. */
-export const RED_FLAG_SYMPTOMS = ['chest_pain_pressure', 'fainting', 'disproportionate_breathlessness', 'palpitations', 'sudden_numbness_weakness'] as const;
-export const RedFlagSymptomSchema = z.enum(RED_FLAG_SYMPTOMS);
+/**
+ * S3 symptoms (docs/specs/00-product-vision.md): any of them ends the session and locks intensity.
+ * FIX-B (CS-3, A1/A2 pre-review M05-18): the stroke signs beyond arm numbness (face drooping, speech
+ * trouble), a sudden severe headache and a sudden change of vision; the chest item's copy now names
+ * the arm, jaw and neck. Shown to everyone.
+ */
+export const RED_FLAG_SYMPTOMS = [
+  'chest_pain_pressure',
+  'fainting',
+  'disproportionate_breathlessness',
+  'palpitations',
+  'sudden_numbness_weakness',
+  'face_drooping_speech',
+  'sudden_severe_headache',
+  'sudden_vision_change',
+] as const;
+/**
+ * FIX-B (CS-4, M01-09): warning signs that stop exercise during pregnancy or after a birth, paraphrased
+ * from the themes of ACOG Committee Opinion 804 (2020) — not its wording. Shown to the S7 pregnancy path
+ * on top of RED_FLAG_SYMPTOMS; same S3 stop and lock, routed to "contact your midwife or doctor now".
+ */
+export const PREGNANCY_WARNING_SIGNS = [
+  'pregnancy_bleeding',
+  'pregnancy_fluid_leak',
+  'pregnancy_contractions',
+  'pregnancy_calf_pain_swelling',
+  'pregnancy_baby_moving_less',
+  'pregnancy_headache_dizziness',
+  'pregnancy_breathless_before_effort',
+  'pregnancy_weakness_balance',
+] as const;
+/**
+ * FIX-B (CS-5, M05-31): signs in a joint or the back that need urgent care, asked in a separate step when
+ * a pain rating reaches S2 red (≥ 6). Separate from the pain traffic light: any "yes" is an S3 stop (the
+ * session ends, intensity locks until a professional's review is attested) and shows the urgent-care
+ * guidance. No condition is named (no diagnosis).
+ */
+export const URGENT_MSK_SIGNS = [
+  'msk_cannot_bear_weight',
+  'msk_pop_then_swelling',
+  'msk_rapid_swelling_deformity',
+  'msk_locking_giving_way',
+  'msk_hot_swollen_fever',
+  'back_saddle_numbness',
+  'back_bladder_bowel_change',
+  'back_leg_weakness_worsening',
+] as const;
+/** Every sign that ends a session under S3 (what an execution log may record). */
+export const STOP_SIGNS = [...RED_FLAG_SYMPTOMS, ...PREGNANCY_WARNING_SIGNS, ...URGENT_MSK_SIGNS] as const;
+export const RedFlagSymptomSchema = z.enum(STOP_SIGNS);
 export type RedFlagSymptom = z.infer<typeof RedFlagSymptomSchema>;
+export type StopSignCategory = 'general' | 'pregnancy' | 'urgent_msk';
+/** Which list a stop sign comes from (it decides the guidance shown: seek care, midwife or doctor, urgent care). */
+export function stopSignCategory(sign: RedFlagSymptom): StopSignCategory {
+  if ((PREGNANCY_WARNING_SIGNS as readonly string[]).includes(sign)) return 'pregnancy';
+  if ((URGENT_MSK_SIGNS as readonly string[]).includes(sign)) return 'urgent_msk';
+  return 'general';
+}
 
 export const SESSION_END_REASONS = ['completed', 'user_stop', 'time', 'pain', 'red_flag'] as const;
 export const SWAP_REASONS = ['user', 'pain', 'equipment'] as const;

@@ -147,7 +147,7 @@ describe('calendar screen (goal condition 5)', () => {
   });
 
   it('S1: a flagged user gets a capped plan and the S1 caps go to the device defensibility buffer', () => {
-    const d = device({ yes: ['chest_discomfort'], goal: 'fat_loss' });
+    const d = device({ yes: ['heart_or_blood_pressure'], goal: 'fat_loss' });
     renderWith(d, <CalendarScreen onExit={() => undefined} />);
     fireEvent.press(screen.getByTestId('calendar-create'));
     const program = d.profile.getState().programs[0]!.data.program;

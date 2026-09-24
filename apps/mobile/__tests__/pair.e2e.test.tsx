@@ -86,6 +86,8 @@ async function onboardP1() {
   for (const id of ['pull_up_bar', 'resistance_band', 'dumbbell']) press(`equipment-home-${id}`);
   press('onboarding-next');
   await screen.findByRole('header', { name: t('onboarding.healthConsent.title') });
+  // FIX-B: the country of residence is asked explicitly.
+  press('residence-GB');
   press('health-consent-agree');
   await screen.findByRole('header', { name: t('onboarding.about.title') });
   fireEvent.changeText(screen.getByTestId('about-birth-day'), '1');
@@ -104,6 +106,8 @@ async function onboardP1() {
   }
   press('onboarding-next');
   await screen.findByRole('header', { name: t('legal.exerciseRisk.v1.title') });
+  // FIX-B: each exercise-risk statement is ticked on its own.
+  for (const s of ['risk', 'stop', 'honest', 'control']) press(`risk-statement-${s}`);
   press('onboarding-next');
   await screen.findByRole('header', { name: t('firstWorkout.title') });
   press('first-workout-home');
@@ -137,6 +141,8 @@ async function awaSetsUp() {
   expect(screen.getByTestId('pair-guest-error')).toBeTruthy();
   for (const doc of ['terms', 'privacy', 'exercise_risk']) {
     press(`pair-guest-legal-${doc}-read`);
+    // FIX-B: the guest ticks each exercise-risk statement on her own.
+    if (doc === 'exercise_risk') for (const st of ['risk', 'stop', 'honest', 'control']) press(`pair-guest-risk-statement-${st}`);
     press(`pair-guest-legal-${doc}-accept`);
   }
   press('pair-guest-consent-health-agree');

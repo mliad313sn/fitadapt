@@ -2,9 +2,9 @@ import { ENGINE_VERSION, aerobicMinutesLedger, boundSessionInput, cardioDone, cr
 import { autoregulateRemainingSets, generateSession, painAdjustments, replacementsFor } from '@fitadapt/exercise-library';
 import { formatMass, kgToLb, lbToKg, type MessageKey } from '@fitadapt/i18n';
 import { useI18n } from '@fitadapt/i18n/react';
-import { NOTICES, notice, noticesToShow, renderNotice } from '@fitadapt/legal';
+import { NOTICES, noticesToShow, renderNotice, stopNoticeFor } from '@fitadapt/legal';
 import { S2_RED_PAIN_SCORE } from '@fitadapt/safety';
-import { JOINTS, MEDICAL_REVIEW_STATEMENT_VERSION, RED_FLAG_SYMPTOMS, SESSION_MINUTES_OPTIONS, type CardioProtocol, type Joint, type PerformedSet, type PlannedExercise, type PlannedSet, type RedFlagSymptom, type SessionPlan, type WorkoutSessionRecord } from '@fitadapt/shared';
+import { JOINTS, MEDICAL_REVIEW_STATEMENT_VERSION, SESSION_MINUTES_OPTIONS, type CardioProtocol, type Joint, type PerformedSet, type PlannedExercise, type PlannedSet, type RedFlagSymptom, type SessionPlan, type WorkoutSessionRecord } from '@fitadapt/shared';
 import { Button, Card, Chip, Sheet, Stepper, useTheme } from '@fitadapt/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { clock } from '../clock';
 import { useCapacity, useIntensityLock, useJointFlags, useLegal, useProfile, useProgram, useReadinessChecks, useReflows, useSafetyProfile, useSessionHistory } from '../profile/ProfileProvider';
 import { localIsoDate, selectDeload, selectMorningCheck, selectPhysio, selectReadiness } from '../profile/selectors';
-import { MorningCheck, PainCheck, ReadinessCheckCard, SeekCare, WarmUpDetails } from '../workout/RecoveryCards';
+import { MorningCheck, PainCheck, ReadinessCheckCard, SeekCare, UrgentSignsCheck, WarmUpDetails, stopSignsFor } from '../workout/RecoveryCards';
 import { useRestRemaining } from '../workout/rest-timer';
 import { seedFrom, todayInput } from '../workout/today';
 import { AerobicLedgerCard, CardioOptions, CardioSummary } from '../cardio/CardioCards';
@@ -107,6 +107,11 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
   const [painChecked, setPainChecked] = useState(false);
   const [attesting, setAttesting] = useState(false);
   const [checkInFlag, setCheckInFlag] = useState(false);
+  // FIX-B: which S3 notice goes with the sign reported (seek care, pregnancy warning, urgent care).
+  const [stopNotice, setStopNotice] = useState<'seek_care' | 'pregnancy_warning' | 'urgent_care'>('seek_care');
+  // FIX-B (CS-5): the urgent-signs step after a pain rating ≥ 6 (during the session, or in the check after it).
+  const [urgentCheck, setUrgentCheck] = useState<'during' | 'after' | null>(null);
+  const pregnancyPath = safetyProfile.specialPopulation === 'pregnancy_postpartum';
 
   const text = { color: theme.colors.text, fontSize: theme.fontSize.body } as const;
   const muted = { color: theme.colors.textMuted, fontSize: theme.fontSize.label } as const;
@@ -265,6 +270,7 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
   const savePain = () => {
     if (!run || painJoint === null || painScore === null) return;
     logExecution({ kind: 'pain', planId: run.plan.planId, joint: painJoint, score: painScore, at: clock.now().toISOString(), phase: 'during' });
+    if (painScore >= S2_RED_PAIN_SCORE) setUrgentCheck('during');
     if (run.phase === 'cardio') {
       // M03 (S2 now): a red rating during the cardio block ends the block; what was done is saved.
       setPainJoint(null);
@@ -311,8 +317,13 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
     // S3 on the device buffer (L11): the session ends and intensity locks until a medical review is attested.
     logSafetyEvent({ invariant: 'S3', reasonCode: `safety.s3.${symptom}`, action: 'session_ended', engineVersion: run.plan.engineVersion });
     logSafetyEvent({ invariant: 'S3', reasonCode: 'safety.s3.intensity_locked', action: 'intensity_locked', engineVersion: run.plan.engineVersion });
-    recordNotice(notice('seek_care'), 'shown', locale);
-    end(run, 'red_flag', 'red_flag');
+    const shown = stopNoticeFor(symptom);
+    recordNotice(shown, 'shown', locale);
+    setStopNotice(shown.id as typeof stopNotice);
+    setUrgentCheck(null);
+    // After the session already ended (the check after it), only the phase changes: the end was logged once.
+    if (run.phase === 'done' || run.phase === 'ended') setRun({ ...run, phase: 'red_flag', restEndsAt: null });
+    else end(run, 'red_flag', 'red_flag');
   };
 
   /** S3 red flag at the check-in (no session): intensity locks, the seek-care guidance is shown (L3, L11 on the device). */
@@ -321,7 +332,9 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
     const engineVersion = preview?.result.status === 'ok' ? preview.result.plan.engineVersion : ENGINE_VERSION;
     logSafetyEvent({ invariant: 'S3', reasonCode: `safety.s3.${symptom}`, action: 'session_ended', engineVersion });
     logSafetyEvent({ invariant: 'S3', reasonCode: 'safety.s3.intensity_locked', action: 'intensity_locked', engineVersion });
-    recordNotice(notice('seek_care'), 'shown', locale);
+    const shown = stopNoticeFor(symptom);
+    recordNotice(shown, 'shown', locale);
+    setStopNotice(shown.id as typeof stopNotice);
     setCheckInFlag(true);
   };
 
@@ -356,7 +369,7 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
           <Text accessibilityRole="header" style={{ ...title, fontSize: theme.fontSize.headline }}>
             {t('recovery.redFlag.checkin.stopTitle')}
           </Text>
-          <SeekCare />
+          <SeekCare noticeId={stopNotice} />
           <Button label={t('workout.back')} variant="secondary" onPress={() => setCheckInFlag(false)} testID="workout-checkin-back" />
         </ScrollView>
       </SafeAreaView>
@@ -370,7 +383,8 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
           <Text accessibilityRole="header" style={{ ...title, fontSize: theme.fontSize.headline }}>
             {run.phase === 'done' ? t('workout.done.title') : run.phase === 'ended' ? t('workout.ended.title') : t('workout.redFlag.title')}
           </Text>
-          {run.phase === 'red_flag' ? <SeekCare after={t('workout.redFlag.body')} /> : null}
+          {run.phase === 'red_flag' ? <SeekCare noticeId={stopNotice} after={t('workout.redFlag.body')} /> : null}
+          {run.phase !== 'red_flag' && urgentCheck === 'after' ? <UrgentSignsCheck onSign={redFlag} onNone={() => setUrgentCheck(null)} /> : null}
           {run.plan.exercises.length > 0 ? (
             <Text style={text} testID="workout-summary">
               {t('workout.done.summary', { done: run.logged })}
@@ -390,6 +404,7 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
               onSave={(joint, score) => {
                 logExecution({ kind: 'pain', planId: run.plan.planId, joint, score, at: clock.now().toISOString(), phase: 'after_session' });
                 setMessage(t('recovery.pain.after.saved'));
+                if (score >= S2_RED_PAIN_SCORE) setUrgentCheck('after');
               }}
               onDone={() => setPainChecked(true)}
             />
@@ -409,6 +424,7 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <ScrollView contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg }} testID="workout-phase-cardio">
+          {urgentCheck === 'during' ? <UrgentSignsCheck onSign={redFlag} onNone={() => setUrgentCheck(null)} /> : null}
           {message ? (
             <Text accessibilityLiveRegion="polite" style={text} testID="workout-message">
               {message}
@@ -446,7 +462,7 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
         </Sheet>
         <Sheet visible={sheet === 'stop'} onClose={() => setSheet(null)} title={t('workout.stop.title')} testID="workout-sheet-stop-menu">
           <Text style={{ ...text, fontWeight: theme.fontWeight.bold }}>{t('workout.stop.unwell')}</Text>
-          {RED_FLAG_SYMPTOMS.map((s) => (
+          {stopSignsFor(pregnancyPath).map((s) => (
             <Button key={s} label={t(`workout.stop.symptom.${s}` as MessageKey)} hint={t('workout.stop.symptomHint')} variant="danger" onPress={() => redFlag(s)} testID={`workout-stop-symptom-${s}`} />
           ))}
           <Button label={t('cardio.run.skipBlock')} hint={t('cardio.run.skipBlockHint')} variant="secondary" onPress={() => (setSheet(null), setCardioEnd(true))} testID="workout-sheet-skip" />
@@ -465,6 +481,7 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <ScrollView contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg }} testID={`workout-phase-${run.phase}`}>
+          {urgentCheck === 'during' ? <UrgentSignsCheck onSign={redFlag} onNone={() => setUrgentCheck(null)} /> : null}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: theme.spacing.md }}>
             <Text style={muted} testID="workout-progress">
               {t('workout.progress', { exercise: run.exercise + 1, exercises: run.plan.exercises.length, set: run.set + 1, sets: current.sets.length })}
@@ -558,7 +575,7 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
         </Sheet>
         <Sheet visible={sheet === 'stop'} onClose={() => setSheet(null)} title={t('workout.stop.title')} testID="workout-sheet-stop-menu">
           <Text style={{ ...text, fontWeight: theme.fontWeight.bold }}>{t('workout.stop.unwell')}</Text>
-          {RED_FLAG_SYMPTOMS.map((s) => (
+          {stopSignsFor(pregnancyPath).map((s) => (
             <Button key={s} label={t(`workout.stop.symptom.${s}` as MessageKey)} hint={t('workout.stop.symptomHint')} variant="danger" onPress={() => redFlag(s)} testID={`workout-stop-symptom-${s}`} />
           ))}
           {sheetControls}
@@ -615,6 +632,7 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
             }}
             onSkip={() => setReadinessSkipped(true)}
             onRedFlag={checkInRedFlag}
+            pregnancyPath={pregnancyPath}
           />
         ) : null}
         {readinessNote ? (

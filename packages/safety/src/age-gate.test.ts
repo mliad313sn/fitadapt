@@ -1,6 +1,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
+  AGE_GATE_CONFIG,
   AGE_GATE_MINIMUM_YEARS,
   ageGateCheck,
   ageInYears,
@@ -48,6 +49,19 @@ describe('S7 age gate', () => {
     expect(evaluateAgeGate(d(2000, 1, 1), d(2026, 2, 30))).toEqual({ status: 'invalid', reasonCode: 'age_gate.not_a_date' });
   });
 
+  it('FIX-B (MOB-13): an absurd birth year is not a date; a jurisdiction minimum can only raise the floor', () => {
+    const today = d(2026, 9, 23);
+    expect(evaluateAgeGate(d(1, 1, 1), today)).toEqual({ status: 'invalid', reasonCode: 'age_gate.not_a_date' });
+    expect(evaluateAgeGate(d(1905, 9, 23), today)).toEqual({ status: 'invalid', reasonCode: 'age_gate.not_a_date' });
+    expect(evaluateAgeGate(d(1906, 9, 23), today)).toEqual({ status: 'allowed', age: 120 });
+    expect(AGE_GATE_CONFIG.maxPlausibleAgeYears).toMatchObject({ value: 120, validated: false });
+    // A local minimum of 18 blocks a 17-year-old; a lower (or broken) one never lowers 16.
+    expect(evaluateAgeGate(d(2009, 1, 1), today, 'XX', 18)).toEqual({ status: 'blocked', reasonCode: 'safety.s7.under_minimum_age' });
+    expect(evaluateAgeGate(d(2011, 1, 1), today, 'XX', 13).status).toBe('blocked');
+    expect(evaluateAgeGate(d(2011, 1, 1), today, 'XX', Number.NaN).status).toBe('blocked');
+    expect(evaluateAgeGate(d(2009, 1, 1), today, 'XX', 16)).toEqual({ status: 'allowed', age: 17 });
+  });
+
   it('works as an S7 safety check', () => {
     const today = d(2026, 9, 23);
     expect(evaluateSafety([{ invariant: 'S7', check: ageGateCheck }], { birth: d(2000, 1, 1), today }).allowed).toBe(true);
@@ -68,6 +82,8 @@ describe('S7 age gate', () => {
         // A 29 Feb birthday rolls to 1 Mar in common years, matching Date.UTC overflow.
         const t = new Date(Date.UTC(today.year, today.month - 1, today.day));
         if (t < naive) return outcome.status === 'invalid';
+        // FIX-B (MOB-13): older than the plausibility bound is a typing error, never "allowed" (fails closed).
+        if (ageInYears(birth, today) > AGE_GATE_CONFIG.maxPlausibleAgeYears.value) return outcome.status === 'invalid';
         return t >= sixteenth ? outcome.status === 'allowed' : outcome.status === 'blocked';
       }),
       { numRuns: 5000 },

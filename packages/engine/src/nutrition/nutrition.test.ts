@@ -154,7 +154,9 @@ describe('goal targets', () => {
     for (const today of ['2026-09-23', '2026-09-25']) expect(computeNutritionTarget(p1({ today }), ctx()).target.mode).toBe('numeric');
     expect(computeNutritionTarget(p1({ weightKg: null }), ctx()).target).toMatchObject({ mode: 'needs_measurements', energy: null, protein: null, reasonCodes: ['nutrition.needs_measurements'] });
     expect(computeNutritionTarget(p1({ heightCm: null }), ctx()).target.mode).toBe('needs_measurements');
-    const ancient = computeNutritionTarget(p1({ weightKg: 25, heightCm: 100, birthDate: { year: 1826, month: 1, day: 1 }, sexForEstimate: 'female', safetyProfile: screened([], { year: 1826, month: 1, day: 1 }) }), ctx()).target;
+    // FIX-B (MOB-13): a screening now refuses a date of birth over 120 years ago (not screened, fail closed), so the
+    // screening in this fixture is a valid one; the nutrition input keeps the ancient date that makes BMR impossible.
+    const ancient = computeNutritionTarget(p1({ weightKg: 25, heightCm: 100, birthDate: { year: 1826, month: 1, day: 1 }, sexForEstimate: 'female', safetyProfile: screened() }), ctx()).target;
     expect(ancient).toMatchObject({ mode: 'needs_measurements', reasonCodes: ['nutrition.energy.unavailable'] });
   });
 });
@@ -163,6 +165,8 @@ describe('S4: deficit features disabled → supportive mode without numbers', ()
   it.each([
     ['17 years old', p1({ birthDate: { year: 2009, month: 1, day: 1 }, safetyProfile: screened([], { year: 2009, month: 1, day: 1 }) }), 'nutrition.supportive.minor'],
     ['advised against calorie restriction', p1({ safetyProfile: screened(['advised_against_calorie_restriction']) }), 'nutrition.supportive.advised_against'],
+    // FIX-B (A4 M10-20): a self-reported current or past eating disorder → supportive mode with its own signposting copy.
+    ['self-reported eating disorder', p1({ safetyProfile: screened(['eating_disorder']) }), 'nutrition.supportive.eating_disorder'],
     ['not screened', p1({ safetyProfile: notScreenedSafetyProfile() }), 'nutrition.supportive.not_screened'],
     ['pregnancy or recent birth', p1({ safetyProfile: screened(['pregnancy_or_recent_birth']) }), 'nutrition.supportive.special_population'],
   ])('%s: no energy number, no protein number, no planned loss; habits shown', (_n, input, reason) => {

@@ -339,4 +339,21 @@ describe('defensibility log (L11)', () => {
       }
     });
   });
+
+  it('FIX-B (B pre-review): an incident report puts the subject under legal hold automatically, so retention never purges it', async () => {
+    const reported = await userWithHistory();
+    const chain = subjectOf(reported.userId);
+    expect(await h.app.services.legal.log.isHeld(chain)).toBe(false);
+    const incidentId = randomUUID();
+    await h.app.services.legal.log.appendNow({ type: 'incident.recorded', chain, occurredAt: h.clock.now().toISOString(), payload: { incidentId, category: 'injury_report', step: 'received' } });
+    expect(await h.app.services.legal.log.isHeld(chain)).toBe(true);
+    // A later step of the same incident does not stack a second hold.
+    await h.app.services.legal.log.appendNow({ type: 'incident.recorded', chain, occurredAt: h.clock.now().toISOString(), payload: { incidentId, category: 'injury_report', step: 'triaged' } });
+    const events = await h.app.services.legal.log.chain(chain);
+    expect(events.filter((e) => e.type === 'legal_hold.placed').map((e) => (e.payload as { reasonCode: string }).reasonCode)).toEqual(['legal_hold.auto.incident_reported']);
+    expect(verifyChain(events)).toMatchObject({ ok: true });
+    const future = new Date(h.clock.now().getTime() + (legalValue('defensibilityRetentionDays') + 1) * 86_400_000);
+    expect(await h.app.services.legal.log.purgeExpired(future)).toEqual({ purged: 0 });
+    expect((await h.app.services.legal.log.chain(chain)).length).toBe(events.length);
+  });
 });

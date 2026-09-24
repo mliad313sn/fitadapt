@@ -127,4 +127,16 @@ Launch KPI (M20 spec): open legal gates at launch = 0.
 | notice `pair_challenge` | 1 | SN | pending | — | — | — |
 | notice `pair_challenge` | 1 | CI | pending | — | — | — |
 | notice `pair_challenge` | 1 | DEFAULT | pending | — | — | — |
+| notice `pregnancy_warning` | 1 | EU_FR | pending | — | — | — |
+| notice `pregnancy_warning` | 1 | GB | pending | — | — | — |
+| notice `pregnancy_warning` | 1 | US | pending | — | — | — |
+| notice `pregnancy_warning` | 1 | SN | pending | — | — | — |
+| notice `pregnancy_warning` | 1 | CI | pending | — | — | — |
+| notice `pregnancy_warning` | 1 | DEFAULT | pending | — | — | — |
+| notice `urgent_care` | 1 | EU_FR | pending | — | — | — |
+| notice `urgent_care` | 1 | GB | pending | — | — | — |
+| notice `urgent_care` | 1 | US | pending | — | — | — |
+| notice `urgent_care` | 1 | SN | pending | — | — | — |
+| notice `urgent_care` | 1 | CI | pending | — | — | — |
+| notice `urgent_care` | 1 | DEFAULT | pending | — | — | — |
 <!-- generated:tracker:end -->
