@@ -11,3 +11,4 @@ export * from './recovery/index.js';
 export * from './cardio/index.js';
 export * from './analytics/index.js';
 export * from './pair/index.js';
+export * from './nutrition/index.js';
