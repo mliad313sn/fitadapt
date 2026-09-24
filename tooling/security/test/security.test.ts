@@ -149,4 +149,16 @@ describe('secret scanning (goal condition 4)', () => {
       expect(workflow).toContain(step);
     }
   });
+
+  it('the CI token is read-only and every action is pinned by commit SHA (PKG-13)', () => {
+    const workflow = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8');
+    expect(workflow).toMatch(/^permissions:\n {2}contents: read\n/m);
+    // No job widens the token.
+    expect(workflow.match(/^\s+permissions:/gm)).toBeNull();
+    const uses = [...workflow.matchAll(/uses:\s*(\S+)(.*)$/gm)];
+    expect(uses.length).toBeGreaterThan(0);
+    for (const [, ref, comment] of uses) {
+      expect({ ref, pinned: /@[0-9a-f]{40}$/.test(ref!), tagged: /#\s*v\d+\.\d+\.\d+/.test(comment!) }).toEqual({ ref, pinned: true, tagged: true });
+    }
+  });
 });
