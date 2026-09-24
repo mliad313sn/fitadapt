@@ -29,6 +29,8 @@ export const SYNC_COLLECTIONS: CollectionRegistry = Object.freeze({
   workout_sessions: Object.freeze({ appendOnly: true }),
   /** M02 execution events (swaps, skips, pain flags, stops, S3 red flags and attestations): append-only. */
   execution_logs: Object.freeze({ appendOnly: true }),
+  /** M05 readiness checks (sleep, soreness, stress, energy, optional wearable readings): append-only; the latest of a day counts. */
+  readiness_checks: Object.freeze({ appendOnly: true }),
 });
 
 export function policyFor(registry: CollectionRegistry, collection: string): CollectionPolicy | undefined {

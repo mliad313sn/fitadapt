@@ -239,7 +239,11 @@ describe('M02 started sessions: re-derived on the server, prescription logged in
     expect(generateSession(sessionInput(r, { intensityLock: { locked: true, since: flag.at } }), createEngineContext({ clock: fixedClock(MON), seed: 1 }))).toEqual({ status: 'unavailable', reasonCodes: ['session.unavailable.s3_intensity_locked'] });
     expect(await push(r.s, [insert('execution_logs', { kind: 'medical_review_attested', at: new Date(MON + DAY).toISOString() })])).toEqual(['applied']);
     expect((await chain(r.s)).at(-1)).toMatchObject({ type: 'safety.attested', payload: { invariant: 'S3', reasonCode: 'safety.s3.medical_review_attested', engineVersion: ENGINE_VERSION } });
-    const afterReview = workout(sessionInput(r, { history: buildSessionHistory([first], [], [flag]) }, '2026-09-30'), MON + 2 * DAY, 11, false);
+    // M05: after the review, a week of deload follows the red flag (triggered deload); without it the session is refused.
+    const withoutDeload = workout(sessionInput(r, { history: buildSessionHistory([first], [], [flag]) }, '2026-09-30'), MON + 2 * DAY, 11, false);
+    expect(await push(r.s, [insert('workout_sessions', withoutDeload)])).toEqual(['session.deload_mismatch']);
+    const deload = { trigger: 'red_flag' as const, since: flag.at, until: new Date(MON + DAY + 7 * DAY).toISOString() };
+    const afterReview = workout(sessionInput(r, { history: buildSessionHistory([first], [], [flag]), deload }, '2026-09-30'), MON + 2 * DAY, 11, false);
     expect(await push(r.s, [insert('workout_sessions', afterReview)])).toEqual(['applied']);
     expect(await push(r.s, [insert('execution_logs', { kind: 'pain', planId: null, joint: 'knee', score: 12, at: flag.at })])).toEqual(['execution_log.invalid']);
   });

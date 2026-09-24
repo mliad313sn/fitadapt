@@ -9,6 +9,8 @@ import {
   PROFILE_COLLECTIONS,
   PROGRAM_COLLECTIONS,
   ProfileSchema,
+  RECOVERY_COLLECTIONS,
+  ReadinessCheckSchema,
   SESSION_COLLECTIONS,
   ScreeningRecordSchema,
   type SafetyProfile,
@@ -27,7 +29,7 @@ import { onSessionApplied, validateExecutionLog, validateWorkoutSession } from '
 /**
  * Collections holding health data (screening answers, biometrics, M07
  * assessment results, M08 programs, which embed the SafetyProfile, and their
- * reflows, M02 started sessions and execution logs): need the health consent
+ * reflows, M02 started sessions and execution logs, M05 readiness checks): need the health consent
  * (L9, ADR-004) and are erased when it is withdrawn. M00 set logs
  * (reps, load, reserve) stay outside, as before (open question, B1).
  */
@@ -40,6 +42,8 @@ export const HEALTH_COLLECTIONS: readonly string[] = [
   // M02: started sessions embed the SafetyProfile and joint flags; execution logs hold pain flags and S3 red flags.
   SESSION_COLLECTIONS.workoutSessions,
   SESSION_COLLECTIONS.executionLogs,
+  // M05: readiness checks (sleep, soreness, stress, energy, wearable readings).
+  RECOVERY_COLLECTIONS.readinessChecks,
 ];
 
 /**
@@ -143,6 +147,8 @@ export function profileSyncValidator(deps: ProfileSyncDeps): MutationValidator {
         return (await consentRequired(userId, m)) ?? validateWorkoutSession(deps.db, deps.legal, userId, m.data, await latestSafetyProfile(deps.db, userId));
       case SESSION_COLLECTIONS.executionLogs:
         return (await consentRequired(userId, m)) ?? validateExecutionLog(m.data);
+      case RECOVERY_COLLECTIONS.readinessChecks:
+        return (await consentRequired(userId, m)) ?? (ReadinessCheckSchema.safeParse(m.data).success ? null : 'readiness_check.invalid');
       default:
         return null;
     }

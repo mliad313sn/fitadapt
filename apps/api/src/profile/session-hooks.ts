@@ -5,6 +5,11 @@ import {
   buildSessionHistory,
   createEngineContext,
   defaultEquipmentLoads,
+  deloadStatus,
+  painReportsFrom,
+  readinessCheckOn,
+  readinessFromCheck,
+  safetyStopsFrom,
   fixedClock,
   programDay,
   programSessionContext,
@@ -12,7 +17,7 @@ import {
   type StoredSetLog,
 } from '@fitadapt/engine';
 import { generateSession } from '@fitadapt/exercise-library';
-import { intensityLockStatus } from '@fitadapt/safety';
+import { classifyPainReport, intensityLockStatus, jointFlagsFromPain } from '@fitadapt/safety';
 import {
   ASSESSMENT_COLLECTION,
   AssessmentRecordSchema,
@@ -20,9 +25,12 @@ import {
   ExecutionLogSchema,
   PROFILE_COLLECTIONS,
   PROFILE_RECORD_ID,
+  JOINTS,
   PROGRAM_COLLECTIONS,
   ProfileSchema,
   ProgramRecordSchema,
+  RECOVERY_COLLECTIONS,
+  ReadinessCheckSchema,
   ReflowRecordSchema,
   SESSION_COLLECTIONS,
   SetLogSchema,
@@ -54,8 +62,13 @@ import type { PgServerTx } from '../sync/pg-store.js';
  *   exactly the plan and safety events recorded.
  * Then "prescription issued" (engine and rules versions, reason codes) and
  * the plan's safety events are written IN THE SYNC TRANSACTION (ADR-009).
- * Execution logs (health data): an S3 red flag writes "session ended" and
- * "intensity locked"; an attested medical review writes `safety.attested`.
+ * Execution logs (health data): an S3 red flag (in a session or at an M05
+ * check-in) writes "session ended" and "intensity locked"; an attested
+ * medical review writes `safety.attested`; an M05 pain report that makes a
+ * joint red writes an S2 "joint flagged". M05 also checks that the joint
+ * flags are at least as strict as the stored pain reports (S2), that a
+ * triggered deload the stored records imply is applied, and that a low
+ * readiness check of that day is.
  */
 
 async function rows(db: Database, userId: string, collection: string) {
@@ -106,6 +119,21 @@ async function checkInputs(db: Database, userId: string, record: WorkoutSessionR
   const lock = intensityLockStatus(events);
   if (lock.locked) return 'safety.s3.intensity_locked';
   if (!isDeepStrictEqual(input.intensityLock ?? { locked: false, since: null }, lock)) return 'session.lock_mismatch';
+  // M05 S2: the joint flags are at least as strict as the pain reports the server stores (red stays red, amber at least amber).
+  const flags = jointFlagsFromPain(painReportsFrom(events));
+  for (const joint of JOINTS) {
+    const sent = input.jointFlags?.[joint];
+    if (flags[joint] === 'red' && sent !== 'red') return 'safety.s2.joint_flags_mismatch';
+    if (flags[joint] === 'amber' && sent !== 'amber' && sent !== 'red') return 'safety.s2.joint_flags_mismatch';
+  }
+  // M05: a triggered deload the stored records imply must be applied; a low readiness check that day must be too.
+  const readiness = parsedRows(await rows(db, userId, RECOVERY_COLLECTIONS.readinessChecks), (d) => ReadinessCheckSchema.safeParse(d)).map((r) => r.data);
+  const history = buildSessionHistory(sessions, setLogs, events);
+  const deload = deloadStatus({ asOfMs: Date.parse(plan.generatedAt), painReports: painReportsFrom(events), safetyStops: safetyStopsFrom(events), history, readinessChecks: readiness });
+  if (deload && !isDeepStrictEqual(input.deload ?? null, deload)) return 'session.deload_mismatch';
+  const day = input.programSession?.session.date ?? plan.generatedAt.slice(0, 10);
+  const check = readinessCheckOn(readiness, day);
+  if (check && readinessFromCheck(check).level === 'reduced' && input.readiness !== 'reduced' && input.mode !== 'mobility_balance') return 'session.readiness_mismatch';
   // The place: a stored equipment profile with the same equipment and loads (its own, or the location's defaults).
   if (input.equipmentProfileId) {
     const place = await latestState(db, userId, PROFILE_COLLECTIONS.equipmentProfiles, input.equipmentProfileId, (d) => EquipmentProfileSchema.safeParse(d));
@@ -130,7 +158,7 @@ async function checkInputs(db: Database, userId: string, record: WorkoutSessionR
     if (!day || !session || !isDeepStrictEqual(programSessionContext(day, session), input.programSession)) return 'session.program_mismatch';
   }
   // S5 against every session the server stores (not only the history the device sent).
-  if (s5Violations(plan, buildSessionHistory(sessions, setLogs, events), input.recentLoads ?? []).length > 0) return 'safety.s5.load_above_ceiling';
+  if (s5Violations(plan, history, input.recentLoads ?? []).length > 0) return 'safety.s5.load_above_ceiling';
   return null;
 }
 
@@ -177,7 +205,10 @@ export async function onSessionApplied(legal: LegalService, userId: string, coll
     for (const event of record.safetyEvents) await legal.recordSafetyEvent(userId, event, tx.db);
   } else if (collection === SESSION_COLLECTIONS.executionLogs) {
     const log = ExecutionLogSchema.parse(data);
-    if (log.kind === 'red_flag') {
+    if (log.kind === 'pain' && classifyPainReport(log) === 'red') {
+      // M05 S2: a pain report of ≥ 6, or a next-morning check that has not settled, makes the joint red for the next session.
+      await legal.recordSafetyEvent(userId, { invariant: 'S2', reasonCode: `safety.s2.joint_red.${log.joint}`, action: 'joint_flagged', engineVersion: ENGINE_VERSION }, tx.db);
+    } else if (log.kind === 'red_flag') {
       await legal.recordSafetyEvent(userId, { invariant: 'S3', reasonCode: `safety.s3.${log.symptom}`, action: 'session_ended', engineVersion: ENGINE_VERSION }, tx.db);
       await legal.recordSafetyEvent(userId, { invariant: 'S3', reasonCode: 'safety.s3.intensity_locked', action: 'intensity_locked', engineVersion: ENGINE_VERSION }, tx.db);
     } else if (log.kind === 'medical_review_attested') {
