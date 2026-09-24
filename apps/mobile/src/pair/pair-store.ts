@@ -271,6 +271,8 @@ export function createPairStore({ kv, newId, now, jurisdiction }: PairStoreDeps)
           acceptances: ledgers.legal.getState().acceptances,
           notices: ledgers.legal.getState().notices,
           defensibility: ledgers.legal.getState().events,
+          // MOB-11: closed segments of her device buffer, exactly as stored.
+          defensibilitySegments: ledgers.legal.getState().archivedSegments(),
           pairSessions: get().sessions.filter((s) => s.participants.some((p) => p.participantId === guestId)),
         },
         null,
@@ -279,6 +281,8 @@ export function createPairStore({ kv, newId, now, jurisdiction }: PairStoreDeps)
     },
     deleteGuest(guestId) {
       const g = gkv(guestId);
+      // MOB-11: her device buffer's closed segments go with her ledgers.
+      get().ledgers(guestId).legal.getState().clear();
       for (const key of GUEST_KEYS) g.remove(key);
       cache.delete(guestId);
       const guests = get().guests.filter((x) => x.id !== guestId);

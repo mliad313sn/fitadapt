@@ -36,6 +36,4 @@ export const deviceDataFr: Record<keyof typeof deviceDataEn, string> = {
   'pair.done.together': '{count, plural, =0 {Vous vous êtes entraînés ensemble aujourd’hui.} one {Ensemble, vous avez fait # série.} other {Ensemble, vous avez fait # séries.}}',
   'pair.done.showEach': 'Afficher les séries de chacun',
   'pair.done.showEachHint': 'Seulement si vous voulez tous les deux les voir côte à côte',
-
-  'legal.log.chainReset': 'Une partie du registre des acceptations et avis de ce téléphone n’a pas pu être vérifiée. Elle a été mise de côté sans modification et un nouveau registre a été commencé.',
 };

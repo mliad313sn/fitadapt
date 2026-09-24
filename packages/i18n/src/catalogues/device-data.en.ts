@@ -2,7 +2,7 @@
  * Local data lifecycle wording (EN), from the mobile code-review fix wave
  * (MOB-01…MOB-14): the photo backup on a second phone, restores that skip
  * unreadable photos, the account a phone's data belongs to, a partner's
- * export, consent withdrawal and hand-over, and the device evidence log.
+ * export, consent withdrawal and hand-over, and the Fair Pair summary.
  * No guilt, no pressure, no medical claims.
  */
 export const deviceDataEn = {
@@ -46,7 +46,4 @@ export const deviceDataEn = {
   'pair.done.together': '{count, plural, =0 {You trained together today.} one {Together you completed # set.} other {Together you completed # sets.}}',
   'pair.done.showEach': 'Show each person’s sets',
   'pair.done.showEachHint': 'Only if you both want to see them side by side',
-
-  // ---- MOB-11: the device evidence log
-  'legal.log.chainReset': 'Part of this phone’s record of acceptances and notices could not be checked. It was kept aside unchanged and a new record was started.',
 } as const;

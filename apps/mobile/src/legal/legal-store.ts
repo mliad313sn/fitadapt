@@ -16,14 +16,35 @@ import {
 import type { ConsentRecord, Jurisdiction, Locale } from '@fitadapt/shared';
 import { z } from 'zod';
 import { createStore } from 'zustand';
+import { legalLogValue } from '../config/legal-log.config';
+import { reportError } from '../observability';
 import type { KeyValueStore } from '../storage/app-state';
 import { currentLegalRegistry } from './registry';
 
 const ACCEPTANCES_KEY = 'legal_acceptances';
 const NOTICES_KEY = 'legal_notice_impressions';
 const LOG_KEY = 'defensibility_device_log';
+/** Closed segments of the device buffer (MOB-11): where each is kept, why it was closed, its size and head. */
+const SEGMENTS_KEY = `${LOG_KEY}.segments`;
 /** Device chain of the defensibility buffer: the device has no subject reference (that is the server's pepper). */
 export const DEVICE_CHAIN = 'device';
+
+const SegmentSchema = z.object({
+  key: z.string(),
+  reason: z.enum(['size_limit', 'chain_broken']),
+  events: z.number().int().nonnegative(),
+  head: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
+  closedAt: z.iso.datetime({ offset: true }),
+});
+export type DeviceLogSegment = z.infer<typeof SegmentSchema>;
+
+/** The stored device buffer did not verify (MOB-11). Carries the verification reason only, never data. */
+export class DeviceLogIntegrityError extends Error {
+  constructor(readonly reason: string) {
+    super(`device defensibility log did not verify (${reason})`);
+    this.name = 'DeviceLogIntegrityError';
+  }
+}
 
 const AcceptanceSchema = z.object({
   id: z.uuid(),
@@ -94,6 +115,8 @@ export interface LegalStoreState {
   logPairEvent<T extends PairEventType>(type: T, payload: DefensibilityPayload<T>): void;
   /** M10: a nutrition target the engine prescribed (versions, mode, reason codes; no value). */
   logNutritionTarget(payload: DefensibilityPayload<'nutrition.target_set'>): void;
+  /** MOB-11: closed segments of the device buffer, each exactly as it was stored (a broken one included). */
+  archivedSegments(): { readonly segment: DeviceLogSegment; readonly stored: string }[];
   clear(): void;
 }
 
@@ -103,19 +126,52 @@ export interface LegalStoreState {
  * it works offline; records are uploaded after sign-in with their device time.
  */
 export function createLegalStore({ kv, newId, now, jurisdiction }: LegalStoreDeps) {
+  const segments = (): DeviceLogSegment[] => {
+    try {
+      return z.array(SegmentSchema).parse(JSON.parse(kv.get(SEGMENTS_KEY) ?? '[]'));
+    } catch {
+      return [];
+    }
+  };
+  /**
+   * MOB-11: the current segment is closed and kept unchanged under its own key
+   * (never discarded, never rewritten again); a new segment starts with a
+   * `log.segment_started` event that says why and links to the old head.
+   */
+  const startSegment = (reason: 'size_limit' | 'chain_broken', raw: string, previousEvents: number, previousHead: string | null, brokenAt: number | null): DefensibilityEvent[] => {
+    const list = segments();
+    const number = list.length + 1;
+    const key = `${LOG_KEY}.${reason === 'chain_broken' ? 'broken' : 'segment'}.${number}`;
+    kv.set(key, raw);
+    kv.set(SEGMENTS_KEY, JSON.stringify([...list, { key, reason, events: previousEvents, head: previousHead, closedAt: now().toISOString() }]));
+    const first = chainEvent(undefined, { chain: DEVICE_CHAIN, type: 'log.segment_started', occurredAt: now().toISOString(), payload: { reason, segment: number + 1, previousEvents, previousHead, brokenAt } }, newId());
+    kv.set(LOG_KEY, JSON.stringify([first]));
+    return [first];
+  };
   const append = (events: DefensibilityEvent[], input: Omit<DefensibilityEventInput, 'chain'>) => {
-    const next = [...events, chainEvent(events[events.length - 1], { ...input, chain: DEVICE_CHAIN } as DefensibilityEventInput, newId())];
+    let current = events;
+    if (current.length >= legalLogValue('device.segmentMaxEvents')) current = startSegment('size_limit', JSON.stringify(current), current.length, current[current.length - 1]!.hash, null);
+    const next = [...current, chainEvent(current[current.length - 1], { ...input, chain: DEVICE_CHAIN } as DefensibilityEventInput, newId())];
     kv.set(LOG_KEY, JSON.stringify(next));
     return next;
   };
   const storedEvents = (() => {
-    try {
-      const raw = kv.get(LOG_KEY);
-      const events = raw ? (JSON.parse(raw) as DefensibilityEvent[]) : [];
-      return verifyChain(events).ok ? events : [];
-    } catch {
-      return [];
-    }
+    const raw = kv.get(LOG_KEY);
+    if (!raw) return [];
+    const events = ((): DefensibilityEvent[] | null => {
+      try {
+        const parsed: unknown = JSON.parse(raw);
+        return Array.isArray(parsed) ? (parsed as DefensibilityEvent[]) : null;
+      } catch {
+        return null;
+      }
+    })();
+    const check = events ? verifyChain(events) : null;
+    if (events && check?.ok) return events;
+    // MOB-11: a segment that does not verify (corrupt value, bug or tampering) is evidence: it is kept aside exactly
+    // as stored, a new segment records the break, and the failure is reported (no data). Nothing is discarded.
+    reportError(new DeviceLogIntegrityError(check && !check.ok ? check.reason : 'unreadable'), { area: 'storage' });
+    return startSegment('chain_broken', raw, events?.length ?? 0, null, check && !check.ok ? check.brokenAt : null);
   })();
 
   return createStore<LegalStoreState>((set, get) => ({
@@ -196,8 +252,12 @@ export function createLegalStore({ kv, newId, now, jurisdiction }: LegalStoreDep
     logNutritionTarget(payload) {
       set({ events: append(get().events, { type: 'nutrition.target_set', occurredAt: now().toISOString(), payload }) });
     },
+    archivedSegments() {
+      return segments().map((segment) => ({ segment, stored: kv.get(segment.key) ?? '' }));
+    },
     clear() {
-      for (const key of [ACCEPTANCES_KEY, NOTICES_KEY, LOG_KEY]) kv.remove(key);
+      for (const s of segments()) kv.remove(s.key);
+      for (const key of [ACCEPTANCES_KEY, NOTICES_KEY, LOG_KEY, SEGMENTS_KEY]) kv.remove(key);
       set({ acceptances: [], notices: [], events: [] });
     },
   }));

@@ -92,6 +92,18 @@ export const DefensibilityPayloads = {
     eventsReturned: z.number().int().nonnegative(),
   }),
   'retention.purged': z.strictObject({ chainDigest: hash, eventCount: z.number().int().positive(), headHash: hash }),
+  /**
+   * Device buffer (mobile review MOB-11): the first event of a new segment of the device chain. `size_limit`: the
+   * previous segment was full and is kept unchanged; `chain_broken`: the stored segment did not verify and is kept
+   * aside unchanged (never discarded). previousHead links to the previous segment's head when it verified.
+   */
+  'log.segment_started': z.strictObject({
+    reason: z.enum(['size_limit', 'chain_broken']),
+    segment: z.number().int().positive(),
+    previousEvents: z.number().int().nonnegative(),
+    previousHead: hash.nullable(),
+    brokenAt: z.number().int().nonnegative().nullable(),
+  }),
 } as const;
 
 export type DefensibilityEventType = keyof typeof DefensibilityPayloads;
