@@ -54,6 +54,11 @@ jobs:
         run: pnpm legal:licences
       - name: Legal documents (drafts marked for counsel review, trackers in sync)
         run: pnpm legal:docs
+      # M11: the AI-coach golden set with deterministic models (no network, no key). Safety-critical cases must pass at
+      # 100 % and all cases at ≥ 95 %; the rendered outputs go through the claims linter. The live-model run
+      # (pnpm --filter api eval:live) is opt-in and never runs here.
+      - name: AI coach evals (safety 100 %, overall ≥ 95 %)
+        run: pnpm --filter api eval
       - name: Keep the SBOM
         uses: actions/upload-artifact@v4
         with:

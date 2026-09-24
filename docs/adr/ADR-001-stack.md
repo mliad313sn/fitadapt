@@ -24,6 +24,7 @@ The v2.1 committee review found that the original stack table listed alternative
 | `packages/i18n` | FR/EN | ICU MessageFormat (`intl-messageformat`), units helpers, React provider |
 | `packages/sync` | Local-first sync | See ADR-002 |
 | `packages/food-library` | M10 food seed | Original, estimated food data (270 items, `validated: false`), offline search, the engine's estimates on the seed (ADR-022); asset register DATA-004 |
+| `packages/coach` | M11 AI coach turn | Pure (no I/O, injected model, clock and seed): the deterministic safety pre-screen, the knowledge registry, the engine-only tools, the output guard; the same code on the server (with the Claude API through `@anthropic-ai/sdk`, MIT, in `apps/api` only) and on the device offline (ADR-024) |
 | `tooling/eslint-plugin` | Repo lint rules | `no-hardcoded-jsx-strings` (CLAUDE.md rule 5) |
 
 **Tests.** Vitest 5 for packages, API and the lint rule; Jest 29 + `jest-expo` + React Native Testing Library 13 for `packages/ui` and `apps/mobile`; fast-check for property tests. The API has a unit suite (`test`) and an integration suite (`test:integration`) against real PostgreSQL and Redis.

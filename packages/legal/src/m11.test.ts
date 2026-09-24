@@ -24,7 +24,7 @@ describe('M11 defensibility events and the AI disclosure', () => {
   });
 
   it('L5: the AI notice is shown at the start of every conversation (not once), with a persistent label', () => {
-    const shown = [{ noticeId: 'ai_coach', version: 1, kind: 'shown' as const, locale: 'en' as const, jurisdiction: 'GB', occurredAt: '2026-09-28T07:00:00.000Z' }];
+    const shown = [{ noticeId: 'ai_coach' as const, version: 1, kind: 'shown' as const, locale: 'en' as const, jurisdiction: 'GB', occurredAt: '2026-09-28T07:00:00.000Z' }];
     expect(noticesToShow('ai_coach.conversation_start', shown, NOTICES).map((n) => n.id)).toEqual(['ai_coach']);
     expect(AI_PERSISTENT_LABEL).toBe('legal.notice.aiCoach.label');
   });
