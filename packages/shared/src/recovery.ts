@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ReasonCodeSchema } from './assessment.js';
-import { IsoDateTimeSchema } from './common.js';
+import { IsoDateTimeSchema, SupersedesSchema, UuidSchema } from './common.js';
 import { MovementPatternSchema, SlugSchema } from './exercise.js';
 import { IsoDateSchema } from './program.js';
 
@@ -90,6 +90,10 @@ export const ReadinessCheckSchema = z.strictObject({
   stress: ReadinessAnswerSchema,
   energy: ReadinessAnswerSchema,
   wearable: ReadinessWearableSchema.nullable(),
+  /** ADR-023: this check's own id, so a later check of the same day can name it. Absent on checks stored before it. */
+  checkId: UuidSchema.optional(),
+  /** ADR-023: the checks of the same day this one replaces (their `checkId`s). */
+  supersedes: SupersedesSchema.optional(),
 });
 export type ReadinessCheck = z.infer<typeof ReadinessCheckSchema>;
 

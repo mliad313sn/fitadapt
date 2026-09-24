@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IsoDateTimeSchema } from './common.js';
+import { IsoDateTimeSchema, SupersedesSchema } from './common.js';
 import { SlugSchema } from './exercise.js';
 
 /**
@@ -114,6 +114,8 @@ export const AssessmentRecordSchema = z.strictObject({
   capacity: CapacityModelSchema,
   /** True when S1 made the tests stop further from failure than RIR 2 (logged as a safety event, L11). */
   cappedByS1: z.boolean(),
+  /** Record ids of the assessments this one replaces (ADR-023); absent on records stored before it. */
+  supersedes: SupersedesSchema.optional(),
 });
 export type AssessmentRecord = z.infer<typeof AssessmentRecordSchema>;
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IsoDateTimeSchema, LocaleSchema, PlatformSchema, UnitSystemSchema, UuidSchema } from './common.js';
+import { IsoDateTimeSchema, LocaleSchema, PlatformSchema, SupersedesSchema, UnitSystemSchema, UuidSchema } from './common.js';
 import { UserSchema } from './entities.js';
 import { ChangeSchema } from './sync.js';
 
@@ -42,6 +42,12 @@ export const ConsentRecordSchema = z.object({
   jurisdiction: JurisdictionSchema,
   source: ConsentSourceSchema,
   recordedAt: IsoDateTimeSchema,
+  /**
+   * ADR-023: ids of the decisions for the same data type this one replaces (the heads its writer knew).
+   * Absent on records stored before it (ordered by time, then ledger position). A withdrawal is never
+   * overtaken by a grant that does not name it.
+   */
+  supersedes: SupersedesSchema.optional(),
 });
 export type ConsentRecord = z.infer<typeof ConsentRecordSchema>;
 
@@ -56,6 +62,8 @@ export const ConsentUpdateRequestSchema = z.object({
   id: UuidSchema.optional(),
   /** M01: when the decision was made on the device (offline decisions are uploaded later). */
   recordedAt: IsoDateTimeSchema.optional(),
+  /** ADR-023: the decisions this one replaces (the device's heads for this data type). */
+  supersedes: SupersedesSchema.optional(),
 });
 export type ConsentUpdateRequest = z.infer<typeof ConsentUpdateRequestSchema>;
 

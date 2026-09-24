@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { CapacityModelSchema, ReasonCodeSchema, SlotTargetSchema } from './assessment.js';
-import { IsoDateTimeSchema, UuidSchema } from './common.js';
+import { IsoDateTimeSchema, SupersedesSchema, UuidSchema } from './common.js';
 import { EquipmentIdSchema, JointFlagsSchema, JointSchema, MovementPatternSchema, SafetyProfileSchema, SlugSchema } from './exercise.js';
 import { CalendarDateSchema, EquipmentLoadsSchema, ExperienceLevelSchema, PROFILE_INPUT_BOUNDS } from './profile.js';
 import { ConditioningSchema, IsoDateSchema, MesocycleIntentSchema, MicrocycleKindSchema, ScheduledSessionSchema, SlotRoleSchema } from './program.js';
@@ -356,12 +356,29 @@ export const ExecutionLogSchema = z.discriminatedUnion('kind', [
     at: IsoDateTimeSchema,
     phase: PainPhaseSchema.optional(),
     settled: z.boolean().optional(),
+    /** ADR-023: this report's own id, so later reports can name it. Absent on reports stored before it. */
+    eventId: UuidSchema.optional(),
+    /** ADR-023: the latest reports of the same joint its writer knew (their `eventId`s): a report only clears a red it names or follows. */
+    after: SupersedesSchema.optional(),
   }),
   z.strictObject({ kind: z.literal('ended'), planId: UuidSchema, reason: z.enum(SESSION_END_REASONS), at: IsoDateTimeSchema }),
   /** S3: a red-flag symptom ended the session; intensity is locked until a medical review is attested. */
-  z.strictObject({ kind: z.literal('red_flag'), planId: UuidSchema.nullable(), symptom: RedFlagSymptomSchema, at: IsoDateTimeSchema }),
+  z.strictObject({
+    kind: z.literal('red_flag'),
+    planId: UuidSchema.nullable(),
+    symptom: RedFlagSymptomSchema,
+    at: IsoDateTimeSchema,
+    /** ADR-023: a red flag with an id is lifted only by an attestation that names it (never by a timestamp). */
+    eventId: UuidSchema.optional(),
+  }),
   /** S3: the person confirmed the medical-review statement (M05: self-attestation, the version they confirmed). */
-  z.strictObject({ kind: z.literal('medical_review_attested'), at: IsoDateTimeSchema, statementVersion: z.number().int().positive().optional() }),
+  z.strictObject({
+    kind: z.literal('medical_review_attested'),
+    at: IsoDateTimeSchema,
+    statementVersion: z.number().int().positive().optional(),
+    /** ADR-023: the red flags (their `eventId`s) this attestation covers — the ones its writer knew. */
+    attests: SupersedesSchema.optional(),
+  }),
   /**
    * M03: a cardio block was run (to the end or stopped early). The seconds done at moderate and vigorous effort feed
    * the weekly aerobic ledger (vigorous counts double); `rounds` is the AMRAP rounds the user reported.

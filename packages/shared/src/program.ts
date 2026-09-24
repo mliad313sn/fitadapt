@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IsoDateTimeSchema, UuidSchema } from './common.js';
+import { IsoDateTimeSchema, SupersedesSchema, UuidSchema } from './common.js';
 import { EquipmentIdSchema, EquipmentLocationSchema, MovementPatternSchema, SafetyProfileSchema } from './exercise.js';
 import { ExperienceLevelSchema, GoalIdSchema, GoalsSchema } from './profile.js';
 import { ReasonCodeSchema } from './assessment.js';
@@ -220,6 +220,8 @@ export const ProgramRecordSchema = z.strictObject({
   reason: ProgramReasonSchema,
   input: ProgramInputSchema,
   program: ProgramSchema,
+  /** Record ids of the programs this one replaces (ADR-023); absent on records stored before it. */
+  supersedes: SupersedesSchema.optional(),
 });
 export type ProgramRecord = z.infer<typeof ProgramRecordSchema>;
 
@@ -240,6 +242,8 @@ export const ReflowRecordSchema = z.strictObject({
   engineVersion: z.string().regex(/^\d+\.\d+\.\d+$/),
   decidedAt: IsoDateTimeSchema,
   reasonCodes: z.array(ReasonCodeSchema).min(1),
+  /** Record ids of the reflows of the same program this one follows (ADR-023: replayed in chain order); absent on records stored before it. */
+  supersedes: SupersedesSchema.optional(),
 });
 export type ReflowRecord = z.infer<typeof ReflowRecordSchema>;
 

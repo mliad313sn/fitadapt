@@ -1,5 +1,6 @@
 import {
   CONSENT_DATA_TYPES,
+  orderChain,
   type ConsentDataType,
   type ConsentRecord,
   type ConsentState,
@@ -57,14 +58,34 @@ export function policyFor(dataType: ConsentDataType, jurisdiction?: Jurisdiction
   return override ?? policies.default[dataType];
 }
 
-/** The latest decision for a data type: newest `recordedAt`; on a tie, the later record in the list. */
+/**
+ * The decisions for a data type in chain order (ADR-023): a decision comes
+ * after every decision it names in `supersedes`. Decisions stored before
+ * links existed are ordered by `recordedAt`, then by their position in the
+ * ledger (the device's append order, the server's insertion order).
+ */
+function chainOf(records: readonly ConsentRecord[], dataType: ConsentDataType) {
+  const mine = records.map((record, position) => ({ record, position })).filter((x) => x.record.dataType === dataType);
+  return orderChain(mine, (x) => ({ id: x.record.id, supersedes: x.record.supersedes, at: x.record.recordedAt, legacyRank: x.position }));
+}
+
+/**
+ * The decision in force for a data type. Never "the newest timestamp": a
+ * device clock moved back makes a withdrawal look older than the grant it
+ * withdrew. The chain decides; when it leaves several candidates (two devices
+ * decided without knowing each other, or corrupt links) it FAILS CLOSED: a
+ * withdrawal among them wins, otherwise the grant of the oldest text version.
+ */
 export function latestRecord(records: readonly ConsentRecord[], dataType: ConsentDataType): ConsentRecord | undefined {
-  let latest: ConsentRecord | undefined;
-  for (const record of records) {
-    if (record.dataType !== dataType) continue;
-    if (!latest || Date.parse(record.recordedAt) >= Date.parse(latest.recordedAt)) latest = record;
-  }
-  return latest;
+  const { heads } = chainOf(records, dataType);
+  const withdrawn = heads.filter((h) => h.record.decision === 'withdrawn');
+  const pool = withdrawn.length > 0 ? withdrawn : heads;
+  return pool.reduce<(typeof pool)[number] | undefined>((a, b) => (a === undefined || b.record.version < a.record.version ? b : a), undefined)?.record;
+}
+
+/** The ids a new decision for this data type supersedes: every current head (ADR-023). */
+export function consentHeads(records: readonly ConsentRecord[], dataType: ConsentDataType): string[] {
+  return chainOf(records, dataType).heads.map((h) => h.record.id);
 }
 
 export interface ConsentEvaluationOptions {

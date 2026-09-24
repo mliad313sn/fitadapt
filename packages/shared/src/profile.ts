@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { IsoDateTimeSchema, UuidSchema } from './common.js';
+import { IsoDateTimeSchema, SupersedesSchema, UuidSchema } from './common.js';
 import { defineConfig } from './config.js';
 import {
   EquipmentIdSchema,
@@ -165,6 +165,8 @@ export const ScreeningRecordSchema = z.strictObject({
   responses: ScreeningResponsesSchema,
   safetyProfile: SafetyProfileSchema,
   completedAt: IsoDateTimeSchema,
+  /** Record ids of the screenings this one replaces (ADR-023); absent on screenings stored before it. */
+  supersedes: SupersedesSchema.optional(),
 });
 export type ScreeningRecord = z.infer<typeof ScreeningRecordSchema>;
 

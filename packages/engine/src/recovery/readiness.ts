@@ -1,4 +1,4 @@
-import { ReadinessCheckSchema, type IsoDate, type ReadinessCheck } from '@fitadapt/shared';
+import { ReadinessCheckSchema, orderChain, type IsoDate, type ReadinessCheck } from '@fitadapt/shared';
 import { recoveryValue } from './config.js';
 
 /**
@@ -50,10 +50,32 @@ export function readinessFromCheck(raw: ReadinessCheck): ReadinessResult {
   return { score: rounded, level, used, reasonCodes: [level === 'reduced' ? 'readiness.low' : 'readiness.ok', ...codes] };
 }
 
-/** The latest check recorded for a calendar date (checks in the order recorded), or null. */
+const LEGACY_AT = '1970-01-01T00:00:00.000Z';
+
+/**
+ * The check that counts for a calendar date, or null. ADR-023: a check names
+ * the checks of the same day it replaces (`supersedes`, their `checkId`s),
+ * so the device clock and the arrival order never decide; checks stored
+ * before that are ordered as given (the order recorded). When the day still
+ * has several candidates (two devices, a check next to an older unlinked
+ * one) it fails closed: the lowest readiness among them.
+ */
 export function readinessCheckOn(checks: readonly ReadinessCheck[], date: IsoDate): ReadinessCheck | null {
-  for (let i = checks.length - 1; i >= 0; i--) if (checks[i]!.date === date) return checks[i]!;
-  return null;
+  const day = checks.map((check, position) => ({ check, position })).filter((x) => x.check.date === date);
+  const { heads } = orderChain(day, ({ check, position }) => {
+    const legacy = check.supersedes === undefined;
+    return { id: check.checkId ?? `legacy:${position}`, supersedes: check.supersedes, at: legacy ? LEGACY_AT : check.at, legacyRank: position };
+  });
+  if (heads.length <= 1) return heads[0]?.check ?? null;
+  const scored = heads.map((h) => ({ check: h.check, score: readinessFromCheck(h.check).score }));
+  return scored.reduce((a, b) => (b.score <= a.score ? b : a)).check;
+}
+
+/** The ids a new check for `date` supersedes: every current head of that day that has an id (ADR-023). */
+export function readinessHeadsOn(checks: readonly ReadinessCheck[], date: IsoDate): string[] {
+  const day = checks.map((check, position) => ({ check, position })).filter((x) => x.check.date === date);
+  return orderChain(day, ({ check, position }) => ({ id: check.checkId ?? `legacy:${position}`, supersedes: check.supersedes, at: check.supersedes === undefined ? LEGACY_AT : check.at, legacyRank: position }))
+    .heads.flatMap((h) => (h.check.checkId === undefined ? [] : [h.check.checkId]));
 }
 
 /** generateSession's `readiness` for a date: 'reduced' only when that day's check says so; no check → undefined (no adjustment). */

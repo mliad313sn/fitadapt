@@ -191,4 +191,5 @@ export const onboardingEn = {
   'reason.safety_profile.not_screened.invalid': 'The health answers could not be read.',
   'reason.safety_profile.not_screened.invalid_birth_date': 'The date of birth is not a real date.',
   'reason.safety_profile.not_screened.no_consent': 'Health-data consent is off, so health answers are not used.',
+  'reason.safety_profile.ambiguous_latest': 'Some health screenings could not be put in order (for example, answered on two devices), so the most careful answers apply until your next screening.',
 } as const;

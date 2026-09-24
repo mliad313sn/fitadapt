@@ -178,4 +178,5 @@ export const onboardingFr: Record<keyof typeof onboardingEn, string> = {
   'reason.safety_profile.not_screened.invalid': 'Les réponses de santé n’ont pas pu être lues.',
   'reason.safety_profile.not_screened.invalid_birth_date': 'La date de naissance n’est pas une date réelle.',
   'reason.safety_profile.not_screened.no_consent': 'Le consentement aux données de santé est désactivé : les réponses de santé ne sont pas utilisées.',
+  'reason.safety_profile.ambiguous_latest': 'Certains questionnaires de santé n’ont pas pu être mis dans l’ordre (par exemple, remplis sur deux appareils) : les réponses les plus prudentes s’appliquent jusqu’au prochain questionnaire.',
 };

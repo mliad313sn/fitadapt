@@ -84,6 +84,11 @@ export class SyncClient {
     this.newId = options.newId ?? defaultNewId;
   }
 
+  /** A fresh record id from the injected generator (a record that must name itself, ADR-023, uses it for both). */
+  newRecordId(): string {
+    return this.newId();
+  }
+
   /** Creates a record. For append-only collections this is the only allowed operation. */
   insert(collection: string, data: RecordData, recordId: string = this.newId()): string {
     this.write(collection, recordId, 'insert', data);

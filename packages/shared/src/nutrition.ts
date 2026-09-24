@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { ReasonCodeSchema } from './assessment.js';
-import { IsoDateTimeSchema, UuidSchema } from './common.js';
+import { IsoDateTimeSchema, SupersedesSchema, UuidSchema } from './common.js';
 import { defineConfig } from './config.js';
 import { SafetyProfileSchema, SlugSchema } from './exercise.js';
 import { CalendarDateSchema } from './profile.js';
@@ -171,8 +171,11 @@ export const NutritionPlanRecordSchema = z.strictObject({
   /** Why it was computed: set-up, the weekly update, an M04 guardrail hand-off, a style change. */
   reason: z.enum(['setup', 'weekly_update', 'guardrail', 'settings_changed']),
   createdAt: IsoDateTimeSchema,
-  /** The target this plan replaces (null for the first): orders plans made within the same millisecond. */
-  supersedes: UuidSchema.nullable(),
+  /**
+   * The target(s) this plan replaces (null for the first). ADR-023: the chain, never the clock, orders plans;
+   * a list when the writer knew several heads (two devices), so the new plan replaces all of them.
+   */
+  supersedes: z.union([UuidSchema, SupersedesSchema.min(2)]).nullable(),
 });
 export type NutritionPlanRecord = z.infer<typeof NutritionPlanRecordSchema>;
 

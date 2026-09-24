@@ -77,6 +77,10 @@ export interface PainReport {
   readonly settled?: boolean;
   /** The session the report belongs to (plan id), null or absent outside a session. */
   readonly sessionId?: string | null;
+  /** ADR-023: the report's own id (absent on reports stored before it). */
+  readonly id?: string;
+  /** ADR-023: the latest reports of this joint its writer knew (ids): the causal order, independent of any clock. */
+  readonly after?: readonly string[];
 }
 
 export type PainLight = 'green' | 'amber' | 'red';
@@ -109,11 +113,42 @@ export interface JointPainState {
  *   report must be recorded later and not be dated before the red one (a
  *   device clock moved back cannot clear it), and an unreadable time never
  *   clears.
+ * - ADR-023: a red report with an id is cleared only by a report that FOLLOWS
+ *   it in the causal chain (`after`, transitively): its writer knew the red.
+ *   Record order and timestamps can both be wrong (a device clock moved back
+ *   sorts a new red before an old green; a report from another device may
+ *   never have seen the red), the chain cannot. Legacy reds (no id) keep the
+ *   rules above.
  * - Otherwise the latest report decides: ≥ 4 amber, else green.
  */
 export function painTrafficLight(reports: readonly PainReport[]): Partial<Record<Joint, JointPainState>> {
   const out: Partial<Record<Joint, JointPainState>> = {};
-  const red: Partial<Record<Joint, { at: number; sessions: Set<string | null> }>> = {};
+  const red: Partial<Record<Joint, { at: number; sessions: Set<string | null>; ids: Set<string> }>> = {};
+  const parents = new Map<string, readonly string[]>();
+  const sessionOf = new Map<string, (string | null)[]>();
+  for (const r of reports) {
+    if (r.id === undefined) continue;
+    parents.set(r.id, [...(parents.get(r.id) ?? []), ...(r.after ?? [])]);
+    sessionOf.set(r.id, [...(sessionOf.get(r.id) ?? []), r.sessionId ?? null]);
+  }
+  /** The ids `r` follows through `after` links (its causal ancestors). */
+  const ancestors = (r: PainReport) => {
+    const seen = new Set<string>();
+    const stack = [...(r.after ?? [])];
+    while (stack.length > 0) {
+      const id = stack.pop()!;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      stack.push(...(parents.get(id) ?? []));
+    }
+    return seen;
+  };
+  /** Every id in `targets` is a causal ancestor of `r`. */
+  const follows = (r: PainReport, targets: ReadonlySet<string>) => {
+    if (targets.size === 0) return true;
+    const known = ancestors(r);
+    return [...targets].every((id) => known.has(id));
+  };
   /** Every session a report of the joint came from so far (in record order). */
   const seen: Partial<Record<Joint, Set<string | null>>> = {};
   for (const r of reports) {
@@ -131,12 +166,19 @@ export function painTrafficLight(reports: readonly PainReport[]): Partial<Record
       // An unreadable time can never be "before" a clearing report.
       const streak = red[r.joint];
       // Only a session not seen before this red rating (a later one) can clear it.
-      red[r.joint] = { at: Number.isNaN(t) ? Number.POSITIVE_INFINITY : Math.max(t, streak?.at ?? Number.NEGATIVE_INFINITY), sessions: new Set(known) };
+      const ids = new Set(streak?.ids ?? []);
+      // The sessions that reported this joint up to the red rating: in record order, and (ADR-023) causally, whatever the order.
+      const sessions = new Set([...known, ...(streak?.sessions ?? [])]);
+      if (r.id !== undefined) {
+        ids.add(r.id);
+        for (const id of ancestors(r)) for (const sess of sessionOf.get(id) ?? []) sessions.add(sess);
+      }
+      red[r.joint] = { at: Number.isNaN(t) ? Number.POSITIVE_INFINITY : Math.max(t, streak?.at ?? Number.NEGATIVE_INFINITY), sessions, ids };
     } else if (prev?.flag === 'red') {
       const setBy = red[r.joint]!;
       // A session not seen for this joint up to the red rating (reports outside a session only clear reds set outside one).
       const otherSession = session === null ? [...setBy.sessions].every((x) => x === null) : !setBy.sessions.has(session);
-      const clears = r.phase !== 'next_morning' && !Number.isNaN(t) && t >= setBy.at && otherSession;
+      const clears = r.phase !== 'next_morning' && !Number.isNaN(t) && t >= setBy.at && otherSession && follows(r, setBy.ids);
       flag = clears ? light : 'red';
       if (clears) {
         redReason = null;
@@ -198,6 +240,12 @@ export function physioRecommendations(reports: readonly PainReport[], nowMs: num
 export interface SafetyStopEvent {
   readonly kind: 'red_flag' | 'medical_review_attested' | string;
   readonly at: string;
+  /** ADR-023: a red flag's own id; a red flag with an id is lifted only by an attestation that names it. */
+  readonly id?: string;
+  /** The same id as stored in an execution log (`eventId`), when raw logs are passed. */
+  readonly eventId?: string;
+  /** ADR-023: the red flags (ids) an attestation covers. */
+  readonly attests?: readonly string[];
 }
 
 export interface IntensityLockStatus {
@@ -212,6 +260,10 @@ export interface IntensityLockStatus {
  * the last red flag was recorded after the last attestation, or when a red
  * flag is dated at or after the latest attestation (a device clock moved
  * back cannot unlock it). Events are given in the order they were recorded.
+ * ADR-023: on top of both readings, a red flag that carries an id stays
+ * locked until an attestation NAMES it (`attests`): neither the record order
+ * (a device sorts by its own clock) nor a timestamp (a clock moved back makes
+ * a new flag look older than an old attestation) can lift it.
  */
 export function intensityLockStatus(events: readonly SafetyStopEvent[]): IntensityLockStatus {
   let lastFlag: SafetyStopEvent | null = null;
@@ -233,9 +285,14 @@ export function intensityLockStatus(events: readonly SafetyStopEvent[]): Intensi
     const t = Date.parse(e.at);
     return Number.isNaN(t) || t >= latestAttestAt;
   });
-  const locked = lastFlagIndex > lastAttestIndex || flagAfterAttestInTime !== undefined;
-  if (!locked) return { locked: false, since: null };
-  const since = (flagAfterAttestInTime ?? lastFlag)!.at;
+  const byOrderOrTime = lastFlagIndex > lastAttestIndex || flagAfterAttestInTime !== undefined;
+  const named = new Set(events.flatMap((e) => (e.kind === 'medical_review_attested' ? (e.attests ?? []) : [])));
+  const unnamed = flags.find((e) => {
+    const id = e.id ?? e.eventId;
+    return id !== undefined && !named.has(id);
+  });
+  if (!byOrderOrTime && !unnamed) return { locked: false, since: null };
+  const since = byOrderOrTime ? (flagAfterAttestInTime ?? lastFlag)!.at : unnamed!.at;
   return { locked: true, since };
 }
 

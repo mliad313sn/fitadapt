@@ -1,6 +1,13 @@
 import { z } from 'zod';
 
 export const UuidSchema = z.uuid();
+
+/**
+ * The records a new record replaces in an append-only history where the
+ * latest counts: the heads its writer knew (packages/shared record-chain,
+ * ADR-023). Optional: records stored before it existed have none.
+ */
+export const SupersedesSchema = z.array(UuidSchema).max(256);
 export type Uuid = z.infer<typeof UuidSchema>;
 
 /** Emails are compared case-insensitively; we store them trimmed and lower-cased. */
