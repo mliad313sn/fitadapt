@@ -226,5 +226,11 @@ export const AdherenceStatSchema = z.strictObject({
   longestStreakDays: z.number().int().min(0),
   /** Sessions done on days that had none planned (never counted against the plan). */
   extra: z.number().int().min(0),
+  /**
+   * L4 (A4/A6 pre-review, streaks): planned days protected by a safety pause (red pain, a red-flag stop and the
+   * S3 lock after it, a low readiness check, a session ended for pain). They are neither kept nor missed: the
+   * streak goes on like a rest day, and training on them adds nothing (never a reward for training through a pause).
+   */
+  protectedDays: z.number().int().min(0),
 });
 export type AdherenceStat = z.infer<typeof AdherenceStatSchema>;

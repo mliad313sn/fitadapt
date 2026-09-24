@@ -19,6 +19,8 @@ import { defineConfig } from '@fitadapt/shared';
 const ENG = 'M04 engineering default (conservative choice by the engineer); no external source';
 const SPEC = 'docs/specs/M04-tracking-progress-dashboard.md';
 const FORECAST = `${ENG}; least-squares trend with an interval from the slope's standard error, chosen by the engineer, not a published model`;
+const HORIZON =
+  'docs/governance/ai-reviews/A3-A5-training-science.md item 75 (AI pre-review, not a professional sign-off: "horizon ≤ min(3 × observed span, 180 days); use a prediction interval"; gains slow down over time, so a line fitted to a few weeks overstates a year ahead — L1 no promise); stricter than the earlier 365 days; seats A5, A3 and counsel (B2) to decide';
 
 /** Version of the M04 analytics rules (trend, rate, guardrail, forecasts). */
 export const ANALYTICS_RULES_VERSION = '0.1.0';
@@ -46,9 +48,12 @@ export const ANALYTICS_CONFIG = defineConfig({
   'forecast.windowDays': { value: 84, unit: 'days', source: FORECAST, validated: false },
   'forecast.minPoints': { value: 4, unit: 'sessions', source: FORECAST, validated: false },
   'forecast.minSpanDays': { value: 21, unit: 'days', source: FORECAST, validated: false },
-  'forecast.horizonDays': { value: 365, unit: 'days', source: FORECAST, validated: false },
-  /** Width of the range: slope ± this many standard errors (≈ an 80 % interval under normal errors). */
-  'forecast.intervalZ': { value: 1.28, unit: 'standard errors', source: FORECAST, validated: false },
+  /** Never a window further than this ahead (A3/A5 #75: was 365). */
+  'forecast.horizonDays': { value: 180, unit: 'days', source: HORIZON, validated: false },
+  /** … nor further than this many times the span of the points it is fitted on. */
+  'forecast.horizonSpanMultiple': { value: 3, unit: '× observed span', source: HORIZON, validated: false },
+  /** Width of the range: a prediction band of ± this many residual standard deviations around the line (≈ 80 % under normal errors). */
+  'forecast.intervalZ': { value: 1.28, unit: 'standard deviations (prediction interval)', source: `${FORECAST}; a prediction interval (residual scatter included), not the slope's standard error only, per ${'docs/governance/ai-reviews/A3-A5-training-science.md'} item 75`, validated: false },
   'forecast.minRangeDays': { value: 14, unit: 'days', source: FORECAST, validated: false },
   'confidence.highMinPoints': { value: 12, unit: 'sessions', source: FORECAST, validated: false },
   'confidence.highMinR2': { value: 0.7, unit: 'R²', source: FORECAST, validated: false },

@@ -1,4 +1,4 @@
-import { MilestoneForecastSchema, type BodyMetric, type HistoryExercise, type IsoDate, type Measurement, type PerformedSet, type SessionHistoryEntry } from '@fitadapt/shared';
+import { MilestoneForecastSchema, type BodyMetric, type HistoryExercise, type IsoDate, type Measurement, type PerformedSet, type ReadinessCheck, type SessionHistoryEntry } from '@fitadapt/shared';
 import { describe, expect, it } from 'vitest';
 import { ENGINE_CONFIGS } from '../config/index.js';
 import { addDays } from '../program/dates.js';
@@ -15,6 +15,7 @@ import {
   ewmaTrend,
   exerciseHistory,
   forecastLadderMilestone,
+  safetyProtectedDays,
   forecastLoadMilestone,
   forecastMilestone,
   guardrailDue,
@@ -269,23 +270,56 @@ describe('sustained-loss guardrail (goal condition 2): > 1 % BW/week for 3 weeks
 
 describe('adherence: planned vs completed, streaks that count planned rest days', () => {
   it('counts planned and kept sessions, extra sessions, and a streak that rest days continue', () => {
-    const stat = adherence({ planned: ['2026-09-01', '2026-09-03', '2026-09-05'], trained: ['2026-09-01', '2026-09-03', '2026-09-04', '2026-09-05'], from: '2026-09-01', to: '2026-09-07' });
+    const stat = adherence({ planned: ['2026-09-01', '2026-09-03', '2026-09-05'], trained: ['2026-09-01', '2026-09-03', '2026-09-04', '2026-09-05'], from: '2026-09-01', to: '2026-09-07', protectedDays: [] });
     expect(stat).toMatchObject({ planned: 3, completed: 3, rate: 1, extra: 1, currentStreakDays: 7, longestStreakDays: 7 });
   });
 
   it('only a planned session that did not happen ends the streak; today is still in progress', () => {
-    const stat = adherence({ planned: ['2026-09-01', '2026-09-03', '2026-09-05', '2026-09-08'], trained: ['2026-09-01', '2026-09-05'], from: '2026-09-01', to: '2026-09-08' });
+    const stat = adherence({ planned: ['2026-09-01', '2026-09-03', '2026-09-05', '2026-09-08'], trained: ['2026-09-01', '2026-09-05'], from: '2026-09-01', to: '2026-09-08', protectedDays: [] });
     // 01 kept, 02 rest, 03 missed (ends it), 04 rest, 05 kept, 06–07 rest, 08 today still to do: 4 days.
     expect(stat).toMatchObject({ planned: 4, completed: 2, rate: 0.5, currentStreakDays: 4, longestStreakDays: 4 });
-    const doneToday = adherence({ planned: ['2026-09-08'], trained: ['2026-09-08'], from: '2026-09-07', to: '2026-09-08' });
+    const doneToday = adherence({ planned: ['2026-09-08'], trained: ['2026-09-08'], from: '2026-09-07', to: '2026-09-08', protectedDays: [] });
     expect(doneToday.currentStreakDays).toBe(2);
   });
 
+  it('L4: a safety pause (red pain, red-flag stop and S3 lock, low readiness, a session ended for pain) never ends the streak nor lowers the rate, and training on it earns nothing', () => {
+    const planned = ['2026-09-01', '2026-09-03', '2026-09-05', '2026-09-07'];
+    // 03 was skipped for a safety pause: without protection the streak would restart on 04.
+    const skipped = adherence({ planned, trained: ['2026-09-01', '2026-09-05', '2026-09-07'], from: '2026-09-01', to: '2026-09-07', protectedDays: [] });
+    expect(skipped).toMatchObject({ planned: 4, completed: 3, currentStreakDays: 4, protectedDays: 0 });
+    const paused = adherence({ planned, trained: ['2026-09-01', '2026-09-05', '2026-09-07'], from: '2026-09-01', to: '2026-09-07', protectedDays: ['2026-09-03'] });
+    expect(paused).toMatchObject({ planned: 3, completed: 3, rate: 1, currentStreakDays: 7, longestStreakDays: 7, protectedDays: 1 });
+    // Training through the pause is not rewarded: the same figures as resting (no completed, no extra).
+    const through = adherence({ planned, trained: ['2026-09-01', '2026-09-03', '2026-09-05', '2026-09-07'], from: '2026-09-01', to: '2026-09-07', protectedDays: ['2026-09-03'] });
+    expect(through).toEqual(paused);
+    const extraOnPause = adherence({ planned, trained: ['2026-09-01', '2026-09-02', '2026-09-05', '2026-09-07'], from: '2026-09-01', to: '2026-09-07', protectedDays: ['2026-09-02', '2026-09-03'] });
+    expect(extraOnPause).toMatchObject({ extra: 0, currentStreakDays: 7 });
+
+    const dateOf = (iso: string) => iso.slice(0, 10);
+    const plan = '00000000-0000-4000-8000-000000000001';
+    const check = (date: string, low: boolean): ReadinessCheck => ({ schemaVersion: 1, date, at: `${date}T07:00:00.000Z`, sleep: low ? 1 : 5, soreness: low ? 5 : 1, stress: low ? 5 : 1, energy: low ? 1 : 5, wearable: null });
+    const days = safetyProtectedDays({
+      executionLogs: [
+        { kind: 'pain', planId: plan, joint: 'knee', score: 7, at: '2026-09-02T10:00:00.000Z' },
+        { kind: 'pain', planId: plan, joint: 'knee', score: 3, at: '2026-09-03T10:00:00.000Z' },
+        { kind: 'ended', planId: plan, reason: 'pain', at: '2026-09-04T10:00:00.000Z' },
+        { kind: 'ended', planId: plan, reason: 'completed', at: '2026-09-06T10:00:00.000Z' },
+        { kind: 'red_flag', planId: plan, symptom: 'palpitations', at: '2026-09-10T10:00:00.000Z' },
+        { kind: 'medical_review_attested', at: '2026-09-12T09:00:00.000Z' },
+        { kind: 'red_flag', planId: null, symptom: 'fainting', at: '2026-09-20T10:00:00.000Z' },
+      ],
+      readinessChecks: [check('2026-09-15', true), check('2026-09-16', false)],
+      dateOf,
+      to: '2026-09-22',
+    });
+    expect(days).toEqual(['2026-09-02', '2026-09-04', '2026-09-10', '2026-09-11', '2026-09-12', '2026-09-15', '2026-09-20', '2026-09-21', '2026-09-22']);
+  });
+
   it('two sessions planned on one day need both; without a plan there is no rate and no streak', () => {
-    expect(adherence({ planned: ['2026-09-01', '2026-09-01'], trained: ['2026-09-01'], from: '2026-09-01', to: '2026-09-02' })).toMatchObject({ planned: 2, completed: 1, currentStreakDays: 1, longestStreakDays: 1 });
-    expect(adherence({ planned: [], trained: ['2026-09-01'], from: '2026-09-01', to: '2026-09-07' })).toMatchObject({ planned: 0, rate: null, currentStreakDays: 0, longestStreakDays: 0, extra: 1 });
-    expect(adherence({ planned: ['2026-08-01'], trained: [], from: '2026-09-01', to: '2026-09-02' }).planned).toBe(0);
-    expect(() => adherence({ planned: [], trained: [], from: '2026-09-02', to: '2026-09-01' })).toThrow(RangeError);
+    expect(adherence({ planned: ['2026-09-01', '2026-09-01'], trained: ['2026-09-01'], from: '2026-09-01', to: '2026-09-02', protectedDays: [] })).toMatchObject({ planned: 2, completed: 1, currentStreakDays: 1, longestStreakDays: 1 });
+    expect(adherence({ planned: [], trained: ['2026-09-01'], from: '2026-09-01', to: '2026-09-07', protectedDays: [] })).toMatchObject({ planned: 0, rate: null, currentStreakDays: 0, longestStreakDays: 0, extra: 1 });
+    expect(adherence({ planned: ['2026-08-01'], trained: [], from: '2026-09-01', to: '2026-09-02', protectedDays: [] }).planned).toBe(0);
+    expect(() => adherence({ planned: [], trained: [], from: '2026-09-02', to: '2026-09-01', protectedDays: [] })).toThrow(RangeError);
   });
 });
 
@@ -309,7 +343,8 @@ describe('milestone forecasts: a date range with a confidence, always an estimat
   it('noisier or shorter data lowers the confidence and widens the range', () => {
     const clean = forecastMilestone({ milestoneId: 'm', points: line(84, 3, 90, 0.2), target: 120, today, achieved: false });
     const noisy = forecastMilestone({ milestoneId: 'm', points: line(84, 3, 90, 0.2, 4), target: 120, today, achieved: false });
-    const few = forecastMilestone({ milestoneId: 'm', points: line(28, 7, 100, 0.2, 0.3), target: 120, today, achieved: false });
+    // Four points over 21 days: the horizon is 3 × 21 = 63 days (A3/A5 #75), so the target is within reach of it.
+    const few = forecastMilestone({ milestoneId: 'm', points: line(28, 7, 100, 0.2, 0.3), target: 110, today, achieved: false });
     expect(noisy.status).toBe('forecast');
     expect(['low', 'medium']).toContain(noisy.confidence);
     const width = (f: typeof clean) => new Date(f.latest!).getTime() - new Date(f.earliest!).getTime();
@@ -342,6 +377,17 @@ describe('milestone forecasts: a date range with a confidence, always an estimat
     // Points outside the window, in the future or not finite are ignored.
     const odd = [...line(84, 3, 90, 0.2), { date: addDays(today, 5), value: 500 }, { date: '2025-01-01', value: 0 }, { date: today, value: Number.NaN }];
     expect(forecastMilestone({ milestoneId: 'm', points: odd, target: 120, today, achieved: false }).points).toBe(28);
+  });
+
+  it('A3/A5 #75: the horizon is at most 180 days and at most 3 × the observed span; the band widens away from the data', () => {
+    expect(analyticsValue('forecast.horizonDays')).toBeLessThanOrEqual(180);
+    // 21 days of data (4 points) reaching the target in ~79 days: beyond 3 × 21 = 63 days → no window.
+    expect(forecastMilestone({ milestoneId: 'm', points: line(28, 7, 100, 0.2), target: 120, today, achieved: false }).status).toBe('beyond_horizon');
+    // 81 days of data reaching the target in ~200 days: beyond 180 days → no window (was a window under 365).
+    expect(forecastMilestone({ milestoneId: 'm', points: line(84, 3, 90, 0.2), target: 146, today, achieved: false }).status).toBe('beyond_horizon');
+    const f = forecastMilestone({ milestoneId: 'm', points: line(84, 3, 90, 0.2, 1), target: 120, today, achieved: false });
+    expect(f.status).toBe('forecast');
+    expect(f.latest! <= addDays(today, 180)).toBe(true);
   });
 
   it('a wide slope uncertainty caps the latest date at the horizon with low confidence', () => {

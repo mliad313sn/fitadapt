@@ -119,7 +119,7 @@ describe('the dashboard over the reference data', () => {
   it('shows sessions and a streak that counts rest days, strength with e1RM and variant level, hard sets against the range, and the pull-up milestone', () => {
     renderDashboard(d);
     expect(screen.getByTestId('progress-adherence-planned')).toBeTruthy();
-    expect(screen.getByTestId('progress-streak').props.children).toMatch(/rest days count|streak starts/);
+    expect(screen.getByTestId('progress-streak').props.children).toMatch(/rest days and safety pauses count|streak starts/);
     const squat = screen.getByTestId('progress-exercise-goblet_squat');
     expect(squat).toBeTruthy();
     expect(screen.getAllByText(/Estimated one-rep max: \d/).length).toBeGreaterThan(0);

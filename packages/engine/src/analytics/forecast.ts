@@ -8,8 +8,13 @@ import { setE1RM, type DateOf } from './strength.js';
  * Milestone forecasts (M04): "roughly when might I reach this?", as a date
  * range with a confidence, never as a promise (L1). The model is a
  * least-squares line through the recent progress points (the last
- * `forecast.windowDays`); the range comes from the slope ± `forecast.intervalZ`
- * standard errors. Every parameter is config, `validated: false` (A5, A3).
+ * `forecast.windowDays`). The range is where a prediction band (the line ±
+ * `forecast.intervalZ` residual standard deviations, widening away from the
+ * data) reaches the target: the earliest day its upper edge does, the latest
+ * day its lower edge does. No window is given beyond the horizon: at most
+ * `forecast.horizonDays`, and at most `forecast.horizonSpanMultiple` × the
+ * span of the points (A3/A5 pre-review #75: gains slow down, so a short trend
+ * must not be projected far). Every parameter is config, `validated: false`.
  *
  * Two kinds of milestone read the engine's history:
  * - a ladder milestone (e.g. P2's first strict pull-up): progress is the
@@ -36,6 +41,11 @@ interface Fit {
   readonly intercept: number;
   readonly slopeSe: number;
   readonly r2: number;
+  /** Residual standard deviation, number of points, mean x and Σ(x − x̄)² (the prediction band). */
+  readonly residualSd: number;
+  readonly n: number;
+  readonly meanX: number;
+  readonly sxx: number;
 }
 
 function fit(points: readonly { x: number; y: number }[]): Fit {
@@ -55,9 +65,19 @@ function fit(points: readonly { x: number; y: number }[]): Fit {
   const intercept = my - slope * mx;
   let sse = 0;
   for (const p of points) sse += (p.y - (intercept + slope * p.x)) ** 2;
-  const slopeSe = Math.sqrt(sse / (n - 2) / sxx);
+  const residualSd = Math.sqrt(sse / (n - 2));
+  const slopeSe = residualSd / Math.sqrt(sxx);
   const r2 = syy === 0 ? 0 : Math.max(0, 1 - sse / syy);
-  return { slope, intercept, slopeSe, r2 };
+  return { slope, intercept, slopeSe, r2, residualSd, n, meanX: mx, sxx };
+}
+
+/** Half-width of the prediction band at x (days from today). */
+const bandAt = (f: Fit, x: number, z: number) => z * f.residualSd * Math.sqrt(1 + 1 / f.n + (x - f.meanX) ** 2 / f.sxx);
+
+/** The first whole day in [0, horizon] where `reached(x)` holds, or Infinity. */
+function firstDay(horizon: number, reached: (x: number) => boolean): number {
+  for (let x = 0; x <= horizon; x++) if (reached(x)) return x;
+  return Number.POSITIVE_INFINITY;
 }
 
 function confidenceOf(n: number, r2: number): Confidence {
@@ -83,13 +103,12 @@ export function forecastMilestone({ milestoneId, points, target, today, achieved
   const remaining = target - now;
   if (!(f.slope > 0)) return none(milestoneId, 'no_trend', recent.length, 'progress.forecast.no_trend');
   const z = analyticsValue('forecast.intervalZ');
-  const horizon = analyticsValue('forecast.horizonDays');
+  const horizon = Math.min(analyticsValue('forecast.horizonDays'), analyticsValue('forecast.horizonSpanMultiple') * span);
   const likely = remaining <= 0 ? 0 : remaining / f.slope;
-  const fast = f.slope + z * f.slopeSe;
-  const slow = f.slope - z * f.slopeSe;
-  let early = remaining <= 0 ? 0 : remaining / fast;
-  let late = slow > 0 ? (remaining <= 0 ? 0 : remaining / slow) : Infinity;
   if (!(likely <= horizon)) return none(milestoneId, 'beyond_horizon', recent.length, 'progress.forecast.beyond_horizon');
+  const line = (x: number) => f.intercept + f.slope * x;
+  let early = remaining <= 0 ? 0 : Math.min(likely, firstDay(horizon, (x) => line(x) + bandAt(f, x, z) >= target));
+  let late = remaining <= 0 ? 0 : Math.max(likely, firstDay(horizon, (x) => line(x) - bandAt(f, x, z) >= target));
   // Never a single day: the range is at least `forecast.minRangeDays` wide, around the likely date.
   const minRange = analyticsValue('forecast.minRangeDays');
   if (late - early < minRange) {

@@ -13,12 +13,12 @@
  */
 export const progressEn = {
   // ---- Engine reason codes (forecasts, guardrail)
-  'engine.reason.progress.forecast.linear_trend': 'Worked out from the trend of your recent sessions.',
+  'engine.reason.progress.forecast.linear_trend': 'A possible range if your recent pace carried on. Progress usually slows over time, so take it as a rough guide.',
   'engine.reason.progress.forecast.estimate_only': 'This is an estimate, not a guarantee.',
   'engine.reason.progress.forecast.achieved': 'You have already done this.',
   'engine.reason.progress.forecast.insufficient_data': 'Not enough recent sessions yet to estimate a window.',
   'engine.reason.progress.forecast.no_trend': 'Your recent sessions do not show a steady trend toward this yet.',
-  'engine.reason.progress.forecast.beyond_horizon': 'On the current trend this is more than a year away, so no window is shown.',
+  'engine.reason.progress.forecast.beyond_horizon': 'This is further ahead than your recent sessions can tell, so no window is shown.',
   'engine.reason.progress.forecast.confidence.low': 'Low confidence: few sessions or a lot of variation.',
   'engine.reason.progress.forecast.confidence.medium': 'Medium confidence.',
   'engine.reason.progress.forecast.confidence.high': 'Higher confidence: a steady trend over many sessions.',
@@ -40,7 +40,7 @@ export const progressEn = {
   'progress.adherence.title': 'Sessions',
   'progress.adherence.planned': '{completed} of {planned} planned {planned, plural, one {session} other {sessions}} done in the last four weeks',
   'progress.adherence.noPlan': 'No training plan yet. The sessions you log still count here.',
-  'progress.adherence.streak': '{days, plural, =0 {Your streak starts with your next planned session.} one {# day in a row on plan (rest days count).} other {# days in a row on plan (rest days count).}}',
+  'progress.adherence.streak': '{days, plural, =0 {Your streak starts with your next planned session.} one {# day in a row on plan (rest days and safety pauses count).} other {# days in a row on plan (rest days and safety pauses count).}}',
   'progress.adherence.longest': 'Longest: {days, plural, one {# day} other {# days}}',
   'progress.adherence.extra': '{count, plural, one {# extra session} other {# extra sessions}} on unplanned days',
 
@@ -98,7 +98,7 @@ export const progressEn = {
   'progress.forecast.achieved': 'Reached. Nice work.',
   'progress.forecast.insufficient_data': 'Not enough recent sessions yet to estimate a window.',
   'progress.forecast.no_trend': 'No window yet: your recent sessions do not show a steady trend toward this.',
-  'progress.forecast.beyond_horizon': 'More than a year away on the current trend, so no window is shown.',
+  'progress.forecast.beyond_horizon': 'Further ahead than your recent sessions can tell, so no window is shown.',
   'progress.forecast.how': 'Based on the trend of your last 12 weeks. Sleep, stress, time off and many other things change it.',
 
   // ---- Body
