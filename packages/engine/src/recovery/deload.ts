@@ -132,15 +132,15 @@ function performanceTrigger(facts: DeloadFacts, cursor: number): Fired | null {
 const nextDate = (d: string) => new Date(Date.parse(`${d}T00:00:00.000Z`) + DAY).toISOString().slice(0, 10);
 
 function lowReadinessTrigger(facts: DeloadFacts, cursor: number): Fired | null {
-  // The check that counts for each date (readinessCheckOn: the chain, fail closed), only those after the cursor.
-  const after = facts.readinessChecks.filter((c) => {
-    const t = valid(c.at);
-    return t !== null && t > cursor;
-  });
+  // The check that counts for each date (readinessCheckOn: the chain over ALL checks, fail closed), then only the
+  // dates whose counting check is after the cursor. Filtering first (SAF-11) could resurrect a superseded check
+  // whose replacement is dated at or before the cursor (a clock moved back).
   const byDate = new Map<string, { low: boolean; at: number }>();
-  for (const date of new Set(after.map((c) => c.date))) {
-    const c = readinessCheckOn(after, date)!;
-    byDate.set(date, { low: readinessFromCheck(c).level === 'reduced', at: valid(c.at)! });
+  for (const date of new Set(facts.readinessChecks.map((c) => c.date))) {
+    const c = readinessCheckOn(facts.readinessChecks, date)!;
+    const t = valid(c.at);
+    if (t === null || t <= cursor) continue;
+    byDate.set(date, { low: readinessFromCheck(c).level === 'reduced', at: t });
   }
   const dates = [...byDate.keys()].sort();
   const needed = recoveryValue('deload.lowReadinessDays');

@@ -87,6 +87,19 @@ describe('M05 triggered deloads: each trigger in the spec (goal condition 3)', (
     expect(performanceDropped([hold(0, 40), { ...hold(2, 30), exercises: [{ ...hold(2, 30).exercises[0]!, performed: [{ index: 1, status: 'skipped', reps: null, seconds: null, loadKg: null, rir: null }] }] }], 1)).toBe(false);
   });
 
+  it('SAF-11: the readiness chain is resolved over every check before the cursor filter (a superseded check never counts again)', () => {
+    const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+    // A first deload (Oct 1–3 low) ends on Oct 10 07:00: the cursor.
+    const first = [check('2026-10-01', true), check('2026-10-02', true), check('2026-10-03', true)];
+    const a13 = { ...check('2026-10-13', true), checkId: id(1), supersedes: [] };
+    // B replaces A (the user corrected the check) but its time is before the cursor (the clock was moved back).
+    const b13 = { ...check('2026-10-13', false), checkId: id(2), supersedes: [id(1)], at: '2026-10-09T07:00:00.000Z' };
+    const readinessChecks = [...first, check('2026-10-11', true), check('2026-10-12', true), a13, b13];
+    expect(deloadStatus({ ...none, readinessChecks, asOfMs: Date.parse('2026-10-14T09:00:00.000Z') })).toBeNull();
+    // Without the correction, A counts: three low days after the cursor.
+    expect(deloadStatus({ ...none, readinessChecks: readinessChecks.slice(0, -1), asOfMs: Date.parse('2026-10-14T09:00:00.000Z') })).toMatchObject({ trigger: 'low_readiness', since: '2026-10-13T07:00:00.000Z' });
+  });
+
   it('low readiness three days running', () => {
     const three = [check('2026-10-01', true), check('2026-10-02', true), check('2026-10-03', true)];
     expect(deloadStatus({ ...none, readinessChecks: three, asOfMs: Date.parse('2026-10-03T09:00:00.000Z') })).toEqual({ trigger: 'low_readiness', since: '2026-10-03T07:00:00.000Z', until: '2026-10-10T07:00:00.000Z' });
