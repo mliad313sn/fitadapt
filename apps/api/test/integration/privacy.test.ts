@@ -18,6 +18,9 @@ const CANARY = {
   freeText: 'I felt dizzy after the long run yesterday',
 };
 
+/** A valid set log (API-12: set logs are schema-checked); 82.5 kg doubles as the weight canary. */
+const SET_LOG = { schemaVersion: 1, planId: '44444444-4444-4444-8444-444444444444', exerciseIndex: 0, exerciseId: 'goblet_squat', set: { index: 1, status: 'done', reps: 10, seconds: null, loadKg: 82.5, rir: 2 }, loggedAt: '2026-09-20T07:00:00.000Z', correctionOf: null };
+
 let h: Harness;
 const backups = new MemoryBackupCatalog();
 const sink = new MemoryAnalyticsSink();
@@ -91,11 +94,13 @@ async function populatedUser() {
   const second = await signIn(h, email, device('android'));
   const token = first.tokens.accessToken;
   const pushed = await push(token, first.deviceId, [
-    { collection: 'set_logs', data: { exercise: 'goblet_squat', reps: 10, loadKg: 20, bodyWeightKg: 82.5 } },
+    { collection: 'set_logs', data: SET_LOG },
+    // API-12: a set log carrying free text and a pain report is refused (the request body still goes through the logger).
     { collection: 'set_logs', data: { exercise: 'push_up', reps: 12, note: CANARY.freeText, pain: CANARY.pain } },
     { collection: 'preferences', data: { displayName: CANARY.name, units: 'metric' } },
   ]);
   expect(pushed.statusCode).toBe(200);
+  expect((pushed.json() as { results: { status: string; reason?: string }[] }).results.map((r) => r.reason ?? r.status)).toEqual(['applied', 'set_log.invalid', 'applied']);
   expect((await consent(token, 'health', 'granted')).statusCode).toBe(201);
   expect((await consent(token, 'analytics', 'granted')).statusCode).toBe(201);
   expect((await consent(token, 'analytics', 'withdrawn')).statusCode).toBe(201);
@@ -283,13 +288,11 @@ describe('in-app export (goal condition 2)', () => {
       ['analytics', 'granted', 1, 'SN'],
       ['analytics', 'withdrawn', 1, 'SN'],
     ]);
-    expect(doc.sync.revision).toBe(3);
-    expect(doc.sync.changes.map((c) => c.data)).toEqual([
-      { exercise: 'goblet_squat', reps: 10, loadKg: 20, bodyWeightKg: 82.5 },
-      { exercise: 'push_up', reps: 12, note: CANARY.freeText, pain: CANARY.pain },
-      { displayName: CANARY.name, units: 'metric' },
-    ]);
+    expect(doc.sync.revision).toBe(2);
+    expect(doc.sync.changes.map((c) => c.data)).toEqual([SET_LOG, { displayName: CANARY.name, units: 'metric' }]);
+    // Every processed mutation, the refused one included; the refused free text was never stored.
     expect(doc.sync.mutations).toHaveLength(3);
+    expect(res.body).not.toContain(CANARY.freeText);
     expect(doc.dataRequests).toEqual([expect.objectContaining({ kind: 'export', status: 'completed' })]);
     expect(doc.auditTrail.map((a) => a.action)).toEqual(['consent.granted', 'consent.granted', 'consent.withdrawn', 'data.exported']);
     // Credentials never leave the server, not even as hashes.

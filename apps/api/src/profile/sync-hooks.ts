@@ -12,11 +12,13 @@ import {
   PROFILE_COLLECTIONS,
   PROGRAM_COLLECTIONS,
   PROGRESS_COLLECTIONS,
+  PreferencesRecordSchema,
   ProfileSchema,
   RECOVERY_COLLECTIONS,
   ReadinessCheckSchema,
   SESSION_COLLECTIONS,
   ScreeningRecordSchema,
+  SetLogSchema,
   type SafetyProfile,
 } from '@fitadapt/shared';
 import type { MutationListener, MutationValidator } from '@fitadapt/sync';
@@ -56,6 +58,17 @@ export const HEALTH_COLLECTIONS: readonly string[] = [
   NUTRITION_COLLECTIONS.plans,
   NUTRITION_COLLECTIONS.intakeLogs,
   NUTRITION_COLLECTIONS.habitChecks,
+];
+
+/** The `preferences` sync collection (per-user settings). */
+export const PREFERENCES_COLLECTION = 'preferences';
+
+/** Every collection the validator checks; any other collection is refused (fail closed, PKG-06). */
+export const VALIDATED_COLLECTIONS: readonly string[] = [
+  ...HEALTH_COLLECTIONS,
+  PROFILE_COLLECTIONS.equipmentProfiles,
+  SESSION_COLLECTIONS.setLogs,
+  PREFERENCES_COLLECTION,
 ];
 
 /**
@@ -185,8 +198,14 @@ export function profileSyncValidator(deps: ProfileSyncDeps): MutationValidator<P
         return (await consentRequired()) ?? validateIntakeLog(m.data);
       case NUTRITION_COLLECTIONS.habitChecks:
         return (await consentRequired()) ?? validateHabitCheck(m.data);
+      // API-12 / PKG-06: set logs and preferences are schema-checked too (no free text, no unbounded values).
+      case SESSION_COLLECTIONS.setLogs:
+        return SetLogSchema.safeParse(m.data).success ? null : 'set_log.invalid';
+      case PREFERENCES_COLLECTION:
+        return PreferencesRecordSchema.safeParse(m.data).success ? null : 'preferences.invalid';
       default:
-        return null;
+        // Fail closed: a collection added to the registry without a validator here is refused, never stored unchecked.
+        return 'sync.collection_not_validated';
     }
   };
 }

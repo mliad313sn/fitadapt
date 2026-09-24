@@ -40,6 +40,9 @@ async function device(email: string) {
   return { client, transport, session };
 }
 
+/** A valid set log (API-12: the server schema-checks set logs, so fixtures are real records). */
+const setLog = (reps: number, exerciseId = 'goblet_squat') => ({ schemaVersion: 1, planId: randomUUID(), exerciseIndex: 0, exerciseId, set: { index: 1, status: 'done', reps, seconds: null, loadKg: 20, rir: 2 }, loggedAt: new Date().toISOString(), correctionOf: null });
+
 async function changeCount(): Promise<number> {
   const result = await h.database.db.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM sync_changes`);
   return result.rows[0]!.n;
@@ -51,7 +54,8 @@ describe('sync over HTTP with PostgreSQL', () => {
     const a = await device(email);
     const b = await device(email);
     a.transport.online = false;
-    const id = a.client.insert('set_logs', { reps: 8 });
+    const log = setLog(8);
+    const id = a.client.insert('set_logs', log);
     expect((await a.client.sync()).push.offline).toBe(true);
     expect(a.client.pendingCount()).toBe(1);
     expect(await changeCount()).toBe(0);
@@ -62,12 +66,12 @@ describe('sync over HTTP with PostgreSQL', () => {
     expect(await changeCount()).toBe(1);
 
     await b.client.sync();
-    expect(b.client.get('set_logs', id)?.data).toEqual({ reps: 8 });
+    expect(b.client.get('set_logs', id)?.data).toEqual(log);
   });
 
   it('duplicate pushes are idempotent', async () => {
     const a = await device(uniqueEmail());
-    a.client.insert('set_logs', { reps: 5 });
+    a.client.insert('set_logs', setLog(5));
     const mutation = a.client.outbox('pending')[0]!.mutation;
     const push = () =>
       h.app.inject({
@@ -91,7 +95,7 @@ describe('sync over HTTP with PostgreSQL', () => {
     const b = await device(email);
     a.transport.online = false;
     b.transport.online = false;
-    const ids = [a.client.insert('set_logs', { by: 'a' }), a.client.insert('set_logs', { by: 'a' }), b.client.insert('set_logs', { by: 'b' })];
+    const ids = [a.client.insert('set_logs', setLog(1, 'push_up')), a.client.insert('set_logs', setLog(2, 'push_up')), b.client.insert('set_logs', setLog(3, 'goblet_squat'))];
     a.transport.online = true;
     b.transport.online = true;
     await Promise.all([a.client.sync(), b.client.sync()]);
@@ -103,7 +107,7 @@ describe('sync over HTTP with PostgreSQL', () => {
   it('revisions are per user: another user sees nothing', async () => {
     const a = await device(uniqueEmail());
     const stranger = await device(uniqueEmail());
-    a.client.insert('set_logs', { reps: 1 });
+    a.client.insert('set_logs', setLog(1));
     await a.client.sync();
     const pulled = await stranger.client.pull();
     expect(pulled.applied).toBe(0);
