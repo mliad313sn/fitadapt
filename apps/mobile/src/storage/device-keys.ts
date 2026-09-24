@@ -11,7 +11,12 @@ import * as SecureStore from 'expo-secure-store';
 export interface DeviceKeyStore {
   get(name: string): string | null;
   set(name: string, value: string): void;
-  remove(name: string): void;
+  /**
+   * Deletes the key and resolves once the keystore confirms it (MOB-14):
+   * crypto-erasure is only reported done after this resolves; a rejection is
+   * the caller's to report.
+   */
+  remove(name: string): Promise<void>;
 }
 
 export const DEVICE_KEY_NAMES = { database: 'local_database_key_v1', photos: 'progress_photo_key_v1' } as const;
@@ -22,10 +27,23 @@ const OPTIONS = { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE
 export const secureDeviceKeyStore: DeviceKeyStore = {
   get: (name) => SecureStore.getItem(name, OPTIONS),
   set: (name, value) => SecureStore.setItem(name, value, OPTIONS),
-  remove: (name) => {
-    void SecureStore.deleteItemAsync(name, OPTIONS);
-  },
+  remove: (name) => SecureStore.deleteItemAsync(name, OPTIONS),
 };
+
+/**
+ * Deletes a key and checks it is gone (MOB-14). Resolves true when the
+ * keystore no longer holds it; false (never throws) when the delete failed or
+ * the key is still readable, so the caller can report that crypto-erasure was
+ * not confirmed. Nothing about the key itself is reported.
+ */
+export async function eraseKey(store: DeviceKeyStore, name: string): Promise<boolean> {
+  try {
+    await store.remove(name);
+    return store.get(name) === null;
+  } catch {
+    return false;
+  }
+}
 
 const HEX_KEY = /^[0-9a-f]{64}$/;
 
@@ -61,7 +79,10 @@ export class MemoryDeviceKeyStore implements DeviceKeyStore {
   set(name: string, value: string) {
     this.items.set(name, value);
   }
-  remove(name: string) {
+  /** Test hook: the next removals reject with this error (null: they work again). */
+  failRemovals: Error | null = null;
+  async remove(name: string) {
+    if (this.failRemovals) throw this.failRemovals;
     this.items.delete(name);
   }
 }

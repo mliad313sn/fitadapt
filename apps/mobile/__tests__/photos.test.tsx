@@ -120,12 +120,12 @@ interface PhotoDevice {
   vault: PhotoVault;
 }
 
-function photoDevice(): PhotoDevice {
+function photoDevice(idPrefix = '0b8f4c3e-2d1a-4b7c-9e6f-'): PhotoDevice {
   const d = referenceDevice();
   d.consents.getState().decide('photos', true, 'en');
   const keys = new MemoryDeviceKeyStore();
   let n = 0;
-  const vault = new PhotoVault({ db: d.db, files: expoPhotoFiles(), keys, randomBytes: rand, newId: () => `0b8f4c3e-2d1a-4b7c-9e6f-${String(++n).padStart(12, '0')}`, now: () => new Date('2026-09-24T12:00:00.000Z') });
+  const vault = new PhotoVault({ db: d.db, files: expoPhotoFiles(), keys, randomBytes: rand, newId: () => `${idPrefix}${String(++n).padStart(12, '0')}`, now: () => new Date('2026-09-24T12:00:00.000Z') });
   return { d, keys, vault };
 }
 
@@ -273,22 +273,27 @@ describe('turning the backup on uploads only ciphertext (end-to-end encrypted)',
     expect(fetchSpy).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByTestId('photos-backup-enable'));
-    const code = String(screen.getByTestId('photos-backup-code').props.children);
+    // MOB-02: a new code is shown only once the account is known to hold no backup yet.
+    const code = String((await screen.findByTestId('photos-backup-code')).props.children);
     expect(screen.getByTestId('photos-backup-start').props.accessibilityState).toMatchObject({ disabled: true });
     fireEvent.press(screen.getByTestId('photos-backup-confirm'));
     fireEvent.press(screen.getByTestId('photos-backup-start'));
     await waitFor(() => expect(screen.getByTestId('photos-message').props.children).toBe(tr('en').t('photos.backup.done')), { timeout: 20_000 });
     expect(screen.getByTestId('photos-backup-status').props.children).toBe(tr('en').t('photos.backup.on', { backed: 2, total: 2 }));
 
-    // What left the device: one wrapped key and two envelopes, all to the backup endpoints over https.
+    // What left the device: one wrapped key and two envelopes, all to the backup endpoints over https
+    // (MOB-02: after checking, before showing the code and again before the upload, that no backup exists yet).
+    expect(server.requests.filter((r) => r.method === 'GET').every((r) => r.body === undefined)).toBe(true);
     expect(server.requests.map((r) => `${r.method} ${r.url.replace(/[0-9a-f-]{36}$/, ':id')}`)).toEqual([
+      'GET https://api.example.test/v1/photos/backup/key',
+      'GET https://api.example.test/v1/photos/backup/key',
       'PUT https://api.example.test/v1/photos/backup/key',
       'PUT https://api.example.test/v1/photos/backup/photos/:id',
       'PUT https://api.example.test/v1/photos/backup/photos/:id',
     ]);
     const photoKeyHex = p.keys.get(DEVICE_KEY_NAMES.photos)!;
     const photoKey = Buffer.from(photoKeyHex, 'hex');
-    const keyBody = String(server.requests[0]!.body);
+    const keyBody = String(server.requests[2]!.body);
     for (const secret of [photoKeyHex, photoKey.toString('base64'), code, code.replace(/-/g, '')]) expect(keyBody.includes(secret)).toBe(false);
     for (const meta of p.vault.list()) {
       const uploaded = server.photos.get(meta.id)!;
@@ -354,5 +359,120 @@ describe('turning the backup on uploads only ciphertext (end-to-end encrypted)',
     expect(Buffer.compare(Buffer.from(p.vault.image(meta.id)), Buffer.from(image))).toBe(0);
     p.vault.adoptKey(newKey);
     expect(unpackPhoto(openEnvelope(newKey, p.vault.envelope(meta.id), meta.id)).meta).toMatchObject({ id: meta.id, pose: 'back' });
+  });
+});
+
+describe('fix wave: photos on a second phone, display cost, screen capture (MOB-02, MOB-05, MOB-12)', () => {
+  const api = () => httpPhotoBackupApi({ baseUrl: 'https://api.example.test', getAccessToken: () => 'token' });
+
+  it('MOB-02: "turn on backup" on a second phone never replaces the existing backup; its own code joins it and every photo restores', async () => {
+    // Phone A turns the backup on and uploads one photo sealed under its key.
+    const a = photoDevice();
+    const onA = new PhotoBackup({ vault: a.vault, api: api(), randomBytes: rand, now: () => new Date() });
+    const imageA = fakeJpeg();
+    a.vault.add({ image: imageA, mimeType: 'image/jpeg', pose: 'front', takenOn: '2026-09-01' });
+    const codeA = onA.newRecoveryCode();
+    await onA.enable(codeA);
+    expect(await onA.run()).toBe(1);
+    const wrappedBefore = JSON.stringify(server.key());
+
+    // Phone B has its own photo and taps "Turn on backup": no new code is offered, the existing backup's code is asked for.
+    const b = photoDevice('1c9a5d4f-3e2b-4c8d-8f7a-');
+    const imageB = fakeJpeg();
+    b.vault.add({ image: imageB, mimeType: 'image/jpeg', pose: 'side', takenOn: '2026-09-20' });
+    renderPhotos(b);
+    fireEvent.press(screen.getByTestId('photos-backup-enable'));
+    expect(await screen.findByTestId('photos-backup-existing')).toBeTruthy();
+    expect(screen.queryByTestId('photos-backup-code')).toBeNull();
+    // A wrong code changes nothing: the service keeps its wrapped key, the phone its own key and photo.
+    const keyB = b.keys.get(DEVICE_KEY_NAMES.photos);
+    fireEvent.changeText(screen.getByTestId('photos-backup-existing-code'), '0000-0000-0000-0000-0000');
+    fireEvent.press(screen.getByTestId('photos-backup-existing-join'));
+    await waitFor(() => expect(screen.getByTestId('photos-message').props.children).toBe(tr('en').t('photos.restore.failed')), { timeout: 20_000 });
+    expect(JSON.stringify(server.key())).toBe(wrappedBefore);
+    expect(b.keys.get(DEVICE_KEY_NAMES.photos)).toBe(keyB);
+    // The existing code joins the backup: B's photo is re-encrypted under the backup key and uploaded, A's is restored.
+    fireEvent.press(screen.getByTestId('photos-backup-enable'));
+    fireEvent.changeText(await screen.findByTestId('photos-backup-existing-code'), codeA);
+    fireEvent.press(screen.getByTestId('photos-backup-existing-join'));
+    await waitFor(() => expect(screen.getByTestId('photos-message').props.children).toBe(tr('en').t('photos.backup.joined', { count: 1 })), { timeout: 20_000 });
+    expect(server.requests.filter((r) => r.method === 'PUT' && r.url.endsWith('/backup/key'))).toHaveLength(1);
+    expect(JSON.stringify(server.key())).toBe(wrappedBefore);
+    expect(server.photos.size).toBe(2);
+    screen.unmount();
+
+    // A third phone restores every photo with the one code; nothing is unreadable.
+    const c = photoDevice();
+    const onC = new PhotoBackup({ vault: c.vault, api: api(), randomBytes: rand, now: () => new Date() });
+    await expect(onC.restoreWithReport(codeA)).resolves.toEqual({ restored: 2, unreadable: 0 });
+    const restored = c.vault.list().map((m) => Buffer.from(c.vault.image(m.id)));
+    for (const image of [imageA, imageB]) expect(restored.some((r) => Buffer.compare(r, Buffer.from(image)) === 0)).toBe(true);
+  }, 60_000);
+
+  it('MOB-02: a backed-up envelope that does not open with the backup key is skipped and counted; the others still restore', async () => {
+    const a = photoDevice();
+    const onA = new PhotoBackup({ vault: a.vault, api: api(), randomBytes: rand, now: () => new Date() });
+    a.vault.add({ image: fakeJpeg(), mimeType: 'image/jpeg', pose: 'front', takenOn: '2026-09-01' });
+    const code = onA.newRecoveryCode();
+    await onA.enable(code);
+    await onA.run();
+    // An orphan sealed under another key (what the old "replace the key" behaviour left on the service).
+    const orphanId = '0b8f4c3e-2d1a-4b7c-9e6f-00000000abcd';
+    server.photos.set(orphanId, sealEnvelope(rand(32), new Uint8Array(8), rand(12), orphanId));
+    const q = photoDevice();
+    renderPhotos(q);
+    fireEvent.changeText(screen.getByTestId('photos-restore-code'), code);
+    fireEvent.press(screen.getByTestId('photos-restore-run'));
+    await waitFor(() => expect(screen.getByTestId('photos-message').props.children).toBe(`${tr('en').t('photos.restore.done', { count: 1 })} ${tr('en').t('photos.restore.skipped', { count: 1 })}`), { timeout: 20_000 });
+    expect(q.vault.list()).toHaveLength(1);
+  }, 60_000);
+
+  it('MOB-05: each photo is decrypted once per app run, not on every mount or return to the foreground', () => {
+    const p = photoDevice();
+    const ids = [1, 2, 3].map((d) => p.vault.add({ image: fakeJpeg(), mimeType: 'image/jpeg', pose: 'front', takenOn: `2026-09-0${d}` }).id);
+    const decrypt = jest.spyOn(p.vault, 'image');
+    renderPhotos(p);
+    for (const id of ids) expect(screen.getByTestId(`photo-image-${id}`)).toBeTruthy();
+    expect(decrypt).toHaveBeenCalledTimes(3);
+    const change = (AppState.addEventListener as unknown as jest.Mock).mock.calls.filter(([event]) => event === 'change').at(-1)![1] as (state: string) => void;
+    for (let round = 0; round < 3; round += 1) {
+      act(() => change('background'));
+      expect(screen.queryByTestId(`photo-image-${ids[0]}`)).toBeNull();
+      act(() => change('active'));
+      expect(screen.getByTestId(`photo-image-${ids[0]}`)).toBeTruthy();
+    }
+    // The comparison view shows the same photos without decrypting them again.
+    fireEvent.press(screen.getByTestId(`photos-select-${ids[0]}`));
+    fireEvent.press(screen.getByTestId(`photos-select-${ids[1]}`));
+    expect(screen.getByTestId('photos-compare-left')).toBeTruthy();
+    screen.unmount();
+    renderPhotos(p);
+    expect(decrypt).toHaveBeenCalledTimes(3);
+    // A deleted photo leaves the display cache with it.
+    fireEvent.press(screen.getByTestId(`photos-delete-${ids[2]}`));
+    expect(() => p.vault.displayUri(ids[2]!, 'image/jpeg')).toThrow();
+  });
+
+  it('MOB-05: base64 of a 3 MB photo is one pass, identical to the platform encoder', () => {
+    const big = rand(3 * 1024 * 1024);
+    const t0 = performance.now();
+    const b64 = toBase64(big);
+    const elapsed = performance.now() - t0;
+    expect(b64).toBe(Buffer.from(big).toString('base64'));
+    // The string-append version took about 370 ms here (review MOB-05).
+    expect(elapsed).toBeLessThan(250);
+  });
+
+  it('MOB-12: the photos screen (photos and the recovery code) blocks screen capture while mounted and releases it after', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const ScreenCapture = require('expo-screen-capture') as { __protected: Set<string> };
+    const p = photoDevice();
+    renderPhotos(p);
+    await waitFor(() => expect(ScreenCapture.__protected.has('photos')).toBe(true));
+    fireEvent.press(screen.getByTestId('photos-backup-enable'));
+    expect(await screen.findByTestId('photos-backup-code')).toBeTruthy();
+    expect(ScreenCapture.__protected.has('photos')).toBe(true);
+    screen.unmount();
+    await waitFor(() => expect(ScreenCapture.__protected.has('photos')).toBe(false));
   });
 });

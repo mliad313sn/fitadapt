@@ -81,14 +81,26 @@ export function deriveWrappingKey(code: string, salt: Uint8Array, params: KdfPar
 
 export const WRAPPED_KEY_AAD = 'progress-photo-key-v1';
 
+const BASE64_CODES = new TextEncoder().encode('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/');
+const PAD = 61; // '='
+
+/**
+ * Base64 without string concatenation (MOB-05): the ASCII codes are written
+ * into one byte array and decoded once, so a multi-megabyte photo is encoded
+ * in one pass instead of millions of string appends on the JS thread.
+ */
 export const toBase64 = (bytes: Uint8Array): string => {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  let out = '';
+  const out = new Uint8Array(Math.ceil(bytes.length / 3) * 4);
+  let j = 0;
   for (let i = 0; i < bytes.length; i += 3) {
     const n = (bytes[i]! << 16) | ((bytes[i + 1] ?? 0) << 8) | (bytes[i + 2] ?? 0);
-    out += alphabet[(n >> 18) & 63]! + alphabet[(n >> 12) & 63]! + (i + 1 < bytes.length ? alphabet[(n >> 6) & 63]! : '=') + (i + 2 < bytes.length ? alphabet[n & 63]! : '=');
+    out[j] = BASE64_CODES[(n >> 18) & 63]!;
+    out[j + 1] = BASE64_CODES[(n >> 12) & 63]!;
+    out[j + 2] = i + 1 < bytes.length ? BASE64_CODES[(n >> 6) & 63]! : PAD;
+    out[j + 3] = i + 2 < bytes.length ? BASE64_CODES[n & 63]! : PAD;
+    j += 4;
   }
-  return out;
+  return decoder.decode(out);
 };
 
 export const fromBase64 = (text: string): Uint8Array => {

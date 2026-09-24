@@ -5,7 +5,8 @@ import type { GuardrailInbox } from '../nutrition/guardrail-port';
 import { usePrivacy } from '../privacy/PrivacyProvider';
 import { expoProgressDeviceIo, type ProgressDeviceIo } from './device-io';
 import { PhotoBackup, type PhotoBackupApi } from './photo-backup';
-import type { PhotoVault } from './photo-vault';
+import type { PhotoVault, WipeOutcome } from './photo-vault';
+import { reportError } from '../observability';
 import type { ProgressState, ProgressStore } from './progress-store';
 
 export interface ProgressContextValue {
@@ -20,6 +21,26 @@ export interface ProgressContextValue {
 }
 
 const ProgressContext = createContext<ProgressContextValue | null>(null);
+
+/** The photo key could not be confirmed deleted from the keystore (MOB-14). Carries no data. */
+export class PhotoKeyErasureError extends Error {
+  constructor() {
+    super('photo key erasure not confirmed');
+    this.name = 'PhotoKeyErasureError';
+  }
+}
+
+/** Awaits a vault erasure and reports (without data) when the key deletion was not confirmed. Resolves to whether it was. */
+export async function reportPhotoErasure(erasure: Promise<WipeOutcome>): Promise<boolean> {
+  try {
+    const { keyErased } = await erasure;
+    if (!keyErased) reportError(new PhotoKeyErasureError(), { area: 'photos' });
+    return keyErased;
+  } catch (error) {
+    reportError(error, { area: 'photos' });
+    return false;
+  }
+}
 
 export interface ProgressProviderProps extends Omit<ProgressContextValue, 'io'> {
   readonly io?: ProgressDeviceIo;
@@ -38,7 +59,8 @@ export function ProgressProvider({ progress, nutrition, vault, backupApi, io = e
       consents.subscribe((state, previous) => {
         for (const record of state.records.slice(previous.records.length)) {
           if (record.dataType === 'photos' && record.decision === 'withdrawn') {
-            vault?.wipe();
+            // MOB-14: files and metadata go at once; crypto-erasure of the key is awaited and a failure reported (no data).
+            if (vault) void reportPhotoErasure(vault.wipe());
             progress.getState().setPhotoBackupEnabled(false);
           }
         }

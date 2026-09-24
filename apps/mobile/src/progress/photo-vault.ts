@@ -2,8 +2,9 @@ import { ProgressPhotoSchema, type IsoDate, type PhotoPose, type ProgressPhoto }
 import type { SyncSqliteDatabase } from '@fitadapt/sync';
 import { sql } from 'drizzle-orm';
 import { Directory, File, Paths } from 'expo-file-system';
-import { DEVICE_KEY_NAMES, fromHex, getOrCreateKey, toHex, type DeviceKeyStore } from '../storage/device-keys';
-import { openEnvelope, packPhoto, sealEnvelope, unpackPhoto } from './photo-crypto';
+import { photosValue } from '../config/photos.config';
+import { DEVICE_KEY_NAMES, eraseKey, fromHex, getOrCreateKey, toHex, type DeviceKeyStore } from '../storage/device-keys';
+import { openEnvelope, packPhoto, sealEnvelope, toBase64, unpackPhoto } from './photo-crypto';
 
 /**
  * Progress photos on the device (CLAUDE.md rule 7, ADR-006, ADR-020): each
@@ -58,14 +59,92 @@ export interface NewPhoto {
 }
 
 const fileName = (id: string) => `${id}.bin`;
+/** A photo re-encrypted under a key being adopted, before the swap (MOB-03). */
+const stagedName = (id: string) => `${id}.bin.new`;
+const STAGED_SUFFIX = '.bin.new';
+/** The key being adopted, kept in the keystore until every staged file is in place (MOB-03). */
+export const STAGED_PHOTO_KEY_NAME = `${DEVICE_KEY_NAMES.photos}_next`;
+
+/** The photo key is being erased (consent withdrawn, account wiped): nothing is sealed or opened until that is confirmed (MOB-14). */
+export class PhotoKeyErasurePendingError extends Error {
+  constructor() {
+    super('the photo key is being erased');
+    this.name = 'PhotoKeyErasurePendingError';
+  }
+}
+
+/** Outcome of adopting a key: local photos re-encrypted, and those that did not open with the old key (left as they were). */
+export interface AdoptKeyOutcome {
+  readonly reencrypted: number;
+  readonly unreadable: number;
+}
+
+/** Outcome of an erasure: files and metadata are gone; `keyErased` is true once the keystore confirmed the key is deleted (MOB-14). */
+export interface WipeOutcome {
+  readonly keyErased: boolean;
+}
 
 export class PhotoVault {
+  /** Set while the photo key is being deleted (MOB-14): a key read then could return the key being erased. */
+  private erasing: Promise<WipeOutcome> | null = null;
+  /**
+   * Decrypted photos as display URIs, in memory only (MOB-05): a photo is
+   * decrypted once per app run, not on every mount or return to the
+   * foreground. Bounded by `display.cacheMaxBytes` (least recently shown
+   * out); emptied when a photo is deleted, the key changes or the vault is wiped.
+   */
+  private readonly displayCache = new Map<string, { uri: string; bytes: number }>();
+  private displayCacheBytes = 0;
+
   constructor(private readonly deps: PhotoVaultDeps) {
     deps.db.run(sql`CREATE TABLE IF NOT EXISTS progress_photo (id TEXT PRIMARY KEY, data TEXT NOT NULL)`);
+    this.finishPendingAdoption();
   }
 
   private key(): Uint8Array {
+    if (this.erasing) throw new PhotoKeyErasurePendingError();
+    // A committed adoption whose swap failed earlier in this run is finished before any photo is sealed or opened.
+    if (this.deps.keys.get(STAGED_PHOTO_KEY_NAME) !== null) this.finishPendingAdoption();
     return fromHex(getOrCreateKey(this.deps.keys, DEVICE_KEY_NAMES.photos, this.deps.randomBytes).hex);
+  }
+
+  private forgetDisplay(id?: string) {
+    if (id === undefined) {
+      this.displayCache.clear();
+      this.displayCacheBytes = 0;
+      return;
+    }
+    const hit = this.displayCache.get(id);
+    if (!hit) return;
+    this.displayCache.delete(id);
+    this.displayCacheBytes -= hit.bytes;
+  }
+
+  /**
+   * Finishes a key adoption interrupted after its key was staged (app killed,
+   * storage error during the swap): every staged file is moved into place,
+   * then the staged key becomes the photo key. Without a staged key, leftover
+   * staged files come from an adoption that never committed: they are
+   * deleted, and the photos are still under the key in the keystore.
+   */
+  private finishPendingAdoption() {
+    const staged = this.deps.keys.get(STAGED_PHOTO_KEY_NAME);
+    const leftovers = new Set(this.deps.files.list().filter((n) => n.endsWith(STAGED_SUFFIX)));
+    if (staged !== null) {
+      for (const meta of this.list()) {
+        if (!leftovers.has(stagedName(meta.id))) continue;
+        const envelope = this.deps.files.read(stagedName(meta.id));
+        this.deps.files.write(fileName(meta.id), envelope);
+        this.deps.files.remove(stagedName(meta.id));
+        leftovers.delete(stagedName(meta.id));
+        this.put({ ...meta, byteLength: envelope.length, backedUpAt: null });
+      }
+      this.deps.keys.set(DEVICE_KEY_NAMES.photos, staged);
+      // The staged copy of the key is now the photo key itself: its removal needs no confirmation.
+      void Promise.resolve(this.deps.keys.remove(STAGED_PHOTO_KEY_NAME)).catch(() => undefined);
+      this.forgetDisplay();
+    }
+    for (const name of leftovers) this.deps.files.remove(name);
   }
 
   private seal(key: Uint8Array, meta: ProgressPhoto, image: Uint8Array): Uint8Array {
@@ -106,6 +185,33 @@ export class PhotoVault {
     return image;
   }
 
+  /**
+   * The photo as a `data:` URI for `<Image>`: decrypted once, then served
+   * from the in-memory display cache (MOB-05). Never written anywhere.
+   */
+  displayUri(id: string, mimeType: string): string {
+    const hit = this.displayCache.get(id);
+    if (hit) {
+      // Most recently shown last.
+      this.displayCache.delete(id);
+      this.displayCache.set(id, hit);
+      return hit.uri;
+    }
+    const image = this.image(id);
+    const uri = `data:${mimeType};base64,${toBase64(image)}`;
+    const limit = photosValue('display.cacheMaxBytes');
+    if (image.length <= limit) {
+      this.displayCache.set(id, { uri, bytes: image.length });
+      this.displayCacheBytes += image.length;
+      for (const [oldest, entry] of this.displayCache) {
+        if (this.displayCacheBytes <= limit) break;
+        this.displayCache.delete(oldest);
+        this.displayCacheBytes -= entry.bytes;
+      }
+    }
+    return uri;
+  }
+
   /** The encrypted file as stored (what a backup uploads). */
   envelope(id: string): Uint8Array {
     return this.deps.files.read(fileName(id));
@@ -117,6 +223,7 @@ export class PhotoVault {
   }
 
   remove(id: string) {
+    this.forgetDisplay(id);
     this.deps.files.remove(fileName(id));
     this.deps.db.run(sql`DELETE FROM progress_photo WHERE id = ${id}`);
   }
@@ -127,22 +234,49 @@ export class PhotoVault {
   }
 
   /**
-   * Makes `key` the photo key (restore from a backup on another device):
-   * photos already on this device are re-encrypted under it first.
+   * Makes `key` the photo key (restore from a backup, or joining an existing
+   * backup on another device). Photos already on this device are
+   * re-encrypted under it atomically (MOB-03):
+   * 1. every readable photo is re-encrypted into a staged file (`<id>.bin.new`);
+   *    a failure here deletes the staged files and leaves everything as it was;
+   * 2. the new key is stored under a staging name (the commit point);
+   * 3. the staged files replace the originals, then the new key replaces the old.
+   * An interruption after step 2 is finished the next time the vault opens.
+   * A photo that does not open with the current key (damaged file) is left
+   * as it was and counted as unreadable; it never blocks the others.
    */
-  adoptKey(key: Uint8Array) {
+  adoptKey(key: Uint8Array): AdoptKeyOutcome {
+    const hex = toHex(key);
     const current = this.deps.keys.get(DEVICE_KEY_NAMES.photos);
-    if (current === toHex(key)) return;
-    if (current !== null) {
-      const old = this.key();
-      for (const meta of this.list()) {
-        const { image } = unpackPhoto(openEnvelope(old, this.deps.files.read(fileName(meta.id)), meta.id));
-        const envelope = this.seal(key, meta, image);
-        this.deps.files.write(fileName(meta.id), envelope);
-        this.put({ ...meta, byteLength: envelope.length, backedUpAt: null });
-      }
+    if (current === hex) return { reencrypted: 0, unreadable: 0 };
+    if (current === null) {
+      this.deps.keys.set(DEVICE_KEY_NAMES.photos, hex);
+      this.forgetDisplay();
+      return { reencrypted: 0, unreadable: 0 };
     }
-    this.deps.keys.set(DEVICE_KEY_NAMES.photos, toHex(key));
+    const old = this.key();
+    const staged: string[] = [];
+    let unreadable = 0;
+    try {
+      for (const meta of this.list()) {
+        let image: Uint8Array;
+        try {
+          image = unpackPhoto(openEnvelope(old, this.deps.files.read(fileName(meta.id)), meta.id)).image;
+        } catch {
+          unreadable += 1;
+          continue;
+        }
+        this.deps.files.write(stagedName(meta.id), this.seal(key, meta, image));
+        staged.push(meta.id);
+      }
+    } catch (error) {
+      for (const id of staged) this.deps.files.remove(stagedName(id));
+      throw error;
+    }
+    this.deps.keys.set(STAGED_PHOTO_KEY_NAME, hex);
+    // Committed: an interruption from here on is finished at the next start.
+    this.finishPendingAdoption();
+    return { reencrypted: staged.length, unreadable };
   }
 
   /** Stores an encrypted photo from the backup after checking it opens with the photo key. */
@@ -165,11 +299,25 @@ export class PhotoVault {
     return stored;
   }
 
-  /** Consent withdrawn or account wiped: every photo file, its metadata and the photo key are deleted. */
-  wipe() {
+  /**
+   * Consent withdrawn or account wiped: every photo file and its metadata are
+   * deleted at once, then the photo key and any staged key. Resolves when the
+   * keystore has confirmed the deletion (MOB-14); `keyErased: false` means
+   * the files are gone but crypto-erasure was not confirmed (the caller
+   * reports it). No photo is sealed or opened meanwhile.
+   */
+  wipe(): Promise<WipeOutcome> {
+    if (this.erasing) return this.erasing;
+    this.forgetDisplay();
     for (const meta of this.list()) this.deps.files.remove(fileName(meta.id));
     for (const name of this.deps.files.list()) this.deps.files.remove(name);
     this.deps.db.run(sql`DELETE FROM progress_photo`);
-    this.deps.keys.remove(DEVICE_KEY_NAMES.photos);
+    const erasing = Promise.all([eraseKey(this.deps.keys, DEVICE_KEY_NAMES.photos), eraseKey(this.deps.keys, STAGED_PHOTO_KEY_NAME)])
+      .then(([photoKey, stagedKey]) => ({ keyErased: photoKey && stagedKey }))
+      .finally(() => {
+        this.erasing = null;
+      });
+    this.erasing = erasing;
+    return erasing;
   }
 }

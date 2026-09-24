@@ -11,7 +11,7 @@ import { useFeature, usePrivacy } from '../privacy/PrivacyProvider';
 import { localIsoDate } from '../profile/selectors';
 import { formatIsoDate } from '../progress/format';
 import { WrongRecoveryCodeError } from '../progress/photo-backup';
-import { toBase64 } from '../progress/photo-crypto';
+import { useScreenCaptureProtection } from '../privacy/screen-capture';
 import { usePhotoBackup, useProgress, useProgressContext } from '../progress/ProgressProvider';
 
 export interface PhotosScreenProps {
@@ -27,7 +27,7 @@ type Message =
   | 'photos.backup.failed'
   | 'photos.backup.disabled'
   | 'photos.restore.failed'
-  | { key: 'photos.restore.done'; count: number };
+  | { key: 'photos.restore.done' | 'photos.backup.joined'; count: number; skipped: number };
 
 /**
  * M04 progress photos: encrypted on this device (AES-256-GCM, key in the OS
@@ -61,6 +61,8 @@ export function PhotosScreen({ onExit }: PhotosScreenProps) {
   const backupEnabled = useProgress((s) => s.photoBackupEnabled);
   const setBackupEnabled = useProgress((s) => s.setPhotoBackupEnabled);
 
+  // MOB-12: decrypted photos and the recovery code are never captured (screenshots, recordings, the recents preview).
+  useScreenCaptureProtection('photos');
   useEffect(() => {
     analytics.track('screen_viewed', { screen: 'photos' });
   }, [analytics]);
@@ -116,7 +118,12 @@ export function PhotosScreen({ onExit }: PhotosScreenProps) {
   const text = { color: theme.colors.text, fontSize: theme.fontSize.body } as const;
   const muted = { color: theme.colors.textMuted, fontSize: theme.fontSize.label } as const;
   const compare = useMemo(() => photos.filter((p) => selected.includes(p.id)).sort((a, b) => a.takenOn.localeCompare(b.takenOn) || a.at.localeCompare(b.at)), [photos, selected]);
-  const messageText = message === null ? null : typeof message === 'string' ? t(message) : t(message.key, { count: message.count });
+  const messageText =
+    message === null
+      ? null
+      : typeof message === 'string'
+        ? t(message)
+        : [t(message.key, { count: message.count }), message.skipped > 0 ? t('photos.restore.skipped', { count: message.skipped }) : null].filter((part): part is string => part !== null).join(' ');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -190,17 +197,28 @@ export function PhotosScreen({ onExit }: PhotosScreenProps) {
               enabled={backupEnabled}
               total={photos.length}
               backed={photos.filter((p) => p.backedUpAt !== null).length}
-              onEnable={async (code) => {
-                if (!backup) return;
+              hasExisting={async () => {
+                if (!backup) return null;
                 try {
-                  await backup.enable(code);
-                  setBackupEnabled(true);
-                  analytics.track('photo_backup_toggled', { enabled: true });
-                  await backup.run();
-                  setMessage('photos.backup.done');
+                  return await backup.exists();
                 } catch (error) {
                   reportError(error, { area: 'photos' });
                   setMessage('photos.backup.failed');
+                  return null;
+                }
+              }}
+              onEnable={async (code) => {
+                if (!backup) return;
+                try {
+                  // MOB-02: an existing backup is joined with its own code, never replaced.
+                  const outcome = await backup.enable(code);
+                  setBackupEnabled(true);
+                  analytics.track('photo_backup_toggled', { enabled: true });
+                  await backup.run();
+                  setMessage(outcome.joinedExisting ? { key: 'photos.backup.joined', count: outcome.restored, skipped: outcome.unreadable } : 'photos.backup.done');
+                } catch (error) {
+                  if (!(error instanceof WrongRecoveryCodeError)) reportError(error, { area: 'photos' });
+                  setMessage(error instanceof WrongRecoveryCodeError ? 'photos.restore.failed' : 'photos.backup.failed');
                 }
                 reload();
               }}
@@ -221,8 +239,8 @@ export function PhotosScreen({ onExit }: PhotosScreenProps) {
               onRestore={async (code) => {
                 if (!backup) return;
                 try {
-                  const count = await backup.restore(code);
-                  setMessage({ key: 'photos.restore.done', count });
+                  const outcome = await backup.restoreWithReport(code);
+                  setMessage({ key: 'photos.restore.done', count: outcome.restored, skipped: outcome.unreadable });
                 } catch (error) {
                   if (!(error instanceof WrongRecoveryCodeError)) reportError(error, { area: 'photos' });
                   setMessage(error instanceof WrongRecoveryCodeError ? 'photos.restore.failed' : 'photos.backup.failed');
@@ -242,9 +260,10 @@ export function PhotosScreen({ onExit }: PhotosScreenProps) {
 /** Decrypted in memory for display only; never written back in plaintext. */
 function PhotoImage({ photoId, mimeType, label, size }: { photoId: string; mimeType: string; label: string; size: number }) {
   const { vault } = useProgressContext();
+  // MOB-05: decrypted once per app run (the vault's in-memory display cache), not on every mount or return to the foreground.
   const uri = useMemo(() => {
     try {
-      return vault ? `data:${mimeType};base64,${toBase64(vault.image(photoId))}` : null;
+      return vault ? vault.displayUri(photoId, mimeType) : null;
     } catch (error) {
       reportError(error, { area: 'photos' });
       return null;
@@ -273,6 +292,8 @@ interface BackupCardProps {
   readonly enabled: boolean;
   readonly total: number;
   readonly backed: number;
+  /** MOB-02: whether the account already holds a backup (null: it could not be checked). */
+  readonly hasExisting: () => Promise<boolean | null>;
   readonly onEnable: (code: string) => Promise<void>;
   readonly onRun: () => void;
   readonly onDisable: () => Promise<void>;
@@ -280,10 +301,12 @@ interface BackupCardProps {
   readonly newCode: () => string;
 }
 
-function BackupCard({ available, enabled, total, backed, onEnable, onRun, onDisable, onRestore, newCode }: BackupCardProps) {
+function BackupCard({ available, enabled, total, backed, hasExisting, onEnable, onRun, onDisable, onRestore, newCode }: BackupCardProps) {
   const { t } = useI18n();
   const theme = useTheme();
   const [code, setCode] = useState<string | null>(null);
+  const [stage, setStage] = useState<'idle' | 'checking' | 'existing'>('idle');
+  const [existingCode, setExistingCode] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [restoreCode, setRestoreCode] = useState('');
   const text = { color: theme.colors.text, fontSize: theme.fontSize.body } as const;
@@ -301,12 +324,58 @@ function BackupCard({ available, enabled, total, backed, onEnable, onRun, onDisa
           <Button label={t('photos.backup.run')} onPress={onRun} testID="photos-backup-run" />
           <Button label={t('photos.backup.disable')} variant="danger" onPress={() => void onDisable()} testID="photos-backup-disable" />
         </>
+      ) : stage === 'checking' ? (
+        <Text accessibilityLiveRegion="polite" style={text} testID="photos-backup-checking">
+          {t('photos.backup.checking')}
+        </Text>
+      ) : stage === 'existing' ? (
+        <>
+          <Text accessibilityRole="header" style={{ ...text, fontWeight: theme.fontWeight.bold }}>
+            {t('photos.backup.existing.title')}
+          </Text>
+          <Text style={text} testID="photos-backup-existing">
+            {t('photos.backup.existing.body')}
+          </Text>
+          <Input label={t('photos.backup.existing.code')} hint={t('photos.backup.existing.codeHint')} value={existingCode} onChangeText={setExistingCode} autoComplete="off" testID="photos-backup-existing-code" />
+          <Button
+            label={t('photos.backup.existing.join')}
+            disabled={existingCode.trim() === ''}
+            onPress={() => {
+              const c = existingCode;
+              setExistingCode('');
+              setStage('idle');
+              void onEnable(c);
+            }}
+            testID="photos-backup-existing-join"
+          />
+          <Button
+            label={t('photos.backup.existing.cancel')}
+            variant="secondary"
+            onPress={() => {
+              setExistingCode('');
+              setStage('idle');
+            }}
+            testID="photos-backup-existing-cancel"
+          />
+        </>
       ) : code === null ? (
         <>
           <Text style={text} testID="photos-backup-off">
             {t('photos.backup.off')}
           </Text>
-          <Button label={t('photos.backup.enable')} hint={t('photos.backup.enableHint')} onPress={() => setCode(newCode())} testID="photos-backup-enable" />
+          <Button
+            label={t('photos.backup.enable')}
+            hint={t('photos.backup.enableHint')}
+            onPress={() => {
+              // MOB-02: a new recovery code only when the account holds no backup yet.
+              setStage('checking');
+              void hasExisting().then((exists) => {
+                setStage(exists === true ? 'existing' : 'idle');
+                if (exists === false) setCode(newCode());
+              });
+            }}
+            testID="photos-backup-enable"
+          />
         </>
       ) : (
         <>

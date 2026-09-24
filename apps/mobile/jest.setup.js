@@ -15,6 +15,7 @@ jest.mock('expo-secure-store', () => {
       options.set(key, opts);
     },
     deleteItemAsync: async (key) => {
+      if (failure.deleteError) throw failure.deleteError;
       items.delete(key);
     },
     getItem: (key) => {
@@ -29,6 +30,10 @@ jest.mock('expo-secure-store', () => {
     // M04 fail-closed tests: make the keystore fail (null: works again).
     __setFailure: (error) => {
       failure.error = error;
+    },
+    // MOB-14: make key deletion reject (null: works again).
+    __setDeleteFailure: (error) => {
+      failure.deleteError = error;
     },
     __items: items,
     __options: options,
@@ -107,6 +112,25 @@ jest.mock('expo-document-picker', () => {
       return asset ? { canceled: false, assets: [asset] } : { canceled: true, assets: null };
     }),
     __queue: queue,
+  };
+});
+// MOB-12: screen-capture protection has no native module under jest; a stand-in that records which keys are protected.
+jest.mock('expo-screen-capture', () => {
+  const protectedKeys = new Set();
+  const calls = [];
+  return {
+    preventScreenCaptureAsync: jest.fn(async (key = 'default') => {
+      protectedKeys.add(key);
+      calls.push(`prevent:${key}`);
+    }),
+    allowScreenCaptureAsync: jest.fn(async (key = 'default') => {
+      protectedKeys.delete(key);
+      calls.push(`allow:${key}`);
+    }),
+    enableAppSwitcherProtectionAsync: jest.fn(async () => void calls.push('switcher:on')),
+    disableAppSwitcherProtectionAsync: jest.fn(async () => void calls.push('switcher:off')),
+    __protected: protectedKeys,
+    __calls: calls,
   };
 });
 // M03: the system voice, the vibration motor and the audio session have no native module under jest.

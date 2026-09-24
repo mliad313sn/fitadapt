@@ -82,13 +82,34 @@ export class PhotoBackup {
     return recoveryCode(this.deps.randomBytes, photosValue('backup.recoveryCodeChars'));
   }
 
-  /** Uploads the photo key wrapped by the recovery code (the service can never unwrap it). */
-  async enable(code: string): Promise<void> {
+  /** Whether the account already holds a backup (a wrapped key), made on this or another phone. */
+  async exists(): Promise<boolean> {
+    return (await this.deps.api.getKey()) !== null;
+  }
+
+  /**
+   * Turns the backup on (MOB-02: never replaces an existing backup).
+   * - No backup on the account yet: `code` is a new recovery code; the photo
+   *   key goes up wrapped by it (the service can never unwrap it).
+   * - A backup already exists (another phone turned it on): `code` must be
+   *   that backup's recovery code. This phone then adopts the backup's key
+   *   (its own photos are re-encrypted under it) and restores the backed-up
+   *   photos; the wrapped key on the service is left untouched, so the old
+   *   backup stays readable. A wrong code throws WrongRecoveryCodeError and
+   *   changes nothing.
+   */
+  async enable(code: string): Promise<{ joinedExisting: boolean; restored: number; unreadable: number }> {
+    const existing = await this.deps.api.getKey();
+    if (existing) {
+      const outcome = await this.restoreFrom(existing, code);
+      return { joinedExisting: true, ...outcome };
+    }
     const params = { logN: photosValue('backup.scryptLogN'), r: photosValue('backup.scryptR'), p: photosValue('backup.scryptP') };
     const salt = this.deps.randomBytes(16);
     const kek = deriveWrappingKey(code, salt, params);
     const wrapped = sealEnvelope(kek, this.deps.vault.exportKey(), this.deps.randomBytes(12), WRAPPED_KEY_AAD);
     await this.deps.api.putKey({ schemaVersion: 1, kdf: { name: 'scrypt', ...params }, salt: toBase64(salt), wrappedKey: toBase64(wrapped) });
+    return { joinedExisting: false, restored: 0, unreadable: 0 };
   }
 
   /** Uploads the encrypted files of photos not yet backed up. Returns how many were sent. */
@@ -111,8 +132,21 @@ export class PhotoBackup {
 
   /** On a new device: unwraps the photo key with the recovery code and restores the photos. */
   async restore(code: string): Promise<number> {
+    return (await this.restoreWithReport(code)).restored;
+  }
+
+  /**
+   * As `restore`, with the count of backed-up photos that could not be opened
+   * with the backup's key (skipped, never aborting the others: MOB-02) and
+   * of local photos that could not be re-encrypted (MOB-03).
+   */
+  async restoreWithReport(code: string): Promise<{ restored: number; unreadable: number }> {
     const wrapped = await this.deps.api.getKey();
-    if (!wrapped) return 0;
+    if (!wrapped) return { restored: 0, unreadable: 0 };
+    return this.restoreFrom(wrapped, code);
+  }
+
+  private async restoreFrom(wrapped: WrappedPhotoKey, code: string): Promise<{ restored: number; unreadable: number }> {
     let key: Uint8Array;
     try {
       const kek = deriveWrappingKey(code, fromBase64(wrapped.salt), wrapped.kdf);
@@ -120,14 +154,22 @@ export class PhotoBackup {
     } catch {
       throw new WrongRecoveryCodeError();
     }
-    this.deps.vault.adoptKey(key);
+    const adopted = this.deps.vault.adoptKey(key);
     const known = new Set(this.deps.vault.list().map((p) => p.id));
     let restored = 0;
+    let unreadable = adopted.unreadable;
     for (const entry of await this.deps.api.listPhotos()) {
       if (known.has(entry.photoId)) continue;
-      this.deps.vault.restore(entry.photoId, await this.deps.api.getPhoto(entry.photoId), entry.storedAt);
+      const envelope = await this.deps.api.getPhoto(entry.photoId);
+      try {
+        this.deps.vault.restore(entry.photoId, envelope, entry.storedAt);
+      } catch {
+        // Sealed under another key (e.g. an older backup key) or damaged: skipped, the others are still restored.
+        unreadable += 1;
+        continue;
+      }
       restored += 1;
     }
-    return restored;
+    return { restored, unreadable };
   }
 }
