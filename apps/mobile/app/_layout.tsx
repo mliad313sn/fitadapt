@@ -33,6 +33,7 @@ import { expoPhotoFiles, PhotoVault } from '../src/progress/photo-vault';
 import { createProgressStore } from '../src/progress/progress-store';
 import { secureDeviceKeyStore } from '../src/storage/device-keys';
 import { StorageUnavailableScreen } from '../src/screens/StorageUnavailableScreen';
+import { createPairStore } from '../src/pair/pair-store';
 
 /**
  * S7 age gate: until the user has passed it, the only reachable screen is the
@@ -68,6 +69,8 @@ function GatedStack() {
         <Stack.Screen name="calendar" />
         {/* M02: session execution, behind the same L2 gate. */}
         <Stack.Screen name="workout" />
+        {/* M09: Fair Pair on one phone; the owner's L2 gate here, the partner's own gate inside the screen. */}
+        <Stack.Screen name="pair" />
       </Stack.Protected>
       <Stack.Protected guard={!passed}>
         <Stack.Screen name="age-gate" />
@@ -117,6 +120,8 @@ function AppRoot({ db }: { db: SyncSqliteDatabase }) {
     // M04: body data (sync records in the encrypted database), the M10 guardrail inbox and the encrypted photo vault.
     const nutrition = createGuardrailInbox(kv);
     const progress = createProgressStore({ sync: syncClient, kv, now: clock.now, nutrition });
+    // M09: a partner on this phone keeps their own ledgers and logs under their own namespace.
+    const pair = createPairStore({ kv, newId: randomUUID, now: clock.now, jurisdiction });
     const vault = new PhotoVault({ db, files: expoPhotoFiles(), keys: secureDeviceKeyStore, randomBytes: getRandomBytes, newId: randomUUID, now: clock.now });
     const accountApi = createAccountApi(post, getAccessToken);
     const ledger = new UploadLedger(kv);
@@ -142,6 +147,7 @@ function AppRoot({ db }: { db: SyncSqliteDatabase }) {
       legal,
       profile,
       accountSync,
+      pair,
       privacyClient: createHttpPrivacyClient({ baseUrl: apiBaseUrl(apiUrl), getAccessToken }),
       progress: { progress, nutrition, vault, randomBytes: getRandomBytes },
       photoBackupApi: httpPhotoBackupApi({ baseUrl: apiBaseUrl(apiUrl), getAccessToken }),
@@ -175,6 +181,7 @@ function AppRoot({ db }: { db: SyncSqliteDatabase }) {
       session={app.session}
       progress={progress}
       runSync={app.accountSync}
+      pair={app.pair}
     >
       <StatusBar style="auto" />
       <GatedStack />

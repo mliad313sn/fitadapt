@@ -18,6 +18,8 @@ export interface HomeScreenProps {
   onOpenCalendar?: () => void;
   /** M02: today's session (execution, offline). */
   onOpenWorkout?: () => void;
+  /** M09: train together (Fair Pair), behind the same L2 gate. */
+  onOpenPair?: () => void;
   /** M04: the progress dashboard (history, body trends, milestones, photos, export). */
   onOpenProgress?: () => void;
   onReviewLegal?: (missing: readonly string[]) => void;
@@ -27,7 +29,7 @@ export interface HomeScreenProps {
 }
 
 /** The entries are wired by the route (app/index.tsx); without their callbacks they are hidden. */
-export function HomeScreen({ onOpenPrivacy, onOpenLibrary, onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, onOpenCalendar, onOpenWorkout, onOpenProgress, onReviewLegal, onRescreen, onOpenEquipment, onSignIn }: HomeScreenProps = {}) {
+export function HomeScreen({ onOpenPrivacy, onOpenLibrary, onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, onOpenCalendar, onOpenWorkout, onOpenPair, onOpenProgress, onReviewLegal, onRescreen, onOpenEquipment, onSignIn }: HomeScreenProps = {}) {
   const theme = useTheme();
   const { t, locale, setLocale, unitSystem, setUnitSystem } = useI18n();
   const { pendingCount } = useSync();
@@ -42,7 +44,7 @@ export function HomeScreen({ onOpenPrivacy, onOpenLibrary, onStartOnboarding, on
         </Text>
         <Text style={{ color: theme.colors.textMuted, fontSize: theme.fontSize.body }}>{t('home.subtitle')}</Text>
 
-        {onStartOnboarding ? <M01Entries {...{ onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, onOpenCalendar, onOpenWorkout, onReviewLegal, onRescreen, onOpenEquipment, onSignIn }} /> : null}
+        {onStartOnboarding ? <M01Entries {...{ onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, onOpenCalendar, onOpenWorkout, onOpenPair, onReviewLegal, onRescreen, onOpenEquipment, onSignIn }} /> : null}
 
         <Card title={t('home.offlineCard.title')}>
           <Text style={{ color: theme.colors.text, fontSize: theme.fontSize.body }}>{t('home.offlineCard.body')}</Text>
@@ -82,7 +84,7 @@ export function HomeScreen({ onOpenPrivacy, onOpenLibrary, onStartOnboarding, on
 }
 
 /** M01: what to do next — set up, train, review changed texts, update health answers, places, account. */
-function M01Entries({ onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, onOpenCalendar, onOpenWorkout, onReviewLegal, onRescreen, onOpenEquipment, onSignIn }: Omit<HomeScreenProps, 'onOpenPrivacy' | 'onOpenLibrary'>) {
+function M01Entries({ onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, onOpenCalendar, onOpenWorkout, onOpenPair, onReviewLegal, onRescreen, onOpenEquipment, onSignIn }: Omit<HomeScreenProps, 'onOpenPrivacy' | 'onOpenLibrary'>) {
   const theme = useTheme();
   const { t } = useI18n();
   const access = useFirstWorkoutAccess();
@@ -101,6 +103,7 @@ function M01Entries({ onStartOnboarding, onOpenFirstWorkout, onOpenAssessment, o
       ) : null}
       {access.allowed && onOpenFirstWorkout ? <Button label={t('home.firstWorkout.open')} hint={t('home.firstWorkout.openHint')} onPress={onOpenFirstWorkout} testID="open-first-workout" /> : null}
       {access.allowed && onOpenWorkout ? <Button label={t('home.workout.open')} hint={t('home.workout.openHint')} onPress={onOpenWorkout} testID="open-workout" /> : null}
+      {access.allowed && onOpenPair ? <Button label={t('home.pair.open')} hint={t('home.pair.openHint')} onPress={onOpenPair} testID="open-pair" /> : null}
       {access.allowed && onOpenCalendar ? <Button label={t('home.calendar.open')} hint={t('home.calendar.openHint')} onPress={onOpenCalendar} testID="open-calendar" /> : null}
       {access.allowed && onOpenAssessment && capacity === null ? (
         <Button label={t('home.assessment.start')} hint={t('home.assessment.startHint')} variant="secondary" onPress={onOpenAssessment} testID="open-assessment" />

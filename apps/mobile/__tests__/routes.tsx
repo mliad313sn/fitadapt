@@ -18,6 +18,7 @@ import Terms from '../app/onboarding/terms';
 import Privacy from '../app/privacy';
 import SignIn from '../app/sign-in';
 import Workout from '../app/workout';
+import Pair from '../app/pair';
 import Progress from '../app/progress';
 import Photos from '../app/photos';
 
@@ -27,6 +28,7 @@ export const m01Routes = {
   assessment: Assessment,
   calendar: Calendar,
   workout: Workout,
+  pair: Pair,
   progress: Progress,
   photos: Photos,
   equipment: Equipment,

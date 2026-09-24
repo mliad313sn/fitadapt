@@ -47,6 +47,8 @@ const ImpressionSchema = z.object({
 });
 
 /** A notice impression as the device stores it (with the hash of what was shown, for upload). */
+type PairEventType = 'pair.joined' | 'pair.timeline_built' | 'pair.challenge_started' | 'pair.left' | 'pair.partner_left';
+
 export type DeviceNoticeImpression = NoticeImpression & { readonly id: string; readonly contentHash: string };
 
 function load<T>(kv: KeyValueStore, key: string, schema: z.ZodType<T>): T[] {
@@ -88,6 +90,8 @@ export interface LegalStoreState {
   logPrescription(payload: DefensibilityPayload<'prescription.issued'>): void;
   /** M02 (S3): the user attested the review that lifts a lock. */
   logSafetyAttested(payload: DefensibilityPayload<'safety.attested'>): void;
+  /** M09 Fair Pair: this person's own pair events (joined, timeline, challenge, left, partner left). */
+  logPairEvent<T extends PairEventType>(type: T, payload: DefensibilityPayload<T>): void;
   clear(): void;
 }
 
@@ -183,6 +187,9 @@ export function createLegalStore({ kv, newId, now, jurisdiction }: LegalStoreDep
     },
     logSafetyAttested(payload) {
       set({ events: append(get().events, { type: 'safety.attested', occurredAt: now().toISOString(), payload }) });
+    },
+    logPairEvent(type, payload) {
+      set({ events: append(get().events, { type, occurredAt: now().toISOString(), payload } as Omit<DefensibilityEventInput, 'chain'>) });
     },
     clear() {
       for (const key of [ACCEPTANCES_KEY, NOTICES_KEY, LOG_KEY]) kv.remove(key);

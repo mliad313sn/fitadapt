@@ -22,6 +22,8 @@ import { getRandomBytes } from 'expo-crypto';
 import { createGuardrailInbox } from './nutrition/guardrail-port';
 import { createProgressStore } from './progress/progress-store';
 import { ProgressProvider, type ProgressProviderProps } from './progress/ProgressProvider';
+import { PairProvider } from './pair/PairProvider';
+import type { PairStore } from './pair/pair-store';
 
 export interface AppProvidersProps {
   syncClient: SyncClient;
@@ -37,6 +39,8 @@ export interface AppProvidersProps {
   session?: SessionStore;
   /** M04 body data, encrypted photos and their backup; defaults to in-memory state without photos. */
   progress?: Omit<ProgressProviderProps, 'children'>;
+  /** M09 Fair Pair: guests' own ledgers and logs on this phone; defaults to an empty in-memory store. */
+  pair?: PairStore;
   /** Replaces the plain sync on reconnect (M01: upload the device ledgers first). */
   runSync?: () => Promise<unknown>;
   children?: ReactNode;
@@ -84,7 +88,7 @@ function useDefaultProgress(syncClient: SyncClient, provided?: Omit<ProgressProv
   }, [syncClient, provided]);
 }
 
-export function AppProviders({ syncClient, initialLocale, initialUnitSystem = 'metric', privacy, library, profile, legal, session, progress, runSync, children }: AppProvidersProps) {
+export function AppProviders({ syncClient, initialLocale, initialUnitSystem = 'metric', privacy, library, profile, legal, session, progress, pair, runSync, children }: AppProvidersProps) {
   const privacyProps = useDefaultPrivacy(privacy);
   const m01 = useDefaultM01(syncClient, profile, legal);
   const progressProps = useDefaultProgress(syncClient, progress);
@@ -100,7 +104,9 @@ export function AppProviders({ syncClient, initialLocale, initialUnitSystem = 'm
             <LibraryProvider store={library ?? null}>
               <ProfileProvider profile={m01.profile} legal={m01.legal} session={session}>
                 <ProgressProvider {...progressProps}>
-                  <ThemedApp>{children}</ThemedApp>
+                  <PairProvider store={pair}>
+                    <ThemedApp>{children}</ThemedApp>
+                  </PairProvider>
                 </ProgressProvider>
               </ProfileProvider>
             </LibraryProvider>

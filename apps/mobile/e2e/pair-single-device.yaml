@@ -1,0 +1,122 @@
+# M09 goal condition 4 on a device: P1 (Ibrahima) and P2 (Awa), fictional,
+# train one pair session on ONE phone, in airplane mode, with alternating
+# turns and per-person logging. Awa answers for herself on the owner's phone:
+# her own date of birth (S7/M17 age gate), her own Terms, Privacy Policy and
+# exercise-risk acknowledgment, her own health-data and partner-sharing
+# consents, her own health questions. Each person acknowledges their own
+# first-workout notice (L3). NOT EXECUTED in this environment (no device or
+# emulator); the same journey runs in jest-expo through the real root layout,
+# router and on-device database with every fetch failing and no WebSocket:
+# __tests__/pair.e2e.test.tsx (which also checks that every id below is one
+# the app renders). Needs a training day of the owner's plan (run on a day of
+# the plan, e.g. the Monday after onboarding).
+# Airplane mode is Android-only in Maestro; on iOS disable the network by hand.
+# Run with: maestro test apps/mobile/e2e/pair-single-device.yaml
+appId: dev.companion.app
+---
+- clearState
+- launchApp
+- tapOn: { id: "age-gate-day" }
+- inputText: "1"
+- tapOn: { id: "age-gate-month" }
+- inputText: "6"
+- tapOn: { id: "age-gate-year" }
+- inputText: "1988"
+- tapOn: { id: "age-gate-continue" }
+- assertVisible: { id: "home-screen" }
+- runFlow:
+    file: onboarding-steps.yaml
+    env:
+      SKIP_MEASUREMENTS: "true"
+- tapOn: { id: "first-workout-home" }
+- tapOn: { id: "open-calendar" }
+- tapOn: { id: "calendar-create" }
+- scrollUntilVisible: { element: { id: "calendar-back" } }
+- tapOn: { id: "calendar-back" }
+- setAirplaneMode: enabled
+# The owner: a first name and their own partner-sharing consent.
+- tapOn: { id: "open-pair" }
+- assertVisible: { id: "pair-setup" }
+- tapOn: { id: "pair-owner-name" }
+- inputText: "Ibrahima"
+- tapOn: { id: "pair-owner-consent-agree" }
+# Hand the phone to Awa: she answers for herself.
+- scrollUntilVisible: { element: { id: "pair-add-partner" } }
+- tapOn: { id: "pair-add-partner" }
+- assertVisible: { id: "pair-guest-identity" }
+- tapOn: { id: "pair-guest-name" }
+- inputText: "Awa"
+- tapOn: { id: "pair-guest-birth-day" }
+- inputText: "1"
+- tapOn: { id: "pair-guest-birth-month" }
+- inputText: "6"
+- tapOn: { id: "pair-guest-birth-year" }
+- inputText: "1994"
+- tapOn: { id: "pair-guest-next" }
+- assertVisible: { id: "pair-guest-legal" }
+- tapOn: { id: "pair-guest-legal-terms-read" }
+- tapOn: { id: "pair-guest-legal-terms-accept" }
+- tapOn: { id: "pair-guest-legal-privacy-read" }
+- tapOn: { id: "pair-guest-legal-privacy-accept" }
+- scrollUntilVisible: { element: { id: "pair-guest-consent-health-agree" } }
+- tapOn: { id: "pair-guest-consent-health-agree" }
+- scrollUntilVisible: { element: { id: "pair-guest-legal-exercise_risk-read" } }
+- tapOn: { id: "pair-guest-legal-exercise_risk-read" }
+- tapOn: { id: "pair-guest-legal-exercise_risk-accept" }
+- scrollUntilVisible: { element: { id: "pair-guest-consent-partner_sharing-agree" } }
+- tapOn: { id: "pair-guest-consent-partner_sharing-agree" }
+- tapOn: { id: "pair-guest-next" }
+- assertVisible: { id: "pair-guest-screening" }
+- repeat:
+    times: 10
+    commands:
+      - scrollUntilVisible: { element: { id: "pair-guest-screening-.*-no", index: 0 } }
+      - tapOn: { id: "pair-guest-screening-.*-no", index: 0 }
+- scrollUntilVisible: { element: { id: "pair-guest-weight" } }
+- tapOn: { id: "pair-guest-weight" }
+- inputText: "60"
+- tapOn: { id: "pair-guest-next" }
+- assertVisible: { id: "pair-guest-sharing" }
+- tapOn: { id: "pair-guest-sharing-performance" }
+- tapOn: { id: "pair-guest-next" }
+# Back to the owner: choose Awa, see the session; each acknowledges their own notice.
+- assertVisible: { id: "pair-setup" }
+- tapOn: { id: "pair-choose-Awa" }
+- scrollUntilVisible: { element: { id: "pair-preview" } }
+- tapOn: { id: "pair-preview" }
+- assertVisible: { id: "pair-challenge-status" }
+- scrollUntilVisible: { element: { id: "pair-notice-a-first_workout-ack" } }
+- tapOn: { id: "pair-notice-a-first_workout-ack" }
+- scrollUntilVisible: { element: { id: "pair-notice-b-first_workout-ack" } }
+- tapOn: { id: "pair-notice-b-first_workout-ack" }
+- scrollUntilVisible: { element: { id: "pair-start" } }
+- tapOn: { id: "pair-start" }
+# Warm up together, then alternating turns: Ibrahima, Awa, Ibrahima, Awa.
+- assertVisible: { id: "pair-together" }
+- tapOn: { id: "pair-together-done" }
+- assertVisible: { id: "pair-turn-a" }
+- tapOn: { id: "pair-reps-.*", index: 2 }
+- tapOn: { id: "pair-rir-2" }
+- assertVisible: { id: "pair-turn-b" }
+- tapOn: { id: "pair-reps-.*", index: 2 }
+- tapOn: { id: "pair-rir-2" }
+- assertVisible: { id: "pair-turn-a" }
+- tapOn: { id: "pair-reps-.*", index: 2 }
+- tapOn: { id: "pair-rir-2" }
+- assertVisible: { id: "pair-turn-b" }
+# Each can stop at any time (L4); Awa stops, Ibrahima goes on alone.
+- assertVisible: { id: "pair-stop-a" }
+- tapOn: { id: "pair-stop-b" }
+- tapOn: { id: "pair-sheet-stop" }
+- assertVisible: { id: "pair-card-b" }
+- repeat:
+    while:
+      notVisible: { id: "pair-done" }
+    commands:
+      - tapOn: { id: "pair-skip" }
+- assertVisible: { id: "pair-done" }
+- assertVisible: { id: "pair-done-a" }
+- assertVisible: { id: "pair-done-b" }
+- tapOn: { id: "pair-exit" }
+- assertVisible: { id: "home-screen" }
+- setAirplaneMode: disabled
