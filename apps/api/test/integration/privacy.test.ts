@@ -18,6 +18,9 @@ const CANARY = {
   freeText: 'I felt dizzy after the long run yesterday',
 };
 
+/** A valid set log (API-12: set logs are schema-checked); 82.5 kg doubles as the weight canary. */
+const SET_LOG = { schemaVersion: 1, planId: '44444444-4444-4444-8444-444444444444', exerciseIndex: 0, exerciseId: 'goblet_squat', set: { index: 1, status: 'done', reps: 10, seconds: null, loadKg: 82.5, rir: 2 }, loggedAt: '2026-09-20T07:00:00.000Z', correctionOf: null };
+
 let h: Harness;
 const backups = new MemoryBackupCatalog();
 const sink = new MemoryAnalyticsSink();
@@ -91,11 +94,13 @@ async function populatedUser() {
   const second = await signIn(h, email, device('android'));
   const token = first.tokens.accessToken;
   const pushed = await push(token, first.deviceId, [
-    { collection: 'set_logs', data: { exercise: 'goblet_squat', reps: 10, loadKg: 20, bodyWeightKg: 82.5 } },
+    { collection: 'set_logs', data: SET_LOG },
+    // API-12: a set log carrying free text and a pain report is refused (the request body still goes through the logger).
     { collection: 'set_logs', data: { exercise: 'push_up', reps: 12, note: CANARY.freeText, pain: CANARY.pain } },
     { collection: 'preferences', data: { displayName: CANARY.name, units: 'metric' } },
   ]);
   expect(pushed.statusCode).toBe(200);
+  expect((pushed.json() as { results: { status: string; reason?: string }[] }).results.map((r) => r.status)).toEqual(['applied', 'rejected', 'applied']);
   expect((await consent(token, 'health', 'granted')).statusCode).toBe(201);
   expect((await consent(token, 'analytics', 'granted')).statusCode).toBe(201);
   expect((await consent(token, 'analytics', 'withdrawn')).statusCode).toBe(201);
@@ -283,13 +288,11 @@ describe('in-app export (goal condition 2)', () => {
       ['analytics', 'granted', 1, 'SN'],
       ['analytics', 'withdrawn', 1, 'SN'],
     ]);
-    expect(doc.sync.revision).toBe(3);
-    expect(doc.sync.changes.map((c) => c.data)).toEqual([
-      { exercise: 'goblet_squat', reps: 10, loadKg: 20, bodyWeightKg: 82.5 },
-      { exercise: 'push_up', reps: 12, note: CANARY.freeText, pain: CANARY.pain },
-      { displayName: CANARY.name, units: 'metric' },
-    ]);
+    expect(doc.sync.revision).toBe(2);
+    expect(doc.sync.changes.map((c) => c.data)).toEqual([SET_LOG, { displayName: CANARY.name, units: 'metric' }]);
+    // Every processed mutation, the refused one included; the refused free text was never stored.
     expect(doc.sync.mutations).toHaveLength(3);
+    expect(res.body).not.toContain(CANARY.freeText);
     expect(doc.dataRequests).toEqual([expect.objectContaining({ kind: 'export', status: 'completed' })]);
     expect(doc.auditTrail.map((a) => a.action)).toEqual(['consent.granted', 'consent.granted', 'consent.withdrawn', 'data.exported']);
     // Credentials never leave the server, not even as hashes.
@@ -305,7 +308,7 @@ describe('in-app export (goal condition 2)', () => {
     );
     expect(live.rows.map((r) => r.table_name)).toEqual(DATA_INVENTORY.map((e) => e.table).sort());
 
-    const { token, userId } = await populatedUser();
+    const { token, userId, first } = await populatedUser();
     // M09: a multi-device pair session this user started and an event they sent (the pair sections of the export).
     for (const documentId of ['privacy', 'exercise_risk']) {
       const d = (await h.app.inject({ method: 'GET', url: `/v1/legal/documents/${documentId}?locale=fr&jurisdiction=FR` })).json() as { version: number; contentHash: string };
@@ -315,6 +318,10 @@ describe('in-app export (goal condition 2)', () => {
     const created = await h.app.inject({ method: 'POST', url: '/v1/pair/sessions', headers: bearer(token), payload: { displayName: 'Mariam', scopes: [], jurisdiction: 'FR' } });
     expect(created.statusCode).toBe(201);
     await h.app.services.pair.append(userId, (created.json() as { pairSessionId: string }).pairSessionId, randomUUID(), { type: 'left' });
+    // MOB-08: an S3 red flag (the lock fact retained in safety_locks while the lock is on).
+    const flag = { mutationId: randomUUID(), collection: 'execution_logs', recordId: randomUUID(), op: 'insert', baseRevision: null, data: { kind: 'red_flag', planId: null, symptom: 'fainting', at: h.clock.now().toISOString(), eventId: randomUUID() }, clientCreatedAt: h.clock.now().toISOString() };
+    const flagged = await h.app.inject({ method: 'POST', url: '/v1/sync/push', headers: bearer(token), payload: { deviceId: first.deviceId, mutations: [flag] } });
+    expect((flagged.json() as { results: { status: string }[] }).results[0]!.status).toBe('applied');
     const doc = (await exportData(token)).json() as Record<string, unknown>;
     for (const entry of DATA_INVENTORY) {
       if (!('section' in entry.export)) continue;

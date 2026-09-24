@@ -21,6 +21,10 @@ export class TestClock {
   advance(seconds: number) {
     this.t += seconds * 1000;
   }
+  /** Pins the clock (fixtures dated around a fixed day: the server bounds synced record times by its clock, API-5). */
+  set(ms: number) {
+    this.t = ms;
+  }
 }
 
 export interface Harness {
@@ -40,6 +44,7 @@ export interface HarnessOptions {
   consentPolicies?: AppDeps['consentPolicies'];
   withdrawalHandlers?: AppDeps['withdrawalHandlers'];
   legalRegistry?: AppDeps['legalRegistry'];
+  trustProxyHops?: AppDeps['trustProxyHops'];
 }
 
 export async function createHarness(options: HarnessOptions = {}): Promise<Harness> {
@@ -104,7 +109,7 @@ export async function truncateAll(h: Harness) {
     await tx.execute(sql`ALTER TABLE defensibility_events DISABLE TRIGGER USER`);
     await tx.execute(sql`ALTER TABLE defensibility_heads DISABLE TRIGGER USER`);
     await tx.execute(
-      sql`TRUNCATE users, devices, otp_codes, auth_sessions, refresh_tokens, sync_heads, sync_changes, sync_mutations, consent_records, data_requests, audit_entries, legal_acceptances, notice_impressions, defensibility_events, defensibility_heads, photo_backup_keys, photo_backups, pair_sessions, pair_participants, pair_events CASCADE`,
+      sql`TRUNCATE users, devices, otp_codes, auth_sessions, refresh_tokens, sync_heads, sync_changes, sync_mutations, consent_records, data_requests, audit_entries, legal_acceptances, notice_impressions, defensibility_events, defensibility_heads, photo_backup_keys, photo_backups, pair_sessions, pair_participants, pair_events, safety_locks CASCADE`,
     );
     await tx.execute(sql`ALTER TABLE defensibility_events ENABLE TRIGGER USER`);
     await tx.execute(sql`ALTER TABLE defensibility_heads ENABLE TRIGGER USER`);

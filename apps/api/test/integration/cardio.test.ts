@@ -22,6 +22,8 @@ import { bearer, createHarness, device, signIn, truncateAll, uniqueEmail, type H
 let h: Harness;
 beforeAll(async () => {
   h = await createHarness();
+  // API-5: synced session times must be plausible against the server's clock; the fixtures are dated around one week.
+  h.clock.set(NOW + 3_600_000);
 });
 afterAll(async () => h.close());
 beforeEach(async () => truncateAll(h));

@@ -22,6 +22,7 @@
 | Pseudonymous data-request records | `dataRequestRetentionDays` | 6 years | Request made | Retention job (completed requests only) | Proof that rights requests were honoured; period to be set by counsel |
 | Inactive accounts | `inactiveAccountDays` | 3 years | Last sign-in or sync | Notice to the user, then deletion (**not built**: needs the mail provider, deferred) | Storage limitation; period to be set by counsel |
 | Application logs | `applicationLogRetentionDays` | 30 days | Log line written | Log store rotation (M19) | Operations; logs carry no personal data |
+| S3 intensity-lock facts (`safety_locks`: red flag or attestation, time, causal ids; no symptom) | — (while the lock is on) | Until the medical-review attestation lifts the lock; **kept after a health-consent withdrawal** | Red flag synced | Deleted by the attestation that lifts the lock (and at a withdrawal if already lifted); cascade on account deletion | S3 must not be lifted by erasing health data (MOB-08, ADR-024). **validated: false**: the Art. 9 condition (proposed 9(2)(f) with 17(3)(e)) needs B1 and counsel |
 
 ## What survives an account deletion
 

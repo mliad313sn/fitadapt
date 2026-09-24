@@ -19,7 +19,7 @@ export const analyticsRoutes =
     app.post(
       '/v1/analytics/events',
       {
-        preHandler: authenticate(auth),
+        onRequest: authenticate(auth),
         schema: {
           tags: ['analytics'],
           summary: 'Submit allowlisted analytics events (requires analytics consent).',

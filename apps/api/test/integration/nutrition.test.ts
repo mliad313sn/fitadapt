@@ -135,6 +135,40 @@ describe('M10 nutrition sync with server-side re-derivation and the S4 re-check'
     expect((await chain(minor)).filter((e) => e.type === 'safety.event').map((e) => (e.payload as { reasonCode: string }).reasonCode)).toEqual(expect.arrayContaining(['safety.s4.deficit_disabled', 'safety.s4.minor']));
   });
 
+  it('API-5 / SAF-5: a minor cannot pass S4 with a future "today", a far clock, or a screening that states an adult date of birth', async () => {
+    const minorBirth = { year: new Date(h.clock.now()).getUTCFullYear() - 17, month: 1, day: 1 };
+    // The review's scenario: the profile holds the minor's date, the screening an adult's. The screening is refused.
+    const s = await session();
+    await consent(s, 'granted');
+    expect(await push(s, [insert('profile', profile(minorBirth), PROFILE_RECORD_ID), insert('screenings', screening([], ADULT))])).toEqual(['applied', 'screening.profile_mismatch']);
+    // "today" five years ahead would make the engine and the S4 re-check compute an adult's age: refused.
+    expect(await push(s, [insert('screenings', screening([], minorBirth))])).toEqual(['applied']);
+    const future = planRecord({ today: `${h.clock.now().getUTCFullYear() + 5}-01-01` }, [], minorBirth);
+    expect(await push(s, [insert('nutrition_plans', future)])).toEqual(['nutrition.client_time_out_of_range']);
+    // The engine clock (createdAt) is bounded too: eight days ahead, or older than the offline window.
+    const ahead = { ...planRecord({}, [], minorBirth), createdAt: new Date(h.clock.now().getTime() + 8 * 86_400_000).toISOString() };
+    const stale = { ...planRecord({}, [], minorBirth), createdAt: new Date(h.clock.now().getTime() - 31 * 86_400_000).toISOString() };
+    expect(await push(s, [insert('nutrition_plans', ahead), insert('nutrition_plans', stale)])).toEqual(['nutrition.client_time_out_of_range', 'nutrition.client_time_out_of_range']);
+    // The honest plan: supportive, stored.
+    const honest = planRecord({}, [], minorBirth);
+    expect(honest.target.deficitAllowed).toBe(false);
+    expect(await push(s, [insert('nutrition_plans', honest)])).toEqual(['applied']);
+  });
+
+  it('API-5: a plan is refused while the latest screening states another date of birth than the profile (fail closed until re-screened)', async () => {
+    const s = await ready();
+    const corrected = { year: 1987, month: 3, day: 14 };
+    // The profile's date of birth is corrected; the stored screening still states the old one.
+    const current = (await h.database.db.select().from(syncChanges).where(and(eq(syncChanges.userId, s.userId), eq(syncChanges.collection, 'profile'))))[0]!;
+    const update = { ...insert('profile', profile(corrected), PROFILE_RECORD_ID), op: 'upsert' as const, baseRevision: current.revision };
+    expect(await push(s, [update as unknown as ReturnType<typeof insert>])).toEqual(['applied']);
+    expect(await push(s, [insert('nutrition_plans', planRecord({}, [], corrected))])).toEqual(['nutrition.profile_mismatch']);
+    // A re-screen with the corrected date (replacing the old screening): plans are accepted again.
+    const old = (await h.database.db.select().from(syncChanges).where(and(eq(syncChanges.userId, s.userId), eq(syncChanges.collection, 'screenings'))))[0]!;
+    expect(await push(s, [insert('screenings', { ...screening([], corrected), supersedes: [old.recordId] })])).toEqual(['applied']);
+    expect(await push(s, [insert('nutrition_plans', planRecord({}, [], corrected))])).toEqual(['applied']);
+  });
+
   it('intake logs carry the engine estimate on the seed; habit ticks are schema-checked', async () => {
     const s = await ready();
     expect(

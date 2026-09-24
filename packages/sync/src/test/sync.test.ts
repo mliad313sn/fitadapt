@@ -367,6 +367,28 @@ describe('M01 collections and server-side validation', () => {
     expect(applied).toEqual(['screenings']);
   });
 
+  it('hands the validator the transaction of the mutation it checks (API-1: reads go through it, never a second connection)', async () => {
+    const { SyncServer, MemoryServerStore } = await import('../index.js');
+    const handles: unknown[] = [];
+    const server = new SyncServer({
+      store: new MemoryServerStore(),
+      validate: async (_user, _m, tx) => {
+        handles.push(tx);
+        // The validator sees the transaction's own state (here: nothing stored yet for this record).
+        expect(await tx.latestChange(USER, 'screenings', _m.recordId)).toBeUndefined();
+        return null;
+      },
+      onApplied: (_user, _m, tx) => {
+        expect(tx).toBe(handles.at(-1));
+      },
+    });
+    const m = { mutationId: randomUUID(), collection: 'screenings', recordId: randomUUID(), op: 'insert' as const, baseRevision: null, data: { ok: true }, clientCreatedAt: new Date().toISOString() };
+    const res = await server.push(USER, { deviceId: randomUUID(), mutations: [m] });
+    expect(res.results[0]).toMatchObject({ status: 'applied' });
+    expect(handles).toHaveLength(1);
+    expect(typeof (handles[0] as { appendChange?: unknown }).appendChange).toBe('function');
+  });
+
   it('runs the listener inside the sync transaction: if it fails, the change is not stored and a retry applies it (L11)', async () => {
     const { SyncServer, MemoryServerStore } = await import('../index.js');
     const store = new MemoryServerStore();

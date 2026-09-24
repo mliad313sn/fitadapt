@@ -114,7 +114,7 @@ describe('M01 profile sync with server-side validation', () => {
     const underage = screening([], yearsAgo(14));
     expect(underage.safetyProfile.screeningOutcome).toBe('blocked');
     expect(await push(s, [insert('screenings', underage)])).toEqual(['safety.s7.under_minimum_age']);
-    expect(await push(s, [insert('profile', profile(yearsAgo(16, -1)), PROFILE_RECORD_ID), insert('screenings', screening([], yearsAgo(17)))])).toEqual(['applied', 'applied']);
+    expect(await push(s, [insert('profile', profile(yearsAgo(16, -1)), PROFILE_RECORD_ID), insert('screenings', screening([], yearsAgo(16, -1)))])).toEqual(['applied', 'applied']);
     // An answer date in the future is refused.
     const future = screening();
     const later = { ...future.responses, answeredOn: { ...latest, year: latest.year + 1 } };

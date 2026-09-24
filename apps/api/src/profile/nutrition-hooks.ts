@@ -4,10 +4,12 @@ import { estimateIntake } from '@fitadapt/food-library';
 import { nutritionTargetViolations } from '@fitadapt/safety';
 import { HabitCheckSchema, IntakeLogSchema, NUTRITION_COLLECTIONS, NutritionPlanRecordSchema, PROFILE_COLLECTIONS, ProfileSchema, type NutritionPlanRecord, type SafetyProfile } from '@fitadapt/shared';
 import { and, desc, eq } from 'drizzle-orm';
-import type { Database } from '../db/client.js';
+import type { DbExecutor } from '../db/client.js';
 import { syncChanges } from '../db/schema.js';
 import type { LegalService } from '../legal/service.js';
+import { clientDateInRange, clientTimeInRange, dateMatchesInstant } from '../lib/client-time.js';
 import type { PgServerTx } from '../sync/pg-store.js';
+import { screeningsAgreeOnBirthDate } from './screenings.js';
 
 /**
  * M10 on the server (ADR-022). A synced nutrition plan must be exactly what
@@ -20,7 +22,7 @@ import type { PgServerTx } from '../sync/pg-store.js';
  * go to the defensibility log in the sync transaction (ADR-009).
  */
 
-async function storedBirthDate(db: Database, userId: string) {
+async function storedBirthDate(db: DbExecutor, userId: string) {
   const [row] = await db
     .select({ data: syncChanges.data })
     .from(syncChanges)
@@ -36,16 +38,22 @@ function rederive(record: NutritionPlanRecord): NutritionResult {
   return computeNutritionTarget(record.input, createEngineContext({ clock: fixedClock(Date.parse(record.createdAt)), seed: 1 }));
 }
 
-export async function validateNutritionPlan(db: Database, userId: string, data: unknown, latestProfile: SafetyProfile): Promise<string | null> {
+export async function validateNutritionPlan(db: DbExecutor, userId: string, data: unknown, latestProfile: SafetyProfile, now: Date): Promise<string | null> {
   const parsed = NutritionPlanRecordSchema.safeParse(data);
   if (!parsed.success) return 'nutrition.invalid';
   const record = parsed.data;
   const { input, target } = record;
   if (target.engineVersion !== ENGINE_VERSION || target.rulesVersion !== NUTRITION_RULES_VERSION) return 'nutrition.engine_version_unsupported';
+  // API-5 / SAF-5: the engine clock (createdAt) and "today" (S4's minor rule reads it) are bounded by the
+  // server's clock, and "today" is the local date of createdAt somewhere on Earth: a client cannot move
+  // either forward to pass an age rule, nor backdate beyond the offline window.
+  if (!clientTimeInRange(record.createdAt, now) || !clientDateInRange(input.today, now) || !dateMatchesInstant(input.today, record.createdAt)) return 'nutrition.client_time_out_of_range';
   // S4/S7: the plan must be built on the SafetyProfile the server derives from the latest stored screening, and the stored birth date.
   if (!isDeepStrictEqual(input.safetyProfile, latestProfile)) return 'nutrition.safety_profile_mismatch';
   const birthDate = await storedBirthDate(db, userId);
   if (!birthDate || !isDeepStrictEqual(birthDate, input.birthDate)) return 'nutrition.profile_mismatch';
+  // API-5: and the screening the SafetyProfile comes from states the same date of birth.
+  if (!(await screeningsAgreeOnBirthDate(db, userId, birthDate))) return 'nutrition.profile_mismatch';
   let expected;
   try {
     expected = rederive(record).target;

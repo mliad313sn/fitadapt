@@ -21,12 +21,13 @@ export const privacyRoutes =
   async (app) => {
     const errors = { 400: ErrorResponseSchema, 401: ErrorResponseSchema, 429: ErrorResponseSchema };
     const security = [{ bearerAuth: [] }];
-    const preHandler = authenticate(auth);
+    // API-7: authenticate in onRequest, before the body is read or parsed.
+    const onRequest = authenticate(auth);
 
     app.get(
       '/v1/privacy/consents',
       {
-        preHandler,
+        onRequest,
         schema: {
           tags: ['privacy'],
           summary: 'Current consent per data type (health, photos, wearables, AI coach, analytics).',
@@ -40,7 +41,7 @@ export const privacyRoutes =
     app.post(
       '/v1/privacy/consents',
       {
-        preHandler,
+        onRequest,
         schema: {
           tags: ['privacy'],
           summary: 'Record a consent decision (append-only). Grants must be for the current text version.',
@@ -58,7 +59,7 @@ export const privacyRoutes =
     app.get(
       '/v1/privacy/export',
       {
-        preHandler,
+        onRequest,
         schema: {
           tags: ['privacy'],
           summary: 'Download all data held about the signed-in user, as JSON.',
@@ -75,7 +76,7 @@ export const privacyRoutes =
     app.patch(
       '/v1/me',
       {
-        preHandler,
+        onRequest,
         schema: {
           tags: ['privacy'],
           summary: 'Correct profile fields (language, units).',
@@ -90,7 +91,7 @@ export const privacyRoutes =
     app.post(
       '/v1/privacy/deletion',
       {
-        preHandler,
+        onRequest,
         schema: {
           tags: ['privacy'],
           summary: 'Delete the account and all its data now; backups are purged on their rotation schedule.',

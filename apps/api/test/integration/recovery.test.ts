@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { ENGINE_VERSION, buildSessionHistory, createEngineContext, defaultEquipmentLoads, fixedClock, programDay, programSessionContext, type GenerateSessionInput } from '@fitadapt/engine';
 import { EQUIPMENT_PRESETS, buildCapacityModel, generateProgram, generateSession, seedLibrary } from '@fitadapt/exercise-library';
 import { evaluateScreening } from '@fitadapt/safety';
@@ -19,9 +21,9 @@ import {
   type ScreeningRecord,
   type WorkoutSessionRecord,
 } from '@fitadapt/shared';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { syncChanges } from '../../src/db/schema.js';
+import { safetyLocks, syncChanges } from '../../src/db/schema.js';
 import { bearer, createHarness, device, signIn, truncateAll, uniqueEmail, type Harness } from './harness.js';
 
 /**
@@ -37,6 +39,8 @@ import { bearer, createHarness, device, signIn, truncateAll, uniqueEmail, type H
 let h: Harness;
 beforeAll(async () => {
   h = await createHarness();
+  // API-5: synced session times must be plausible against the server's clock; the fixtures are dated around one week.
+  h.clock.set(MON + 7 * DAY);
 });
 afterAll(async () => h.close());
 beforeEach(async () => truncateAll(h));
@@ -177,6 +181,55 @@ describe('M05 red flags on the server (goal condition 7)', () => {
     expect(deloaded.plan.reasonCodes).toContain('session.deload.triggered.red_flag');
     expect(await push(r.s, [insert('workout_sessions', deloaded)])).toEqual(['applied']);
     expect(await h.app.services.legal.log.verify(h.app.services.legal.subjectRef(r.s.userId))).toMatchObject({ ok: true });
+  });
+
+  it('MOB-08: the S3 lock survives a health-consent withdrawal: after re-granting (a new phone), sessions stay refused until the review is attested', async () => {
+    const r = await ready();
+    const flagId = randomUUID();
+    const flag: ExecutionLog = { kind: 'red_flag', planId: null, symptom: 'palpitations', at: at(MON - 3_600_000), eventId: flagId };
+    expect(await push(r.s, [insert('execution_logs', flag)])).toEqual(['applied']);
+    const lockOf = async () => (await h.app.inject({ method: 'GET', url: '/v1/safety/intensity-lock', headers: bearer(r.s.token) })).json() as { locked: boolean; since: string | null; flagIds: string[] };
+    expect(await lockOf()).toEqual({ locked: true, since: flag.at, flagIds: [flagId] });
+    // Withdrawn: every health record, the red flag included, is erased; the lock is not.
+    const withdrawn = await h.app.inject({ method: 'POST', url: '/v1/privacy/consents', headers: bearer(r.s.token), payload: { dataType: 'health', decision: 'withdrawn', version: 1, locale: 'en', jurisdiction: 'GB', source: 'mobile' } });
+    expect(withdrawn.statusCode).toBe(201);
+    expect(await h.database.db.select().from(syncChanges).where(and(eq(syncChanges.userId, r.s.userId), eq(syncChanges.collection, 'execution_logs')))).toEqual([]);
+    expect(await lockOf()).toEqual({ locked: true, since: flag.at, flagIds: [flagId] });
+    // What is retained is not descriptive: no symptom, no plan.
+    const retained = JSON.stringify(await h.database.db.select().from(safetyLocks).where(eq(safetyLocks.userId, r.s.userId)));
+    expect(retained).not.toContain('palpitations');
+    // Health consent granted again and onboarding redone (the equipment profile, not health data, is still stored).
+    expect((await grantHealth(r.s)).statusCode).toBe(201);
+    const scr = screening();
+    const profile: Profile = { schemaVersion: 1, goals: { primary: 'muscle_gain', secondary: null }, experience: 'intermediate', schedule: { daysPerWeek: 3, minutesPerSession: 45, preferredTimes: [], remindersEnabled: false }, birthDate: BIRTH, biometrics: EMPTY_BIOMETRICS, limitations: [], excludedExerciseIds: [], motivation: null, activeEquipmentProfileId: r.gymId, onboardingCompletedAt: h.clock.now().toISOString() };
+    const assessment: AssessmentRecord = { reason: 'first', result: resultFor(false), capacity: capacity(false), cappedByS1: false };
+    expect(await push(r.s, [insert('screenings', scr), insert('profile', profile, PROFILE_RECORD_ID), insert('assessments', assessment), insert('programs', programRecord(r.gymId, scr.safetyProfile))])).toEqual(['applied', 'applied', 'applied', 'applied']);
+    // The device no longer holds the red flag: its session (without the lock) is refused.
+    expect(await push(r.s, [insert('workout_sessions', workout(sessionInput(r)))])).toEqual(['safety.s3.intensity_locked']);
+    // The attestation naming the retained flag lifts it; nothing is kept once lifted.
+    expect(await push(r.s, [insert('execution_logs', { kind: 'medical_review_attested', at: at(MON - 600_000), statementVersion: 1, attests: [flagId] })])).toEqual(['applied']);
+    expect(await lockOf()).toEqual({ locked: false, since: null, flagIds: [] });
+    expect(await h.database.db.select().from(safetyLocks).where(eq(safetyLocks.userId, r.s.userId))).toEqual([]);
+    expect(await push(r.s, [insert('workout_sessions', workout(sessionInput(r)))])).toEqual(['applied']);
+  });
+
+  it('MOB-08: a lock already lifted leaves nothing behind a health-consent withdrawal; migration 0011 carries earlier S3 facts', async () => {
+    const r = await ready();
+    const flag: ExecutionLog = { kind: 'red_flag', planId: null, symptom: 'fainting', at: at(MON - 3_600_000) };
+    expect(await push(r.s, [insert('execution_logs', flag)])).toEqual(['applied']);
+    // As if stored before the table existed: the migration's backfill re-creates the fact from the log.
+    await h.database.db.delete(safetyLocks).where(eq(safetyLocks.userId, r.s.userId));
+    const migration = readFileSync(fileURLToPath(new URL('../../drizzle/0011_fix_s3_lock_survives_withdrawal.sql', import.meta.url)), 'utf8');
+    await h.database.db.execute(sql.raw(migration.split('--> statement-breakpoint').at(-1)!));
+    expect((await h.database.db.select().from(safetyLocks).where(eq(safetyLocks.userId, r.s.userId))).map((l) => [l.kind, l.at])).toEqual([['red_flag', flag.at]]);
+    // Attested, then withdrawn: nothing about the lock is kept.
+    expect(await push(r.s, [insert('execution_logs', { kind: 'medical_review_attested', at: at(MON - 600_000), statementVersion: 1 })])).toEqual(['applied']);
+    const withdrawn = await h.app.inject({ method: 'POST', url: '/v1/privacy/consents', headers: bearer(r.s.token), payload: { dataType: 'health', decision: 'withdrawn', version: 1, locale: 'en', jurisdiction: 'GB', source: 'mobile' } });
+    expect(withdrawn.statusCode).toBe(201);
+    expect(await h.database.db.select().from(safetyLocks).where(eq(safetyLocks.userId, r.s.userId))).toEqual([]);
+    // The export shows what is retained (here: nothing).
+    const exported = (await h.app.inject({ method: 'GET', url: '/v1/privacy/export', headers: bearer(r.s.token) })).json() as { safetyLocks: unknown[] };
+    expect(exported.safetyLocks).toEqual([]);
   });
 
   it('the seek-care notice is recorded with the emergency guidance of the user’s jurisdiction: 112 in France, 999 in the UK (two jurisdictions)', async () => {

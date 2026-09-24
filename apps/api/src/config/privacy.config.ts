@@ -6,6 +6,7 @@ import { defineConfig } from '@fitadapt/shared';
  * review (PE-11 with seat B1). Retention periods live in @fitadapt/privacy.
  */
 const SOURCE = 'docs/adr/ADR-005-data-subject-rights.md (engineering default, no external source)';
+const REVIEW = 'docs/status/FIX-api-security.md (API security review; engineering default, no external source)';
 const HEADERS = 'docs/adr/ADR-006-encryption-and-key-management.md (engineering default, no external source)';
 
 export const privacyConfig = defineConfig({
@@ -18,6 +19,11 @@ export const privacyConfig = defineConfig({
   offlineRecordMaxAgeSeconds: { value: 2_592_000, unit: 's (30 days)', source: 'docs/adr/ADR-013-mobile-sign-in-and-account-sync.md (engineering default, no external source)', validated: false },
   clientClockSkewSeconds: { value: 300, unit: 's', source: 'docs/adr/ADR-013-mobile-sign-in-and-account-sync.md (engineering default, no external source)', validated: false },
   hstsMaxAgeSeconds: { value: 31_536_000, unit: 's (365 days)', source: HEADERS, validated: false },
+  // API-10: writes to append-only, never-purgeable tables are limited per user (per privacyRateLimitWindowSeconds).
+  // An offline backlog above a limit is uploaded on a later sync; a withdrawal that takes effect is never refused.
+  consentDecisionsPerWindow: { value: 60, unit: 'consent decisions per user per window', source: REVIEW, validated: false },
+  acceptancesPerWindow: { value: 60, unit: 'legal acceptances per user per window', source: REVIEW, validated: false },
+  noticesPerWindow: { value: 300, unit: 'notice impressions per user per window', source: REVIEW, validated: false },
 });
 
 export type PrivacyConfigKey = keyof typeof privacyConfig;

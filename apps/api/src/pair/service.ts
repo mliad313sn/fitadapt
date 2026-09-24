@@ -1,14 +1,15 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import { challengeOn, projectPairEvent, type PartnerScopes } from '@fitadapt/privacy';
-import { PairEventSchema, PairSharingScopeSchema, type PairEvent, type PairSharingScope, type ParticipantSlot } from '@fitadapt/shared';
+import { PAIR_JOIN_CODE_ALPHABET, PAIR_JOIN_CODE_LENGTH, PairEventSchema, PairSharingScopeSchema, type PairEvent, type PairSharingScope, type ParticipantSlot } from '@fitadapt/shared';
 import { PAIR_RULES_VERSION } from '@fitadapt/engine';
 import { CONSENT_POLICIES, policyFor } from '@fitadapt/privacy';
 import { and, asc, eq, gt, max, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { keyedHash } from '../auth/crypto.js';
 import { ApiError } from '../auth/errors.js';
+import type { RateLimiter } from '../auth/rate-limit.js';
 import { pairValue } from '../config/pair.config.js';
-import type { Database } from '../db/client.js';
+import { lockUser, type Database, type DbExecutor } from '../db/client.js';
 import { pairEvents, pairParticipants, pairSessions } from '../db/schema.js';
 import type { LegalService } from '../legal/service.js';
 import type { ConsentWithdrawalHandler, PrivacyService } from '../privacy/service.js';
@@ -46,9 +47,20 @@ export const pairErrors = {
   challengeOff: () => new ApiError(403, 'pair.challenge_off'),
   tooMany: () => new ApiError(429, 'pair.too_many_events'),
   consent: () => new ApiError(403, 'pair.consent_required'),
+  rateLimited: () => new ApiError(429, 'pair.rate_limited'),
 };
 
-const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+/** A random join code (API-4: PAIR_JOIN_CODE_LENGTH characters of a 32-letter alphabet, crypto RNG). */
+export function newJoinCode(): string {
+  return Array.from({ length: PAIR_JOIN_CODE_LENGTH }, () => PAIR_JOIN_CODE_ALPHABET[randomInt(PAIR_JOIN_CODE_ALPHABET.length)]).join('');
+}
+
+const isUniqueViolation = (error: unknown) => {
+  for (let e: unknown = error; e && typeof e === 'object'; e = (e as { cause?: unknown }).cause) {
+    if ((e as { code?: unknown }).code === '23505') return true;
+  }
+  return false;
+};
 
 export interface PairServiceDeps {
   readonly db: Database;
@@ -56,6 +68,10 @@ export interface PairServiceDeps {
   readonly legal: LegalService;
   readonly pepper: string;
   readonly now: () => Date;
+  /** API-4 / API-10: join attempts and session creation are rate-limited (none: unlimited, tests only). */
+  readonly rateLimiter?: RateLimiter;
+  /** Join-code source (tests inject collisions). */
+  readonly newJoinCode?: () => string;
 }
 
 export interface Participation {
@@ -83,22 +99,44 @@ export class PairService {
   }
 
   /** L2 + M17 for THIS person: their own texts, health consent and partner_sharing consent. */
-  async requireEligible(userId: string, jurisdiction: string): Promise<void> {
-    await this.deps.legal.requireFirstWorkoutAcceptance(userId, jurisdiction);
-    if (!(await this.deps.privacy.hasConsent(userId, 'partner_sharing'))) throw pairErrors.consent();
+  async requireEligible(userId: string, jurisdiction: string, db: DbExecutor = this.deps.db): Promise<void> {
+    await this.deps.legal.requireFirstWorkoutAcceptance(userId, jurisdiction, db);
+    if (!(await this.deps.privacy.hasConsent(userId, 'partner_sharing', db))) throw pairErrors.consent();
   }
 
   private consentVersion(jurisdiction: string) {
     return policyFor('partner_sharing', jurisdiction, CONSENT_POLICIES).currentVersion;
   }
 
+  private async limit(bucket: string, subject: string, key: 'joinAttemptsPerUserPerWindow' | 'joinAttemptsPerIpPerWindow' | 'createsPerUserPerWindow') {
+    const ok = await this.deps.rateLimiter?.hit(bucket, subject, pairValue(key), pairValue('pairRateLimitWindowSeconds'));
+    if (ok === false) throw pairErrors.rateLimited();
+  }
+
+  private subjectRef(userId: string) {
+    return keyedHash(this.deps.pepper, 'subject', userId);
+  }
+
   async create(userId: string, input: { displayName: string; scopes: PairSharingScope[]; jurisdiction: string }): Promise<{ pairSessionId: string; joinCode: string }> {
-    await this.requireEligible(userId, input.jurisdiction);
+    await this.limit('relay-create', this.subjectRef(userId), 'createsPerUserPerWindow');
+    // API-12: a code that collides with a stored one (the hash is unique) is drawn again instead of failing.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this.createWithCode(userId, input, (this.deps.newJoinCode ?? newJoinCode)());
+      } catch (error) {
+        if (!isUniqueViolation(error) || attempt >= pairValue('joinCodeDrawAttempts')) throw error;
+      }
+    }
+  }
+
+  private async createWithCode(userId: string, input: { displayName: string; scopes: PairSharingScope[]; jurisdiction: string }, joinCode: string): Promise<{ pairSessionId: string; joinCode: string }> {
     const now = this.deps.now();
-    const joinCode = Array.from({ length: 6 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join('');
     const pairSessionId = randomUUID();
     const scopes = [...new Set(input.scopes)];
     await this.deps.db.transaction(async (tx) => {
+      // API-2: eligibility (partner_sharing consent) read under the user's lock, in the writing transaction.
+      await lockUser(tx, userId);
+      await this.requireEligible(userId, input.jurisdiction, tx);
       await tx.insert(pairSessions).values({ id: pairSessionId, hostUserId: userId, joinCodeHash: this.codeHash(joinCode), createdAt: now });
       await tx.insert(pairParticipants).values({ pairSessionId, slot: 'a', userId, displayName: input.displayName, scopes, consentVersion: this.consentVersion(input.jurisdiction), joinedAt: now });
       await this.deps.legal.recordPairEvent(userId, 'pair.joined', { pairSessionId, role: 'host', mode: 'multi_device', scopes, consentVersion: this.consentVersion(input.jurisdiction) }, tx);
@@ -106,11 +144,16 @@ export class PairService {
     return { pairSessionId, joinCode };
   }
 
-  async join(userId: string, input: { joinCode: string; displayName: string; scopes: PairSharingScope[]; jurisdiction: string }): Promise<{ pairSessionId: string; slot: ParticipantSlot; challenge: boolean }> {
-    await this.requireEligible(userId, input.jurisdiction);
+  /** `clientIp`: the caller's address (API-4: guessing is limited per account and per address). */
+  async join(userId: string, input: { joinCode: string; displayName: string; scopes: PairSharingScope[]; jurisdiction: string }, clientIp = 'unknown'): Promise<{ pairSessionId: string; slot: ParticipantSlot; challenge: boolean }> {
+    await this.limit('relay-join-user', this.subjectRef(userId), 'joinAttemptsPerUserPerWindow');
+    await this.limit('relay-join-ip', keyedHash(this.deps.pepper, 'ip', clientIp), 'joinAttemptsPerIpPerWindow');
     const now = this.deps.now();
     const scopes = [...new Set(input.scopes)];
     return this.deps.db.transaction(async (tx) => {
+      // API-2: eligibility read under the user's lock, in the writing transaction.
+      await lockUser(tx, userId);
+      await this.requireEligible(userId, input.jurisdiction, tx);
       const [session] = await tx.select().from(pairSessions).where(eq(pairSessions.joinCodeHash, this.codeHash(input.joinCode))).for('update');
       if (!session) throw pairErrors.notFound();
       if (session.hostUserId === userId) throw pairErrors.ownSession();
@@ -129,17 +172,17 @@ export class PairService {
     });
   }
 
-  async participants(pairSessionId: string): Promise<Participation[]> {
-    const rows = await this.deps.db.select().from(pairParticipants).where(eq(pairParticipants.pairSessionId, pairSessionId)).orderBy(asc(pairParticipants.slot));
+  async participants(pairSessionId: string, db: DbExecutor = this.deps.db): Promise<Participation[]> {
+    const rows = await db.select().from(pairParticipants).where(eq(pairParticipants.pairSessionId, pairSessionId)).orderBy(asc(pairParticipants.slot));
     return rows.map((r) => ({ pairSessionId: r.pairSessionId, slot: r.slot, userId: r.userId, displayName: r.displayName, scopes: ScopesSchema.parse(r.scopes) }));
   }
 
   /** The participation of a user in a pair session, with the connection-time checks (their consent may have been withdrawn). */
-  async connect(userId: string, pairSessionId: string): Promise<{ me: Participation; all: Participation[]; challenge: boolean }> {
-    const all = await this.participants(pairSessionId);
+  async connect(userId: string, pairSessionId: string, db: DbExecutor = this.deps.db): Promise<{ me: Participation; all: Participation[]; challenge: boolean }> {
+    const all = await this.participants(pairSessionId, db);
     const me = all.find((p) => p.userId === userId);
     if (!me) throw pairErrors.notParticipant();
-    if (!(await this.deps.privacy.hasConsent(userId, 'partner_sharing'))) throw pairErrors.consent();
+    if (!(await this.deps.privacy.hasConsent(userId, 'partner_sharing', db))) throw pairErrors.consent();
     return { me, all, challenge: all.length === 2 && challengeOn(all[0]!.scopes, all[1]!.scopes) };
   }
 
@@ -155,10 +198,13 @@ export class PairService {
   /** Stores one event from a participant (idempotent on its device id); returns it with its seq, and whether it was new. */
   async append(userId: string, pairSessionId: string, clientEventId: string, raw: unknown): Promise<{ relayed: RelayedEvent; fresh: boolean }> {
     const event = PairEventSchema.parse(raw);
-    const { me, all, challenge } = await this.connect(userId, pairSessionId);
-    if (event.type === 'bodyweight' && !me.scopes.includes('bodyweight')) throw pairErrors.scope();
-    if (event.type === 'score' && !challenge) throw pairErrors.challengeOff();
     return this.deps.db.transaction(async (tx) => {
+      // API-2: participation and partner_sharing consent read under the sender's lock, in the writing
+      // transaction: a withdrawal (which erases the relay data) either came first or waits for this event.
+      await lockUser(tx, userId);
+      const { me, all, challenge } = await this.connect(userId, pairSessionId, tx);
+      if (event.type === 'bodyweight' && !me.scopes.includes('bodyweight')) throw pairErrors.scope();
+      if (event.type === 'score' && !challenge) throw pairErrors.challengeOff();
       const [dup] = await tx.select().from(pairEvents).where(and(eq(pairEvents.pairSessionId, pairSessionId), eq(pairEvents.fromUserId, userId), eq(pairEvents.clientEventId, clientEventId)));
       if (dup) return { relayed: { seq: dup.seq, from: dup.fromSlot, clientEventId, event: PairEventSchema.parse(dup.event) }, fresh: false };
       // One writer at a time per pair session: the session row is locked, so seq has no gap and no fork.

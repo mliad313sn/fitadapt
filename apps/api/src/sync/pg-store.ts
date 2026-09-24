@@ -1,10 +1,9 @@
 import { PushResultSchema, type Change, type PushResult } from '@fitadapt/shared';
 import type { NewChange, ServerStore, ServerTx } from '@fitadapt/sync';
 import { and, asc, desc, eq, gt, sql } from 'drizzle-orm';
-import type { Database } from '../db/client.js';
+import { z } from 'zod';
+import { lockUser, type Database, type DbTx as Tx } from '../db/client.js';
 import { syncChanges, syncHeads, syncMutations } from '../db/schema.js';
-
-type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 /** The sync transaction, with the underlying PostgreSQL transaction for records that must commit with the change (L11). */
 export interface PgServerTx extends ServerTx {
@@ -22,6 +21,32 @@ function toChange(row: typeof syncChanges.$inferSelect): Change {
   };
 }
 
+/**
+ * What the ledger stores for a result (API-3): never a copy of a record. A
+ * conflict keeps only which record it conflicted with; its `current` is read
+ * again from sync_changes on a replay, so a record erased there (health
+ * consent withdrawn) is not kept, nor exported, through the ledger.
+ */
+const LedgerEntrySchema = PushResultSchema.omit({ current: true }).extend({
+  currentRef: z.object({ collection: z.string(), recordId: z.string() }).optional(),
+});
+type LedgerEntry = z.infer<typeof LedgerEntrySchema>;
+
+export function ledgerEntry(result: PushResult): LedgerEntry {
+  const { current, ...rest } = result;
+  return current ? { ...rest, currentRef: { collection: current.collection, recordId: current.recordId } } : rest;
+}
+
+async function latestChangeOf(tx: Tx, userId: string, collection: string, recordId: string): Promise<Change | undefined> {
+  const [row] = await tx
+    .select()
+    .from(syncChanges)
+    .where(and(eq(syncChanges.userId, userId), eq(syncChanges.collection, collection), eq(syncChanges.recordId, recordId)))
+    .orderBy(desc(syncChanges.revision))
+    .limit(1);
+  return row ? toChange(row) : undefined;
+}
+
 function txFor(tx: Tx): PgServerTx {
   return {
     db: tx,
@@ -31,20 +56,17 @@ function txFor(tx: Tx): PgServerTx {
         .from(syncMutations)
         .where(and(eq(syncMutations.userId, userId), eq(syncMutations.mutationId, mutationId)))
         .limit(1);
-      return row ? PushResultSchema.parse(row.result) : undefined;
+      if (!row) return undefined;
+      const { currentRef, ...result } = LedgerEntrySchema.parse(row.result);
+      if (!currentRef) return result;
+      // A replayed conflict answers with the record's state now (erased data stays erased).
+      const current = await latestChangeOf(tx, userId, currentRef.collection, currentRef.recordId);
+      return current ? { ...result, current } : result;
     },
     async saveMutationResult(userId, result: PushResult) {
-      await tx.insert(syncMutations).values({ userId, mutationId: result.mutationId, result });
+      await tx.insert(syncMutations).values({ userId, mutationId: result.mutationId, result: ledgerEntry(result) });
     },
-    async latestChange(userId, collection, recordId) {
-      const [row] = await tx
-        .select()
-        .from(syncChanges)
-        .where(and(eq(syncChanges.userId, userId), eq(syncChanges.collection, collection), eq(syncChanges.recordId, recordId)))
-        .orderBy(desc(syncChanges.revision))
-        .limit(1);
-      return row ? toChange(row) : undefined;
-    },
+    latestChange: (userId, collection, recordId) => latestChangeOf(tx, userId, collection, recordId),
     async appendChange(userId, change: NewChange) {
       const [head] = await tx
         .insert(syncHeads)
@@ -71,7 +93,7 @@ export class PgServerStore implements ServerStore<PgServerTx> {
 
   transaction<T>(userId: string, fn: (tx: PgServerTx) => Promise<T>): Promise<T> {
     return this.db.transaction(async (tx) => {
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${userId}, 0))`);
+      await lockUser(tx, userId);
       return fn(txFor(tx));
     });
   }

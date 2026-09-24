@@ -29,7 +29,7 @@ import { keyedHash } from '../auth/crypto.js';
 import { ApiError, authErrors } from '../auth/errors.js';
 import type { RateLimiter } from '../auth/rate-limit.js';
 import { privacyValue } from '../config/privacy.config.js';
-import type { Database } from '../db/client.js';
+import { lockUser, type Database, type DbExecutor } from '../db/client.js';
 import {
   auditEntries,
   authSessions,
@@ -47,6 +47,7 @@ import {
   pairEvents,
   pairParticipants,
 } from '../db/schema.js';
+import { exportLockFacts } from '../profile/intensity-lock.js';
 import type { BackupCatalog } from './backup-catalog.js';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
@@ -148,13 +149,17 @@ export class PrivacyService {
     await tx.insert(auditEntries).values({ id: randomUUID(), subjectRef: this.subjectRef(userId), action, dataType, version, occurredAt: now });
   }
 
-  private async limit(bucket: string, userId: string, key: 'exportRequestsPerWindow' | 'deletionRequestsPerWindow' | 'analyticsBatchesPerWindow') {
-    const ok = await this.deps.rateLimiter.hit(bucket, this.subjectRef(userId), privacyValue(key), privacyValue('privacyRateLimitWindowSeconds'));
-    if (!ok) throw privacyErrors.rateLimited();
+  private async limit(bucket: string, userId: string, key: 'exportRequestsPerWindow' | 'deletionRequestsPerWindow' | 'analyticsBatchesPerWindow' | 'consentDecisionsPerWindow') {
+    if (!(await this.withinLimit(bucket, userId, key))) throw privacyErrors.rateLimited();
   }
 
-  async consentHistory(userId: string): Promise<ConsentRecord[]> {
-    const rows = await this.deps.db
+  private withinLimit(bucket: string, userId: string, key: 'exportRequestsPerWindow' | 'deletionRequestsPerWindow' | 'analyticsBatchesPerWindow' | 'consentDecisionsPerWindow') {
+    return this.deps.rateLimiter.hit(bucket, this.subjectRef(userId), privacyValue(key), privacyValue('privacyRateLimitWindowSeconds'));
+  }
+
+  /** `db`: the caller's transaction when the answer gates a write in it (API-1, API-2). */
+  async consentHistory(userId: string, db: DbExecutor = this.deps.db): Promise<ConsentRecord[]> {
+    const rows = await db
       .select()
       .from(consentRecords)
       .where(eq(consentRecords.userId, userId))
@@ -166,25 +171,39 @@ export class PrivacyService {
     return consentStates(await this.consentHistory(userId), { policies: this.policies });
   }
 
-  async hasConsent(userId: string, dataType: ConsentDataType): Promise<boolean> {
-    return hasConsent(await this.consentHistory(userId), dataType, { policies: this.policies });
+  /**
+   * Pass the transaction of the write the answer gates, after `lockUser`: a
+   * withdrawal then either committed before (and is seen) or waits for the
+   * write to commit (and erases it). API-2.
+   */
+  async hasConsent(userId: string, dataType: ConsentDataType, db: DbExecutor = this.deps.db): Promise<boolean> {
+    return hasConsent(await this.consentHistory(userId, db), dataType, { policies: this.policies });
   }
 
   /** Throws 403 `privacy.consent_required` unless the consent is currently granted. */
-  async requireConsent(userId: string, dataType: ConsentDataType): Promise<void> {
-    if (!(await this.hasConsent(userId, dataType))) throw privacyErrors.consentRequired();
+  async requireConsent(userId: string, dataType: ConsentDataType, db: DbExecutor = this.deps.db): Promise<void> {
+    if (!(await this.hasConsent(userId, dataType, db))) throw privacyErrors.consentRequired();
   }
 
   async recordConsent(userId: string, update: ConsentUpdateRequest): Promise<ConsentState> {
     const check = checkDecision(update.decision, update.dataType, update.version, update.jurisdiction, this.policies);
     if (!check.ok) throw privacyErrors.consentVersionOutdated();
+    // API-10: decisions append to a never-purged ledger and to the defensibility log: limited per user. A withdrawal
+    // that takes effect (the consent is granted now) is never refused (GDPR Art. 7(3)).
+    if (!(await this.withinLimit('privacy-consent', userId, 'consentDecisionsPerWindow'))) {
+      if (update.decision !== 'withdrawn' || !(await this.hasConsent(userId, update.dataType))) throw privacyErrors.rateLimited();
+    }
     const now = this.deps.now();
     // M01: a decision made offline keeps its device time; the upload can be retried with the same id.
     const recordedAt = clientTime(update.recordedAt, now, 'privacy.client_time_out_of_range');
     const { id, recordedAt: _deviceTime, supersedes: sent, ...fields } = update;
     // ADR-023: a decision made here (web, API) replaces what the server holds; a device names what it knew.
-    const supersedes = sent ?? (update.source === 'mobile' ? null : consentHeads(await this.consentHistory(userId), update.dataType));
     await this.deps.db.transaction(async (tx) => {
+      // API-2: the same per-user lock as a sync push and the consent-gated writes, so a push (or photo
+      // upload, or pair event) that passed its consent check commits before this decision, and the
+      // withdrawal handlers below erase it; one that has not checked yet sees the decision.
+      await lockUser(tx, userId);
+      const supersedes = sent ?? (update.source === 'mobile' ? null : consentHeads(await this.consentHistory(userId, tx), update.dataType));
       const inserted = await tx
         .insert(consentRecords)
         .values({ id: id ?? randomUUID(), userId, ...fields, recordedAt, receivedAt: now, supersedes })
@@ -244,6 +263,8 @@ export class PrivacyService {
       // M09: this person's participations in multi-device pair sessions and the events they sent (never the partner's).
       const pairRows = await tx.select().from(pairParticipants).where(eq(pairParticipants.userId, userId)).orderBy(asc(pairParticipants.joinedAt));
       const pairEventRows = await tx.select().from(pairEvents).where(eq(pairEvents.fromUserId, userId)).orderBy(asc(pairEvents.createdAt), asc(pairEvents.seq));
+      // MOB-08: the S3 lock facts retained apart from the erasable logs (ADR-024).
+      const lockFacts = await exportLockFacts(tx, userId);
 
       return {
         format: DATA_EXPORT_FORMAT,
@@ -282,6 +303,7 @@ export class PrivacyService {
           participations: pairRows.map((p) => ({ pairSessionId: p.pairSessionId, slot: p.slot, displayName: p.displayName, scopes: p.scopes as ('performance' | 'bodyweight' | 'challenge')[], consentVersion: p.consentVersion, joinedAt: iso(p.joinedAt) })),
           events: pairEventRows.map((e) => ({ pairSessionId: e.pairSessionId, seq: e.seq, clientEventId: e.clientEventId, event: e.event as Record<string, unknown>, createdAt: iso(e.createdAt) })),
         },
+        safetyLocks: lockFacts,
       };
     });
   }
@@ -318,7 +340,7 @@ export class PrivacyService {
     });
     // Rate-limit counters are keyed hashes with a short TTL; clear them anyway.
     await this.deps.rateLimiter.clear(['otp-request-email', 'otp-verify-email'], emailHash);
-    await this.deps.rateLimiter.clear(['privacy-export', 'analytics'], this.subjectRef(userId));
+    await this.deps.rateLimiter.clear(['privacy-export', 'analytics', 'privacy-consent', 'legal-acceptance', 'legal-notice', 'relay-create', 'relay-join-user', 'photo-upload'], this.subjectRef(userId));
     return { requestId, status: 'backup_purge_pending', primaryDeletedAt: iso(now), backupPurgeDueAt: iso(due), emailHash };
   }
 

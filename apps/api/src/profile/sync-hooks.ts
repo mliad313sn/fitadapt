@@ -1,33 +1,37 @@
 import { isDeepStrictEqual } from 'node:util';
 import { ASSESSMENT_MIN_STOP_RIR, ENGINE_VERSION, assessmentStopRir } from '@fitadapt/engine';
 import { buildCapacityModel } from '@fitadapt/exercise-library';
-import { evaluateAgeGate, evaluateScreening, notScreenedSafetyProfile, safetyProfileFromScreenings, type CalendarDate } from '@fitadapt/safety';
+import { evaluateAgeGate, evaluateScreening, type CalendarDate } from '@fitadapt/safety';
 import {
   ASSESSMENT_COLLECTION,
   AssessmentRecordSchema,
   BodyMetricSchema,
   EquipmentProfileSchema,
+  ExecutionLogSchema,
   MeasurementSchema,
   NUTRITION_COLLECTIONS,
   PROFILE_COLLECTIONS,
   PROGRAM_COLLECTIONS,
   PROGRESS_COLLECTIONS,
+  PreferencesRecordSchema,
   ProfileSchema,
   RECOVERY_COLLECTIONS,
   ReadinessCheckSchema,
   SESSION_COLLECTIONS,
   ScreeningRecordSchema,
+  SetLogSchema,
   type SafetyProfile,
-  type SyncMutation,
 } from '@fitadapt/shared';
 import type { MutationListener, MutationValidator } from '@fitadapt/sync';
-import { and, asc, eq, inArray } from 'drizzle-orm';
-import type { Database } from '../db/client.js';
+import { and, eq, inArray } from 'drizzle-orm';
+import type { Database, DbExecutor } from '../db/client.js';
 import { syncChanges } from '../db/schema.js';
 import type { LegalService } from '../legal/service.js';
 import type { ConsentWithdrawalHandler, PrivacyService } from '../privacy/service.js';
 import type { PgServerTx } from '../sync/pg-store.js';
 import { onProgramApplied, validateProgram, validateReflow } from './program-hooks.js';
+import { pruneLiftedLock, recordLockFact } from './intensity-lock.js';
+import { latestSafetyProfile, storedProfileBirthDate } from './screenings.js';
 import { onSessionApplied, validateExecutionLog, validateWorkoutSession } from './session-hooks.js';
 import { onNutritionApplied, validateHabitCheck, validateIntakeLog, validateNutritionPlan } from './nutrition-hooks.js';
 
@@ -59,6 +63,17 @@ export const HEALTH_COLLECTIONS: readonly string[] = [
   NUTRITION_COLLECTIONS.habitChecks,
 ];
 
+/** The `preferences` sync collection (per-user settings). */
+export const PREFERENCES_COLLECTION = 'preferences';
+
+/** Every collection the validator checks; any other collection is refused (fail closed, PKG-06). */
+export const VALIDATED_COLLECTIONS: readonly string[] = [
+  ...HEALTH_COLLECTIONS,
+  PROFILE_COLLECTIONS.equipmentProfiles,
+  SESSION_COLLECTIONS.setLogs,
+  PREFERENCES_COLLECTION,
+];
+
 /**
  * The latest calendar date anywhere on Earth right now (UTC+14). A user who is
  * under 16 even on that date is under 16 wherever they are, so the server-side
@@ -76,31 +91,11 @@ export interface ProfileSyncDeps {
   privacy: PrivacyService;
   legal: LegalService;
   now: () => Date;
-  /** M07: reads the user's latest stored screening to re-check the S1 reserve of an assessment. */
+  /** The pool; the validator itself reads only through the sync transaction it is handed (API-1). */
   db: Database;
 }
 
-/**
- * The SafetyProfile of the user's stored screenings, re-derived from their
- * answers with the SAME function as the device (packages/safety,
- * safetyProfileFromScreenings): the head of the `supersedes` chain, never
- * the last pushed (ADR-023: a device that was offline pushes an older
- * screening last); several heads → the strictest combination. None →
- * not screened (fail closed).
- */
-export async function latestSafetyProfile(db: Database, userId: string) {
-  const rows = await db
-    .select({ recordId: syncChanges.recordId, op: syncChanges.op, data: syncChanges.data })
-    .from(syncChanges)
-    .where(and(eq(syncChanges.userId, userId), eq(syncChanges.collection, PROFILE_COLLECTIONS.screenings)))
-    .orderBy(asc(syncChanges.revision));
-  const screenings = rows.flatMap((r) => {
-    if (r.op === 'delete') return [];
-    const parsed = ScreeningRecordSchema.safeParse(r.data);
-    return parsed.success ? [{ id: r.recordId, data: parsed.data }] : [];
-  });
-  return screenings.length === 0 ? notScreenedSafetyProfile() : safetyProfileFromScreenings(screenings);
-}
+export { latestSafetyProfile } from './screenings.js';
 
 /**
  * M07: an assessment record must be what the engine derives from its result
@@ -108,7 +103,7 @@ export async function latestSafetyProfile(db: Database, userId: string) {
  * version, and stopped at least as far from failure as S1 requires for the
  * user's latest screening (never below RIR 2).
  */
-async function validateAssessment(deps: ProfileSyncDeps, userId: string, data: unknown): Promise<string | null> {
+async function validateAssessment(db: DbExecutor, userId: string, data: unknown): Promise<string | null> {
   const parsed = AssessmentRecordSchema.safeParse(data);
   if (!parsed.success) return 'assessment.invalid';
   const { result, capacity, cappedByS1 } = parsed.data;
@@ -121,7 +116,7 @@ async function validateAssessment(deps: ProfileSyncDeps, userId: string, data: u
     return 'assessment.invalid';
   }
   if (!isDeepStrictEqual(expected, capacity)) return 'assessment.capacity_mismatch';
-  const profile = await latestSafetyProfile(deps.db, userId);
+  const profile = await latestSafetyProfile(db, userId);
   if (profile.screeningOutcome === 'blocked') return 'safety.s7.under_minimum_age';
   const required = assessmentStopRir(profile);
   if (profile.screeningOutcome === 'not_screened' || required === null || !profile.automaticProgrammingAllowed) return 'assessment.not_allowed';
@@ -135,19 +130,23 @@ async function validateAssessment(deps: ProfileSyncDeps, userId: string, data: u
  * check) and, for screenings, a re-evaluation of the SafetyProfile so a
  * client can never store a looser profile than its answers give.
  */
-export function profileSyncValidator(deps: ProfileSyncDeps): MutationValidator {
-  const consentRequired = async (userId: string, m: SyncMutation) =>
-    HEALTH_COLLECTIONS.includes(m.collection) && !(await deps.privacy.hasConsent(userId, 'health')) ? 'privacy.consent_required' : null;
+export function profileSyncValidator(deps: ProfileSyncDeps): MutationValidator<PgServerTx> {
   const ageBlocked = (birth: CalendarDate) => evaluateAgeGate(birth, latestCalendarDate(deps.now())).status !== 'allowed';
 
-  return async (userId, m) => {
+  // API-1/API-2: every read goes through the sync transaction (`tx.db`), which holds the per-user lock:
+  // no second pooled connection is taken while this one is held, and the consent read here is the one
+  // the change commits under (a withdrawal waits for this transaction, then erases what it stored).
+  return async (userId, m, tx) => {
     if (m.op === 'delete') return null;
+    const db = tx.db;
+    const consentRequired = async () =>
+      HEALTH_COLLECTIONS.includes(m.collection) && !(await deps.privacy.hasConsent(userId, 'health', db)) ? 'privacy.consent_required' : null;
     switch (m.collection) {
       case PROFILE_COLLECTIONS.profile: {
         const parsed = ProfileSchema.safeParse(m.data);
         if (!parsed.success) return 'profile.invalid';
         if (ageBlocked(parsed.data.birthDate)) return 'safety.s7.under_minimum_age';
-        return consentRequired(userId, m);
+        return consentRequired();
       }
       case PROFILE_COLLECTIONS.equipmentProfiles:
         return EquipmentProfileSchema.safeParse(m.data).success ? null : 'equipment_profile.invalid';
@@ -158,32 +157,41 @@ export function profileSyncValidator(deps: ProfileSyncDeps): MutationValidator {
         if (after(responses.answeredOn, latestCalendarDate(deps.now())) > 0) return 'screening.invalid';
         if (ageBlocked(responses.birthDate)) return 'safety.s7.under_minimum_age';
         if (!isDeepStrictEqual(evaluateScreening(responses), safetyProfile)) return 'screening.profile_mismatch';
-        return consentRequired(userId, m);
+        // API-5: the screening's date of birth is the stored profile's (S4/S7 read the profile, S1 the screening).
+        const stored = await storedProfileBirthDate(db, userId);
+        if (stored && !isDeepStrictEqual(stored, responses.birthDate)) return 'screening.profile_mismatch';
+        return consentRequired();
       }
       case ASSESSMENT_COLLECTION:
-        return (await consentRequired(userId, m)) ?? validateAssessment(deps, userId, m.data);
+        return (await consentRequired()) ?? validateAssessment(db, userId, m.data);
       case PROGRAM_COLLECTIONS.programs:
-        return (await consentRequired(userId, m)) ?? validateProgram(deps.db, userId, m.data, await latestSafetyProfile(deps.db, userId));
+        return (await consentRequired()) ?? validateProgram(db, userId, m.data, await latestSafetyProfile(db, userId));
       case PROGRAM_COLLECTIONS.reflows:
-        return (await consentRequired(userId, m)) ?? validateReflow(deps.db, userId, m.data);
+        return (await consentRequired()) ?? validateReflow(db, userId, m.data);
       case SESSION_COLLECTIONS.workoutSessions:
-        return (await consentRequired(userId, m)) ?? validateWorkoutSession(deps.db, deps.legal, userId, m.data, await latestSafetyProfile(deps.db, userId));
+        return (await consentRequired()) ?? validateWorkoutSession(db, deps.legal, userId, m.data, await latestSafetyProfile(db, userId), deps.now());
       case SESSION_COLLECTIONS.executionLogs:
-        return (await consentRequired(userId, m)) ?? (await validateExecutionLog(deps.db, userId, m.data));
+        return (await consentRequired()) ?? (await validateExecutionLog(db, userId, m.data));
       case RECOVERY_COLLECTIONS.readinessChecks:
-        return (await consentRequired(userId, m)) ?? (ReadinessCheckSchema.safeParse(m.data).success ? null : 'readiness_check.invalid');
+        return (await consentRequired()) ?? (ReadinessCheckSchema.safeParse(m.data).success ? null : 'readiness_check.invalid');
       case PROGRESS_COLLECTIONS.bodyMetrics:
-        return (await consentRequired(userId, m)) ?? (BodyMetricSchema.safeParse(m.data).success ? null : 'body_metric.invalid');
+        return (await consentRequired()) ?? (BodyMetricSchema.safeParse(m.data).success ? null : 'body_metric.invalid');
       case PROGRESS_COLLECTIONS.measurements:
-        return (await consentRequired(userId, m)) ?? (MeasurementSchema.safeParse(m.data).success ? null : 'measurement.invalid');
+        return (await consentRequired()) ?? (MeasurementSchema.safeParse(m.data).success ? null : 'measurement.invalid');
       case NUTRITION_COLLECTIONS.plans:
-        return (await consentRequired(userId, m)) ?? validateNutritionPlan(deps.db, userId, m.data, await latestSafetyProfile(deps.db, userId));
+        return (await consentRequired()) ?? validateNutritionPlan(db, userId, m.data, await latestSafetyProfile(db, userId), deps.now());
       case NUTRITION_COLLECTIONS.intakeLogs:
-        return (await consentRequired(userId, m)) ?? validateIntakeLog(m.data);
+        return (await consentRequired()) ?? validateIntakeLog(m.data);
       case NUTRITION_COLLECTIONS.habitChecks:
-        return (await consentRequired(userId, m)) ?? validateHabitCheck(m.data);
+        return (await consentRequired()) ?? validateHabitCheck(m.data);
+      // API-12 / PKG-06: set logs and preferences are schema-checked too (no free text, no unbounded values).
+      case SESSION_COLLECTIONS.setLogs:
+        return SetLogSchema.safeParse(m.data).success ? null : 'set_log.invalid';
+      case PREFERENCES_COLLECTION:
+        return PreferencesRecordSchema.safeParse(m.data).success ? null : 'preferences.invalid';
       default:
-        return null;
+        // Fail closed: a collection added to the registry without a validator here is refused, never stored unchecked.
+        return 'sync.collection_not_validated';
     }
   };
 }
@@ -223,6 +231,8 @@ export function profileSyncListener(deps: ProfileSyncDeps): MutationListener<PgS
     } else if (m.collection === SESSION_COLLECTIONS.workoutSessions || m.collection === SESSION_COLLECTIONS.executionLogs) {
       // M02: "prescription issued" (engine and rules versions) and its safety events, or the S3 events, in the same transaction as the record.
       await onSessionApplied(deps.legal, userId, m.collection, m.data, tx);
+      // MOB-08: the S3 fact (red flag or attestation) is kept apart from the erasable log, in the same transaction.
+      if (m.collection === SESSION_COLLECTIONS.executionLogs) await recordLockFact(tx.db, userId, m.recordId, ExecutionLogSchema.parse(m.data));
     } else if (m.collection === NUTRITION_COLLECTIONS.plans) {
       // M10: "nutrition target set" (engine and nutrition-rules versions, mode, codes) and its S4 events, in the same transaction as the record.
       await onNutritionApplied(deps.legal, userId, m.collection, m.data, tx);
@@ -230,9 +240,14 @@ export function profileSyncListener(deps: ProfileSyncDeps): MutationListener<PgS
   };
 }
 
-/** Health consent withdrawn: erase the synced health collections in the withdrawal transaction (ADR-004). */
+/**
+ * Health consent withdrawn: erase the synced health collections in the withdrawal transaction (ADR-004).
+ * MOB-08 (ADR-024): an S3 intensity lock that is on is NOT lifted by the erasure; its minimal facts stay
+ * in safety_locks until an attestation lifts it (a lock already lifted leaves nothing behind).
+ */
 export function healthWithdrawalHandler(): ConsentWithdrawalHandler {
   return async (tx, userId) => {
+    await pruneLiftedLock(tx, userId);
     await tx.delete(syncChanges).where(and(eq(syncChanges.userId, userId), inArray(syncChanges.collection, [...HEALTH_COLLECTIONS])));
   };
 }

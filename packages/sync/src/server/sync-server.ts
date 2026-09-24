@@ -13,8 +13,15 @@ import type { ServerStore, ServerTx } from './types.js';
  * Server-side check of a mutation before it is applied (schema, consent,
  * safety re-checks). Returns a stable reason code to reject it, or null.
  * A rejection is final for that mutation id (idempotency ledger).
+ *
+ * It runs INSIDE the sync transaction and receives its handle: every read it
+ * makes must go through `tx` (same connection, under the per-user lock), never
+ * through a second pooled connection — holding one connection while waiting
+ * for another deadlocks the pool under concurrent pushes (API-1), and a read
+ * outside the transaction can see a consent that is withdrawn before the
+ * change commits (API-2).
  */
-export type MutationValidator = (userId: string, mutation: SyncMutation) => Promise<string | null> | string | null;
+export type MutationValidator<TTx extends ServerTx = ServerTx> = (userId: string, mutation: SyncMutation, tx: TTx) => Promise<string | null> | string | null;
 
 /**
  * Called once a mutation is applied, INSIDE the sync transaction, with the
@@ -29,7 +36,7 @@ export type MutationListener<TTx extends ServerTx = ServerTx> = (userId: string,
 export interface SyncServerOptions<TTx extends ServerTx = ServerTx> {
   store: ServerStore<TTx>;
   collections?: CollectionRegistry;
-  validate?: MutationValidator;
+  validate?: MutationValidator<TTx>;
   onApplied?: MutationListener<TTx>;
   /**
    * PKG-06: parse each mutation's `data` against its collection's schema
@@ -46,7 +53,7 @@ export interface SyncServerOptions<TTx extends ServerTx = ServerTx> {
 export class SyncServer<TTx extends ServerTx = ServerTx> {
   private readonly store: ServerStore<TTx>;
   private readonly collections: CollectionRegistry;
-  private readonly validate?: MutationValidator;
+  private readonly validate?: MutationValidator<TTx>;
   private readonly onApplied?: MutationListener<TTx>;
   private readonly enforceCollectionSchemas: boolean;
 
@@ -105,7 +112,7 @@ export class SyncServer<TTx extends ServerTx = ServerTx> {
     if (this.enforceCollectionSchemas && m.op !== 'delete' && !policy.schema.safeParse(m.data).success) {
       return { mutationId: m.mutationId, status: 'rejected', reason: `${m.collection}.invalid` };
     }
-    const invalid = this.validate ? await this.validate(userId, m) : null;
+    const invalid = this.validate ? await this.validate(userId, m, tx) : null;
     if (invalid !== null) {
       return { mutationId: m.mutationId, status: 'rejected', reason: invalid };
     }
