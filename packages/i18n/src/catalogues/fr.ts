@@ -12,6 +12,7 @@ import { libraryFr } from './library.fr.js';
 import { onboardingFr } from './onboarding.fr.js';
 import { screeningFr } from './screening.fr.js';
 import { nutritionFr } from './nutrition.fr.js';
+import { deviceDataFr } from './device-data.fr.js';
 import { flattenFoodText } from './foods.js';
 
 /** Catalogue français (ICU MessageFormat). Mêmes clés et mêmes variables que en.ts. */
@@ -149,4 +150,7 @@ export const fr: Record<MessageKey, string> = {
 
   // M10 : noms des aliments (contenu original ; valeurs estimées non validées dans packages/food-library).
   ...flattenFoodText('fr'),
+
+  // Vague de corrections (revue mobile MOB-01…14) : cycle de vie des données locales, sauvegarde sur un 2e téléphone, passage de relais et retrait.
+  ...deviceDataFr,
 };

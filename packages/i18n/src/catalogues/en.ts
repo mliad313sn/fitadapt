@@ -11,6 +11,7 @@ import { libraryEn } from './library.en.js';
 import { onboardingEn } from './onboarding.en.js';
 import { screeningEn } from './screening.en.js';
 import { nutritionEn } from './nutrition.en.js';
+import { deviceDataEn } from './device-data.en.js';
 import { flattenFoodText } from './foods.js';
 
 /**
@@ -162,6 +163,9 @@ export const en = {
 
   // M10 food names (original content; values are unvalidated estimates in packages/food-library).
   ...flattenFoodText('en'),
+
+  // Fix wave (mobile review MOB-01…14): local data lifecycle, backup on a second phone, partner hand-over and withdrawal.
+  ...deviceDataEn,
 } as const;
 
 export type MessageKey = keyof typeof en;
