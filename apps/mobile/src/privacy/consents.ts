@@ -1,4 +1,4 @@
-import { CONSENT_POLICIES, consentStates, isFeatureEnabled, policyFor, type ConsentGatedFeature } from '@fitadapt/privacy';
+import { CONSENT_POLICIES, consentHeads, consentStates, isFeatureEnabled, policyFor, type ConsentGatedFeature } from '@fitadapt/privacy';
 import { ConsentRecordSchema, type ConsentDataType, type ConsentRecord, type Jurisdiction, type Locale } from '@fitadapt/shared';
 import { z } from 'zod';
 import { createStore } from 'zustand';
@@ -52,6 +52,8 @@ export function createConsentStore({ kv, newId, now = () => new Date(), jurisdic
         jurisdiction,
         source: 'mobile',
         recordedAt: now().toISOString(),
+        // ADR-023: the decision names the decisions it replaces, so a withdrawal can never be overtaken by an older grant.
+        supersedes: consentHeads(get().records, dataType),
       };
       const records = [...get().records, record];
       kv.set(KEY, JSON.stringify(records));

@@ -1,5 +1,5 @@
 import type { AcceptanceRecord } from '@fitadapt/legal';
-import type { ConsentRecord } from '@fitadapt/shared';
+import { orderChain, type ConsentRecord } from '@fitadapt/shared';
 import { OfflineError, type SyncClient } from '@fitadapt/sync';
 import { ApiRequestError, type JsonPost } from '../auth/auth-api';
 import { NotSignedInError } from '../auth/session-store';
@@ -19,7 +19,7 @@ export interface AccountApi {
 export function createAccountApi(post: JsonPost, getAccessToken: () => Promise<string>): AccountApi {
   return {
     async postConsent(r) {
-      await post('/v1/privacy/consents', { id: r.id, dataType: r.dataType, decision: r.decision, version: r.version, locale: r.locale, jurisdiction: r.jurisdiction, source: r.source, recordedAt: r.recordedAt }, await getAccessToken());
+      await post('/v1/privacy/consents', { id: r.id, dataType: r.dataType, decision: r.decision, version: r.version, locale: r.locale, jurisdiction: r.jurisdiction, source: r.source, recordedAt: r.recordedAt, ...(r.supersedes === undefined ? {} : { supersedes: r.supersedes }) }, await getAccessToken());
     },
     async postAcceptance(r) {
       await post('/v1/legal/acceptances', { id: r.id, documentId: r.documentId, version: r.version, locale: r.locale, jurisdiction: r.jurisdiction, source: r.source, contentHash: r.contentHash, acceptedAt: r.acceptedAt }, await getAccessToken());
@@ -76,7 +76,12 @@ export interface AccountSyncOutcome {
 export async function runAccountSync(input: AccountSyncInput): Promise<AccountSyncOutcome> {
   const outcome: AccountSyncOutcome = { offline: false, uploaded: 0, refused: 0 };
   const queue: Array<{ id: string; send: () => Promise<void> }> = [
-    ...[...input.consents].sort((a, b) => a.recordedAt.localeCompare(b.recordedAt)).map((r) => ({ id: r.id, send: () => input.api.postConsent(r) })),
+    // ADR-023: in chain order (each decision after the ones it supersedes), so the server never receives a
+    // withdrawal before the grant it withdrew; decisions stored before links: by time, then ledger position.
+    ...orderChain(
+      input.consents.map((record, position) => ({ record, position })),
+      (x) => ({ id: x.record.id, supersedes: x.record.supersedes, at: x.record.recordedAt, legacyRank: x.position }),
+    ).ordered.map(({ record: r }) => ({ id: r.id, send: () => input.api.postConsent(r) })),
     ...input.acceptances.map((r) => ({ id: r.id, send: () => input.api.postAcceptance(r) })),
     ...input.notices.map((r) => ({ id: r.id, send: () => input.api.postNotice(r) })),
   ];

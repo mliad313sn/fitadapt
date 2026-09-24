@@ -10,6 +10,7 @@ import { AppProviders } from '../src/AppProviders';
 import { createLegalStore } from '../src/legal/legal-store';
 import { createGuardrailInbox } from '../src/nutrition/guardrail-port';
 import { buildNutritionInput, planUpkeep } from '../src/nutrition/nutrition-input';
+import { currentNutrition } from '../src/nutrition/NutritionProvider';
 import { createNutritionStore, type NutritionSettings } from '../src/nutrition/nutrition-store';
 import { isDeepStrictEqual } from '../src/nutrition/deep-equal';
 import { createAgeGateStore } from '../src/privacy/age-gate';
@@ -164,6 +165,50 @@ describe('goal condition 3: deficit disabled → no calorie numbers, supportive 
       ['setup', 'numeric'],
       ['settings_changed', 'supportive'],
     ]);
+  });
+});
+
+describe('S4: what the screen shows never outruns the stored plan (no stale calorie target)', () => {
+  /* Found in PO verification: the screen showed the STORED plan and relied on
+     NutritionProvider's effect to store the supportive plan after a
+     re-screen; one full run saw "Energy: about 2,820 kcal a day" for a user
+     just advised against calorie restriction. The display decision is now
+     pure and checks the stored plan against the current inputs first. */
+  it('a numeric plan made before a re-screen that switched deficit features off is not shown; the engine answer for the current profile is', () => {
+    const d = device();
+    renderNutrition(d);
+    press('nutrition-setup-save');
+    screen.unmount();
+    expect(plans(d).map((p) => p.target.mode)).toEqual(['numeric']);
+    d.profile.getState().updateDraft({ answers: Object.fromEntries(SCREENING_QUESTION_IDS.map((q) => [q, q === 'advised_against_calorie_restriction' ? 'yes' : 'no'])) });
+    d.profile.getState().saveScreening('new_condition', { year: 2026, month: 9, day: 24 });
+    // No render: NutritionProvider's upkeep effect has NOT run, the stale numeric plan is still the latest stored one.
+    const safetyProfile = selectSafetyProfile(d.profile.getState().screenings, d.consents.getState().records);
+    expect(safetyProfile.deficitNutritionAllowed).toBe(false);
+    const n = d.nutrition.getState();
+    const shown = currentNutrition({
+      profile: d.profile.getState().profile, safetyProfile, bodyMetrics: d.progress.getState().bodyMetrics, settings: n.settings,
+      plans: n.plans, intakeLogs: n.intakeLogs, guardrailEvents: n.guardrailEvents, today: TODAY, now: () => Date.now(),
+    });
+    expect(shown.stored).toBe(false);
+    expect(shown.result!.target.mode).toBe('supportive');
+    expect(shown.result!.target.energy).toBeNull();
+    expect(plans(d).map((p) => p.target.mode)).toEqual(['numeric']);
+  });
+
+  it('a stored plan that is still current is shown as stored', () => {
+    const d = device();
+    renderNutrition(d);
+    press('nutrition-setup-save');
+    screen.unmount();
+    const safetyProfile = selectSafetyProfile(d.profile.getState().screenings, d.consents.getState().records);
+    const n = d.nutrition.getState();
+    const shown = currentNutrition({
+      profile: d.profile.getState().profile, safetyProfile, bodyMetrics: d.progress.getState().bodyMetrics, settings: n.settings,
+      plans: n.plans, intakeLogs: n.intakeLogs, guardrailEvents: n.guardrailEvents, today: TODAY, now: () => Date.now(),
+    });
+    expect(shown.stored).toBe(true);
+    expect(shown.result!.target.targetId).toBe(n.plans.at(-1)!.data.target.targetId);
   });
 });
 

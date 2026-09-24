@@ -8,7 +8,9 @@ import { useLegal, useProfile, useSafetyProfile } from '../profile/ProfileProvid
 import { localIsoDate } from '../profile/selectors';
 import { useProgress, useProgressContext } from '../progress/ProgressProvider';
 import { buildNutritionInput, logNutritionResult, planUpkeep } from './nutrition-input';
-import type { NutritionSettings, NutritionState, NutritionStore } from './nutrition-store';
+import { latestPlan, type NutritionSettings, type NutritionState, type NutritionStore } from './nutrition-store';
+import type { NutritionContext as NutritionInputContext } from './nutrition-input';
+import type { IsoDate, Profile, SafetyProfile } from '@fitadapt/shared';
 
 /**
  * M10 on the device. Keeps the nutrition plan current without the nutrition
@@ -46,11 +48,11 @@ export function NutritionProvider({ store, children }: { store: NutritionStore; 
   );
 
   useEffect(() => {
-    if (!health || !settings || !profile) return;
-    const latest = plans[plans.length - 1]?.data ?? null;
-    if (!latest) return;
+    if (!health || !settings || !profile || plans.length === 0) return;
+    // ADR-023: several candidate plans (made on two devices) → a new plan for the current inputs replaces all of them.
+    const latest = latestPlan(plans)?.data ?? null;
     const input = buildNutritionInput({ settings, profile, safetyProfile, bodyMetrics, intakeLogs, guardrailEvents, previous: latest, today });
-    const reason = planUpkeep(latest, input);
+    const reason = latest ? planUpkeep(latest, input) : 'settings_changed';
     if (!reason) return;
     logNutritionResult({ logNutritionTarget, logSafetyEvent }, store.getState().recordPlan(input, reason), reason);
   }, [health, settings, profile, safetyProfile, bodyMetrics, intakeLogs, guardrailEvents, plans, today, store, logNutritionTarget, logSafetyEvent]);
@@ -87,14 +89,41 @@ export function useCurrentNutrition(preview?: NutritionSettings | null): { resul
   const intakeLogs = useNutrition((s) => s.intakeLogs);
   const guardrailEvents = useNutrition((s) => s.guardrailEvents);
   const today = localIsoDate(clock.now());
-  return useMemo(() => {
-    if (!profile) return { result: null, stored: false };
-    const latest = plans[plans.length - 1]?.data ?? null;
-    const chosen = preview ?? settings;
-    if (!preview && latest && settings) return { result: { target: latest.target, safetyEvents: [] }, stored: true };
-    const input = buildNutritionInput({ settings: chosen ?? DEFAULT_SETTINGS, profile, safetyProfile, bodyMetrics, intakeLogs, guardrailEvents, previous: latest, today });
-    return { result: computeNutritionTarget(input, createEngineContext({ clock: { now: () => clock.now().getTime() }, seed: 1 })), stored: false };
-  }, [profile, safetyProfile, bodyMetrics, settings, plans, intakeLogs, guardrailEvents, today, preview]);
+  return useMemo(
+    () => currentNutrition({ profile, safetyProfile, bodyMetrics, settings, plans, intakeLogs, guardrailEvents, today, preview, now: () => clock.now().getTime() }),
+    [profile, safetyProfile, bodyMetrics, settings, plans, intakeLogs, guardrailEvents, today, preview],
+  );
+}
+
+/**
+ * The pure decision behind useCurrentNutrition. A stored plan is shown only
+ * while it is still the plan for the CURRENT inputs (planUpkeep says keep
+ * it). If a re-screen switched deficit features off, a hand-off arrived or
+ * the weekly update is due, the stored plan is stale: the screen shows the
+ * engine's answer for the current profile instead — never, even for one
+ * frame before NutritionProvider's effect stores the new plan, a calorie
+ * target the current SafetyProfile forbids (S4, disordered-eating risk).
+ */
+export function currentNutrition(args: {
+  profile: Profile | null;
+  safetyProfile: SafetyProfile;
+  bodyMetrics: NutritionInputContext['bodyMetrics'];
+  settings: NutritionSettings | null;
+  plans: NutritionState['plans'];
+  intakeLogs: NutritionInputContext['intakeLogs'];
+  guardrailEvents: readonly IsoDate[];
+  today: IsoDate;
+  preview?: NutritionSettings | null;
+  now: () => number;
+}): { result: NutritionResult | null; stored: boolean } {
+  const { profile, safetyProfile, bodyMetrics, settings, plans, intakeLogs, guardrailEvents, today, preview, now } = args;
+  if (!profile) return { result: null, stored: false };
+  // ADR-023: the chain's single head; several candidates → none is shown (the engine's answer is, fail closed).
+  const latest = latestPlan(plans)?.data ?? null;
+  const chosen = preview ?? settings;
+  const input = buildNutritionInput({ settings: chosen ?? DEFAULT_SETTINGS, profile, safetyProfile, bodyMetrics, intakeLogs, guardrailEvents, previous: latest, today });
+  if (!preview && latest && settings && planUpkeep(latest, input) === null) return { result: { target: latest.target, safetyEvents: [] }, stored: true };
+  return { result: computeNutritionTarget(input, createEngineContext({ clock: { now }, seed: 1 })), stored: false };
 }
 
 /** Before any set-up: maintenance with numbers (the screen only uses it to know whether deficit features are off). */

@@ -1,4 +1,5 @@
-import { evaluateScreening } from '@fitadapt/safety';
+import { evaluateScreening, orderScreenings, screeningHeads } from '@fitadapt/safety';
+import { readinessHeadsOn } from '@fitadapt/engine';
 import {
   ASSESSMENT_COLLECTION,
   AssessmentRecordSchema,
@@ -42,6 +43,7 @@ import {
 import type { SyncClient } from '@fitadapt/sync';
 import type { z } from 'zod';
 import { createStore } from 'zustand';
+import { executionLinks, orderAssessments, orderPrograms, orderReflows, reflowHeads } from './history';
 import type { KeyValueStore } from '../storage/app-state';
 
 const DRAFT_KEY = 'onboarding_draft';
@@ -202,26 +204,31 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
       .map((r) => ({ id: r.id, data: parsed(EquipmentProfileSchema, r.data) }))
       .filter((r): r is StoredEquipmentProfile => r.data !== null)
       .sort((a, b) => EQUIPMENT_LOCATIONS.indexOf(a.data.location) - EQUIPMENT_LOCATIONS.indexOf(b.data.location) || a.id.localeCompare(b.id)),
-    screenings: sync
-      .list(PROFILE_COLLECTIONS.screenings)
-      .map((r) => ({ id: r.id, data: parsed(ScreeningRecordSchema, r.data) }))
-      .filter((r): r is StoredScreening => r.data !== null)
-      .sort((a, b) => a.data.completedAt.localeCompare(b.data.completedAt)),
-    assessments: sync
-      .list(ASSESSMENT_COLLECTION)
-      .map((r) => ({ id: r.id, data: parsed(AssessmentRecordSchema, r.data) }))
-      .filter((r): r is StoredAssessment => r.data !== null)
-      .sort((a, b) => a.data.capacity.assessedAt.localeCompare(b.data.capacity.assessedAt) || a.id.localeCompare(b.id)),
-    programs: sync
-      .list(PROGRAM_COLLECTIONS.programs)
-      .map((r) => ({ id: r.id, data: parsed(ProgramRecordSchema, r.data) }))
-      .filter((r): r is StoredProgram => r.data !== null)
-      .sort((a, b) => a.data.program.generatedAt.localeCompare(b.data.program.generatedAt) || a.id.localeCompare(b.id)),
-    reflows: sync
-      .list(PROGRAM_COLLECTIONS.reflows)
-      .map((r) => ({ id: r.id, data: parsed(ReflowRecordSchema, r.data) }))
-      .filter((r): r is StoredReflow => r.data !== null)
-      .sort((a, b) => a.data.decidedAt.localeCompare(b.data.decidedAt) || a.id.localeCompare(b.id)),
+    // ADR-023: histories where the latest counts are in chain order (`supersedes`), never device-clock order.
+    screenings: orderScreenings(
+      sync
+        .list(PROFILE_COLLECTIONS.screenings)
+        .map((r) => ({ id: r.id, data: parsed(ScreeningRecordSchema, r.data) }))
+        .filter((r): r is StoredScreening => r.data !== null),
+    ).ordered,
+    assessments: orderAssessments(
+      sync
+        .list(ASSESSMENT_COLLECTION)
+        .map((r) => ({ id: r.id, data: parsed(AssessmentRecordSchema, r.data) }))
+        .filter((r): r is StoredAssessment => r.data !== null),
+    ).ordered,
+    programs: orderPrograms(
+      sync
+        .list(PROGRAM_COLLECTIONS.programs)
+        .map((r) => ({ id: r.id, data: parsed(ProgramRecordSchema, r.data) }))
+        .filter((r): r is StoredProgram => r.data !== null),
+    ).ordered,
+    reflows: orderReflows(
+      sync
+        .list(PROGRAM_COLLECTIONS.reflows)
+        .map((r) => ({ id: r.id, data: parsed(ReflowRecordSchema, r.data) }))
+        .filter((r): r is StoredReflow => r.data !== null),
+    ).ordered,
     workouts: sync
       .list(SESSION_COLLECTIONS.workoutSessions)
       .map((r) => ({ id: r.id, data: parsed(WorkoutSessionRecordSchema, r.data) }))
@@ -318,7 +325,8 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
           limitations: d.limitations.map((region) => ({ region })),
           excludedExerciseIds: profile?.excludedExerciseIds ?? [],
         };
-        const record = ScreeningRecordSchema.parse({ reason, responses, safetyProfile: evaluateScreening(responses), completedAt: now().toISOString() });
+        // ADR-023: the new screening names every screening it replaces, so neither the clock nor the arrival order can make an older one "latest".
+        const record = ScreeningRecordSchema.parse({ reason, responses, safetyProfile: evaluateScreening(responses), completedAt: now().toISOString(), supersedes: screeningHeads(get().screenings) });
         sync.insert(PROFILE_COLLECTIONS.screenings, record);
         kv.remove(NEW_CONDITION_KEY);
         set({ newConditionReportedAt: null });
@@ -332,19 +340,19 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
         written();
       },
       saveAssessment(record) {
-        const data = AssessmentRecordSchema.parse(record);
+        const data = AssessmentRecordSchema.parse({ ...record, supersedes: orderAssessments(get().assessments).heads.map((a) => a.id) });
         sync.insert(ASSESSMENT_COLLECTION, data);
         written();
         return data;
       },
       saveProgram(record) {
-        const data = ProgramRecordSchema.parse(record);
+        const data = ProgramRecordSchema.parse({ ...record, supersedes: orderPrograms(get().programs).heads.map((p) => p.id) });
         sync.insert(PROGRAM_COLLECTIONS.programs, data);
         written();
         return data;
       },
       saveReflow(record) {
-        const data = ReflowRecordSchema.parse(record);
+        const data = ReflowRecordSchema.parse({ ...record, supersedes: reflowHeads(get().reflows, record.programId) });
         sync.insert(PROGRAM_COLLECTIONS.reflows, data);
         written();
         return data;
@@ -362,14 +370,18 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
         return data;
       },
       logExecution(event) {
-        const data = ExecutionLogSchema.parse(event);
-        sync.insert(SESSION_COLLECTIONS.executionLogs, data);
+        // ADR-023: pain reports, red flags and attestations carry their causal links (the record id names the event).
+        const id = sync.newRecordId();
+        const data = ExecutionLogSchema.parse(executionLinks(event, id, get().executionLogs.map((e) => e.data)));
+        sync.insert(SESSION_COLLECTIONS.executionLogs, data, id);
         written();
         return data;
       },
       logReadiness(check) {
-        const data = ReadinessCheckSchema.parse(check);
-        sync.insert(RECOVERY_COLLECTIONS.readinessChecks, data);
+        // ADR-023: a re-check names the checks of the same day it replaces.
+        const id = sync.newRecordId();
+        const data = ReadinessCheckSchema.parse({ ...check, checkId: id, supersedes: readinessHeadsOn(get().readinessChecks.map((c) => c.data), check.date) });
+        sync.insert(RECOVERY_COLLECTIONS.readinessChecks, data, id);
         written();
         return data;
       },

@@ -19,6 +19,9 @@ import {
   type NutritionHabit,
   type NutritionInput,
   type NutritionPlanRecord,
+  orderChain,
+  soleHead,
+  supersededIds,
 } from '@fitadapt/shared';
 import type { SyncClient } from '@fitadapt/sync';
 import { z } from 'zod';
@@ -106,19 +109,33 @@ function parseList<T>(schema: z.ZodType<T>, rows: readonly { id: string; data: u
   });
 }
 
-/** Oldest first: by time, then by the `supersedes` chain (plans made in the same millisecond), then by id. */
-export function orderPlans(plans: StoredPlan[]): StoredPlan[] {
-  const byTarget = new Map(plans.map((p) => [p.data.target.targetId, p]));
-  const depth = (p: StoredPlan, seen = new Set<string>()): number => {
-    const prev = p.data.supersedes === null ? undefined : byTarget.get(p.data.supersedes);
-    if (!prev || seen.has(p.data.target.targetId)) return 0;
-    seen.add(p.data.target.targetId);
-    return 1 + depth(prev, seen);
-  };
-  return plans
-    .map((p) => ({ p, d: depth(p) }))
-    .sort((a, b) => a.p.data.createdAt.localeCompare(b.p.data.createdAt) || a.d - b.d || a.p.id.localeCompare(b.p.id))
-    .map((x) => x.p);
+/**
+ * ADR-023: plans are ordered by their `supersedes` chain (the target ids each
+ * plan replaced), never by `createdAt`: a device clock moved back makes a new
+ * plan look older, and two plans can share a millisecond. The first fix
+ * (M10) only used the chain to break equal times, so a plan dated earlier
+ * still sorted first.
+ */
+const planChain = (plans: readonly StoredPlan[]) => orderChain(plans, (p) => ({ id: p.data.target.targetId, supersedes: supersededIds(p.data.supersedes), at: p.data.createdAt }));
+
+/** Oldest first, in chain order. */
+export function orderPlans(plans: readonly StoredPlan[]): StoredPlan[] {
+  return planChain(plans).ordered;
+}
+
+/**
+ * The plan in force, or null when there is none OR when the chain leaves
+ * several candidates (two devices made a plan without knowing each other):
+ * then no stored plan is shown and the engine's answer for the current
+ * profile is (fail closed); the next plan stored names every candidate.
+ */
+export function latestPlan(plans: readonly StoredPlan[]): StoredPlan | null {
+  return soleHead(planChain(plans));
+}
+
+/** The target ids a new plan supersedes: every current head. */
+export function planHeads(plans: readonly StoredPlan[]): string[] {
+  return planChain(plans).heads.map((p) => p.data.target.targetId);
 }
 
 export function createNutritionStore({ sync, kv, now, newSeed, onWrite }: NutritionStoreDeps) {
@@ -162,8 +179,9 @@ export function createNutritionStore({ sync, kv, now, newSeed, onWrite }: Nutrit
       },
       recordPlan(input, reason) {
         const result = computeNutritionTarget(input, createEngineContext({ clock: { now: () => now().getTime() }, seed: newSeed() }));
-        const latest = get().plans[get().plans.length - 1];
-        const record = NutritionPlanRecordSchema.parse({ input, target: result.target, reason, createdAt: now().toISOString(), supersedes: latest?.data.target.targetId ?? null });
+        const heads = planHeads(get().plans);
+        const supersedes = heads.length === 0 ? null : heads.length === 1 ? heads[0] : heads;
+        const record = NutritionPlanRecordSchema.parse({ input, target: result.target, reason, createdAt: now().toISOString(), supersedes });
         sync.insert(NUTRITION_COLLECTIONS.plans, record);
         written();
         return result;

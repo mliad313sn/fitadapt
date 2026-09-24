@@ -1,7 +1,8 @@
 import { featureOn } from '../privacy/consents';
-import { intensityLockStatus, jointFlagsFromPain, notScreenedSafetyProfile, physioRecommendations, rescreenStatus, evaluateScreening, type PhysioRecommendation, type RescreenStatus } from '@fitadapt/safety';
+import { intensityLockStatus, jointFlagsFromPain, lastScreenedAt, notScreenedSafetyProfile, physioRecommendations, rescreenStatus, safetyProfileFromScreenings, type PhysioRecommendation, type RescreenStatus } from '@fitadapt/safety';
 import { buildSessionHistory, deloadStatus, fixedClock, painReportsFrom, readinessLevelOn, reassessmentDateFor, reassessmentStatus, safetyStopsFrom, type ReassessmentStatus } from '@fitadapt/engine';
 import type { CapacityModel, ConsentRecord, DeloadEvent, IntensityLock, IsoDate, Joint, JointFlags, ProgramRecord, ReadinessCheck, ReflowRecord, SafetyProfile, SessionHistoryEntry } from '@fitadapt/shared';
+import { latestAssessment, latestProgram } from './history';
 import type { StoredAssessment, StoredExecutionLog, StoredProgram, StoredReadinessCheck, StoredReflow, StoredScreening, StoredSetLog, StoredWorkout } from './profile-store';
 
 /**
@@ -10,18 +11,19 @@ import type { StoredAssessment, StoredExecutionLog, StoredProgram, StoredReadine
  * - no health consent (never given or withdrawn) → "not screened" (ADR-004: safety is never traded for privacy);
  * - no screening yet → "not screened";
  * - otherwise the profile is re-derived from the latest answers with the
- *   bundled rules, so a stored profile can never be looser than its answers.
+ *   bundled rules, so a stored profile can never be looser than its answers;
+ * - "latest" is the head of the screenings' `supersedes` chain, never the
+ *   newest timestamp (ADR-023); several heads → the strictest combination.
+ *   The server derives it with the same function (packages/safety).
  */
 export function selectSafetyProfile(screenings: readonly StoredScreening[], consents: readonly ConsentRecord[]): SafetyProfile {
   if (!featureOn('health.screening', consents)) return notScreenedSafetyProfile('safety_profile.not_screened.no_consent');
-  const latest = screenings[screenings.length - 1];
-  if (!latest) return notScreenedSafetyProfile('safety_profile.not_screened.incomplete');
-  return evaluateScreening(latest.data.responses);
+  return safetyProfileFromScreenings(screenings);
 }
 
-/** Re-screen every 12 months or after a newly reported condition (M01). */
+/** Re-screen every 12 months or after a newly reported condition (M01); several heads → the earliest (due soonest). */
 export function selectRescreen(screenings: readonly StoredScreening[], newConditionReportedAt: string | null, now: Date): RescreenStatus {
-  return rescreenStatus(screenings[screenings.length - 1]?.data.completedAt ?? null, now, newConditionReportedAt);
+  return rescreenStatus(lastScreenedAt(screenings), now, newConditionReportedAt);
 }
 
 /**
@@ -30,7 +32,8 @@ export function selectRescreen(screenings: readonly StoredScreening[], newCondit
  */
 export function selectCapacity(assessments: readonly StoredAssessment[], consents: readonly ConsentRecord[]): CapacityModel | null {
   if (!featureOn('health.screening', consents)) return null;
-  return assessments[assessments.length - 1]?.data.capacity ?? null;
+  // ADR-023: the head of the assessments' chain (several → the most conservative).
+  return latestAssessment(assessments)?.data.capacity ?? null;
 }
 
 /** M07: re-assessment prompt at the end of the mesocycle (engine rule, app clock). */
@@ -53,7 +56,8 @@ export function localMidnight(date: IsoDate): Date {
 /** M08: the latest program, or null. Programs embed the SafetyProfile (health data): none without the health consent. */
 export function selectProgram(programs: readonly StoredProgram[], consents: readonly ConsentRecord[]): ProgramRecord | null {
   if (!featureOn('health.screening', consents)) return null;
-  return programs[programs.length - 1]?.data ?? null;
+  // ADR-023: the head of the programs' chain (several → the one made on the strictest SafetyProfile).
+  return latestProgram(programs)?.data ?? null;
 }
 
 /** M08: the reflows of a program, in the order they were decided. */

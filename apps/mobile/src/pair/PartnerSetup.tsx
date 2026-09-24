@@ -2,6 +2,7 @@ import { useI18n } from '@fitadapt/i18n/react';
 import { acceptanceState, evaluateEligibility, type LegalDocumentId } from '@fitadapt/legal';
 import { SCREENING_CONFIG, SCREENING_QUESTIONS, SCREENING_RULES } from '@fitadapt/safety';
 import { PAIR_SHARING_SCOPES, type PairSharingScope, type ScreeningAnswer } from '@fitadapt/shared';
+import { consentState } from '@fitadapt/privacy';
 import { Button, Card, ChoiceGroup, Input, Toggle, useTheme } from '@fitadapt/ui';
 import { useState, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
@@ -194,7 +195,8 @@ function GuestSteps({ id, onDone, onCancel }: { id: string; onDone: (guestId: st
 
   if (step === 'legal') {
     const gate = guestWorkoutGate(ledgers, clock.now(), jurisdiction);
-    const sharingConsent = consentRecords.filter((r) => r.dataType === 'partner_sharing').at(-1)?.decision === 'granted';
+    // ADR-023: the decision in force (the consent chain, fail closed), not the last line of the ledger.
+    const sharingConsent = consentState(consentRecords, 'partner_sharing').granted;
     return (
       <Scaffold
         step="legal"
