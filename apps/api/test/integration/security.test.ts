@@ -5,7 +5,7 @@ import { notice, renderNotice } from '@fitadapt/legal';
 import { EMPTY_BIOMETRICS, PAIR_JOIN_CODE_ALPHABET, PAIR_JOIN_CODE_LENGTH, PROFILE_RECORD_ID, type CalendarDateValue, type Profile, type WrappedPhotoKey } from '@fitadapt/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import pg from 'pg';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { photoBackups, syncChanges, syncMutations } from '../../src/db/schema.js';
 import { PairService } from '../../src/pair/service.js';
 import { PEPPER, bearer, createHarness, device, signIn, truncateAll, uniqueEmail, type Harness } from './harness.js';
@@ -16,6 +16,20 @@ import { integrationEnv } from './env.js';
  * each test failed on the code before its fix and passes after it. The
  * people and data are fictional.
  */
+/**
+ * Configs are deep-frozen (SAF-9), so the photo limits cannot be lowered in
+ * place. The photo code reads them through `photosValue`; this file swaps
+ * that one function for a version that honours test overrides.
+ */
+const photoOverrides = vi.hoisted(() => new Map<string, number>());
+vi.mock('../../src/config/photos.config.js', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../src/config/photos.config.js')>();
+  return {
+    ...original,
+    photosValue: (key: import('../../src/config/photos.config.js').PhotosConfigKey) => photoOverrides.get(key) ?? original.photosValue(key),
+  };
+});
+
 let h: Harness;
 beforeAll(async () => {
   h = await createHarness();
@@ -352,13 +366,11 @@ describe('API-10: per-user limits on appends to never-purged tables', () => {
 
 /** Runs `fn` with photo limits lowered (restored after), so a test does not have to upload gigabytes. */
 async function withPhotoLimits(values: Partial<Record<'maxBytesPerUser' | 'uploadsPerUserPerWindow' | 'maxPhotosPerUser', number>>, fn: () => Promise<void>) {
-  const { photosConfig } = await import('../../src/config/photos.config.js');
-  const saved = Object.fromEntries(Object.keys(values).map((k) => [k, photosConfig[k as keyof typeof values].value]));
-  for (const [k, v] of Object.entries(values)) photosConfig[k as keyof typeof values].value = v;
+  for (const [k, v] of Object.entries(values)) photoOverrides.set(k, v);
   try {
     await fn();
   } finally {
-    for (const [k, v] of Object.entries(saved)) photosConfig[k as keyof typeof values].value = v;
+    photoOverrides.clear();
   }
 }
 async function photoReady() {
