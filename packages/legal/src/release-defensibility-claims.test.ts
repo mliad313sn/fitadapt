@@ -261,7 +261,9 @@ describe('claims linter (L1)', () => {
     expect(new Set(CLAIM_DENYLIST.map((r) => r.id)).size).toBe(CLAIM_DENYLIST.length);
     const found = lintClaims([...catalogueTargets('en', 'en', en), ...catalogueTargets('fr', 'fr', fr)]);
     const keys = [...new Set(found.map((f) => f.key))].sort();
-    expect(keys).toEqual(['legal.aiNotice.v1.limits', 'legal.terms.v1.about', 'legal.terms.v1.liability']);
+    // M04: the forecast label "Estimate, not a guarantee" / "Estimation, pas une garantie" (goal condition 7) and its
+    // reason-code wording are negative statements the linter sees; substantiation SUB-D5 / SUB-D6 allow them.
+    expect(keys).toEqual(['engine.reason.progress.forecast.estimate_only', 'legal.aiNotice.v1.limits', 'legal.terms.v1.about', 'legal.terms.v1.liability', 'progress.forecast.label']);
   });
 
   it('finds the codename in any spelling', () => {
