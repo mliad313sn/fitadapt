@@ -91,10 +91,14 @@ describe('jurisdiction matrix', () => {
   });
 
   it('emergency numbers are shown only where configured; otherwise generic guidance', () => {
+    // FIX-B (CS-2): the line is unconditional ("call now" triggers are in the notice body), not "if this is an emergency".
     const seek = notice('seek_care');
-    expect(renderNotice(seek, 'en', 'GB').emergency).toBe('If this is an emergency, call 999 now.');
-    expect(renderNotice(seek, 'fr', 'FR').emergency).toBe('En cas d’urgence, appelez le 112 maintenant.');
-    expect(renderNotice(seek, 'fr', 'SN').emergency).toBe('En cas d’urgence, appelez maintenant le numéro d’urgence local.');
+    expect(renderNotice(seek, 'en', 'GB').emergency).toBe('Emergency number: call 999.');
+    // FIX-B (CS-6): France shows 15 (SAMU) beside 112.
+    expect(renderNotice(seek, 'fr', 'FR').emergency).toBe('Numéro d’urgence : appelez le 15 (urgences médicales) ou le 112.');
+    // Senegal: the unconfirmed SAMU numbers (validated:false) always come with the generic guidance.
+    expect(renderNotice(seek, 'fr', 'SN').emergency).toBe('Numéro d’urgence : appelez le 1515 ou le 15 (urgences médicales). Si vous n’arrivez pas à joindre ce numéro, appelez le numéro d’urgence local.');
+    expect(renderNotice(seek, 'fr', 'DE').emergency).toBe('Numéro d’urgence : appelez le numéro d’urgence local.');
     expect(renderNotice(notice('first_workout'), 'en', 'US').emergency).toBeNull();
   });
 });
@@ -272,7 +276,8 @@ describe('point-of-risk notices (L3, L5)', () => {
   it('covers first workout, HIIT, assessment, nutrition deficit, AI coach and camera mode', () => {
     expect(NOTICES.map((x) => x.trigger).sort()).toEqual(
       // M09 adds the Fair Challenge between partners (legal risk register: injury during a partner challenge).
-      ['ai_coach.conversation_start', 'assessment.start', 'camera.start', 'hiit.start', 'nutrition.deficit_setup', 'pair.challenge.start', 'safety.red_flag', 'workout.start'].sort(),
+      // FIX-B adds the pregnancy warning signs (CS-4) and the urgent joint or back signs (CS-5).
+      ['ai_coach.conversation_start', 'assessment.start', 'camera.start', 'hiit.start', 'nutrition.deficit_setup', 'pair.challenge.start', 'safety.red_flag', 'safety.pregnancy_warning', 'safety.urgent_msk', 'workout.start'].sort(),
     );
   });
 

@@ -39,9 +39,21 @@ export interface JurisdictionProfile {
     readonly ageOfMajority: ConfigValue;
   };
   readonly withdrawal: { readonly rule: WithdrawalRule; readonly periodDays: ConfigValue | null; readonly digitalContentWaiver: boolean };
-  /** Emergency number shown with seek-care guidance; null until confirmed (a generic message is shown instead). */
-  readonly emergency: { readonly number: string | null; readonly source: string };
+  /**
+   * Emergency guidance shown with the S3 stop notices. `number`: the general emergency number, null until
+   * confirmed (the generic line is shown instead). `medical` (FIX-B, CS-6): the medical-emergency (SAMU)
+   * number(s), shown before the general number — every one validated:false until local counsel and seat A1
+   * confirm; where no general number is confirmed, the generic line is shown with them.
+   */
+  readonly emergency: { readonly number: string | null; readonly source: string; readonly medical?: EmergencyMedical };
   readonly authorityFilings: readonly AuthorityFiling[];
+}
+
+export interface EmergencyMedical {
+  readonly numbers: readonly string[];
+  readonly source: string;
+  /** Never true here: a number is confirmed only by a counsel and seat A1 sign-off record. */
+  readonly validated: false;
 }
 
 const FLOOR_SOURCE = 'S7 floor (docs/specs/00-product-vision.md); no higher local minimum known to the drafting assistant';
@@ -80,7 +92,15 @@ export const JURISDICTION_MATRIX: Readonly<Record<string, JurisdictionProfile>> 
       ageOfMajority: age(18, `French Civil Code, Art. 414 ${UNVERIFIED}`),
     },
     withdrawal: { rule: 'statutory_period', periodDays: days(14, `Directive 2011/83/EU Art. 9 ${UNVERIFIED}`), digitalContentWaiver: true },
-    emergency: { number: '112', source: `EU single emergency number ${UNVERIFIED}` },
+    emergency: {
+      number: '112',
+      source: `EU single emergency number ${UNVERIFIED}`,
+      medical: {
+        numbers: ['15'],
+        source: 'SAMU (medical emergencies) beside 112, from docs/governance/ai-reviews/A1-A2-clinical-safety.md (M05-22): FFTélécoms and Ministère de l’Intérieur pages, search summaries only. AI pre-review, not a sign-off; requires seat A1 and counsel review.',
+        validated: false,
+      },
+    },
     authorityFilings: [
       { authority: 'CNIL', item: 'Confirm whether any prior formality applies to health data processing; DPIA on file (docs/compliance/dpia.md)', status: 'open' },
       { authority: 'Hosting', item: 'Confirm whether health-data hosting certification (HDS) is required for the chosen host', status: 'open' },
@@ -141,7 +161,15 @@ export const JURISDICTION_MATRIX: Readonly<Record<string, JurisdictionProfile>> 
       ageOfMajority: age(18, `Senegalese Family Code ${UNVERIFIED}`),
     },
     withdrawal: { rule: 'to_confirm', periodDays: null, digitalContentWaiver: false },
-    emergency: { number: null, source: 'to be confirmed by local counsel before display' },
+    emergency: {
+      number: null,
+      source: 'general number to be confirmed by local counsel before display (generic guidance shown)',
+      medical: {
+        numbers: ['1515', '15'],
+        source: 'SAMU national, from docs/governance/ai-reviews/A1-A2-clinical-safety.md (M05-22) and docs/governance/ai-reviews/B-legal-regulatory.md (seek_care row): Ministère de la Santé du Sénégal page and French embassy page, secondary sources and search summaries only — NOT verified from an official gazette. Pending local counsel and seat A1; the generic guidance is shown with it.',
+        validated: false,
+      },
+    },
     authorityFilings: [
       { authority: 'CDP', item: 'Prior declaration or authorisation for health data processing and transfers abroad (Law No. 2008-12)', status: 'open' },
     ],
@@ -157,7 +185,15 @@ export const JURISDICTION_MATRIX: Readonly<Record<string, JurisdictionProfile>> 
       ageOfMajority: age(21, `no verified source; conservative value pending counsel ${UNVERIFIED}`),
     },
     withdrawal: { rule: 'to_confirm', periodDays: null, digitalContentWaiver: false },
-    emergency: { number: null, source: 'to be confirmed by local counsel before display' },
+    emergency: {
+      number: null,
+      source: 'general number to be confirmed by local counsel before display (generic guidance shown)',
+      medical: {
+        numbers: ['185'],
+        source: 'SAMU, from docs/governance/ai-reviews/A1-A2-clinical-safety.md (M05-22) and docs/governance/ai-reviews/B-legal-regulatory.md (seek_care row): secondary sources (list of emergency numbers, pharmacies-de-garde.ci), search summaries only — NOT verified from an official source. Pending local counsel and seat A1; the generic guidance is shown with it.',
+        validated: false,
+      },
+    },
     authorityFilings: [{ authority: 'ARTCI', item: 'Declaration or authorisation for health data processing (Law No. 2013-450)', status: 'open' }],
   }),
   [UNKNOWN_JURISDICTION]: profile({

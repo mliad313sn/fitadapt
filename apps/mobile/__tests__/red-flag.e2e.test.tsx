@@ -135,10 +135,11 @@ async function openWorkout() {
   await screen.findByRole('header', { name: t('workout.title') });
 }
 
+// FIX-B (CS-2, CS-6): an unconditional emergency line; France adds 15 (SAMU); Senegal's unconfirmed SAMU numbers come with the generic line.
 describe.each([
-  ['GB', 'If this is an emergency, call 999 now.'],
-  ['FR', 'If this is an emergency, call 112 now.'],
-  ['SN', 'If this is an emergency, call your local emergency number now.'],
+  ['GB', 'Emergency number: call 999.'],
+  ['FR', 'Emergency number: call 15 (medical emergencies) or 112.'],
+  ['SN', 'Emergency number: call 1515 or 15 (medical emergencies). If you cannot get through, call your local emergency number.'],
 ])('S3 red-flag stop, offline (jurisdiction %s)', (region, emergency) => {
   it('chest pain mid-session: the session ends, seek-care guidance appears, and intensity stays locked (even after a restart) until the review is attested', async () => {
     mockRegion = region;
