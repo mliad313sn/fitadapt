@@ -1,7 +1,7 @@
 import { trainingHoldFlags } from '@fitadapt/safety';
 import type { AssessmentResult, ScreeningQuestionId } from '@fitadapt/shared';
 import { describe, expect, it } from 'vitest';
-import { FIXTURE_EXERCISES, FIXTURE_LIBRARY, FULL_GYM, profileFrom } from '../__fixtures__/library.js';
+import { FIXTURE_EXERCISES, FIXTURE_LIBRARY, FULL_GYM, SAFE_FACTS, profileFrom } from '../__fixtures__/library.js';
 import { PROGRAM_LIBRARY, programInput } from '../__fixtures__/program.js';
 import { ASSESSMENT_PROTOCOLS, buildAssessmentPlan, buildCapacityModel } from '../assessment/index.js';
 import { fixedClock } from '../clock.js';
@@ -37,6 +37,8 @@ const result: AssessmentResult = {
 };
 const capacity = buildCapacityModel(result, FIXTURE_LIBRARY);
 const exercises = new Map(FIXTURE_EXERCISES.map((e) => [e.id, e]));
+// FIX-A (SAF-1…12): the assessment's safety facts are required inputs (fail closed).
+const ASSESS_FACTS = { jointFlags: {}, intensityLock: { locked: false, since: null }, birthDate: null, localDate: null, nowMs: NOW } as const;
 
 describe('FIX-B (CS-1): a holding flag without clearance → no session, no assessment, no program', () => {
   it.each(HELD)('%s: every generator refuses; the same answers with an attested clearance are served', (flag) => {
@@ -45,15 +47,15 @@ describe('FIX-B (CS-1): a holding flag without clearance → no session, no asse
     expect(trainingHoldFlags(held)).toEqual([flag]);
 
     for (const mode of [undefined, 'cardio', 'mobility_balance'] as const) {
-      const r = generateSession({ capacity, safetyProfile: held, equipment: FULL_GYM, minutesAvailable: 45, ...(mode ? { mode } : {}) }, FIXTURE_LIBRARY, ctx());
+      const r = generateSession({ ...SAFE_FACTS, capacity, safetyProfile: held, equipment: FULL_GYM, minutesAvailable: 45, ...(mode ? { mode } : {}) }, FIXTURE_LIBRARY, ctx());
       expect(r.status).toBe('unavailable');
     }
-    expect(generateSession({ capacity, safetyProfile: cleared, equipment: FULL_GYM, minutesAvailable: 45 }, FIXTURE_LIBRARY, ctx()).status).toBe('ok');
+    expect(generateSession({ ...SAFE_FACTS, capacity, safetyProfile: cleared, equipment: FULL_GYM, minutesAvailable: 45 }, FIXTURE_LIBRARY, ctx()).status).toBe('ok');
 
     for (const protocol of Object.values(ASSESSMENT_PROTOCOLS)) {
-      expect(buildAssessmentPlan(protocol, { safetyProfile: held, equipment: FULL_GYM, exercises })).toMatchObject({ status: 'unavailable' });
+      expect(buildAssessmentPlan(protocol, { ...ASSESS_FACTS, safetyProfile: held, equipment: FULL_GYM, exercises })).toMatchObject({ status: 'unavailable' });
     }
-    expect(buildAssessmentPlan(ASSESSMENT_PROTOCOLS.gym, { safetyProfile: cleared, equipment: FULL_GYM, exercises }).status).toBe('available');
+    expect(buildAssessmentPlan(ASSESSMENT_PROTOCOLS.gym, { ...ASSESS_FACTS, safetyProfile: cleared, equipment: FULL_GYM, exercises }).status).toBe('available');
 
     expect(generateProgram(programInput({ profile: held }), PROGRAM_LIBRARY, ctx()).status).toBe('unavailable');
     expect(generateProgram(programInput({ profile: cleared }), PROGRAM_LIBRARY, ctx()).status).toBe('ok');
@@ -61,8 +63,8 @@ describe('FIX-B (CS-1): a holding flag without clearance → no session, no asse
 
   it('a tampered held profile (automatic programming switched back on) is still refused by the S1 gate the generators call', () => {
     const tampered = { ...profileFrom(['chest_discomfort']), automaticProgrammingAllowed: true, maxRPE: 10, allowHIIT: true, allowMaxTests: true, screeningOutcome: 'cleared' as const };
-    expect(generateSession({ capacity, safetyProfile: tampered, equipment: FULL_GYM, minutesAvailable: 45 }, FIXTURE_LIBRARY, ctx()).status).toBe('unavailable');
-    expect(buildAssessmentPlan(ASSESSMENT_PROTOCOLS.gym, { safetyProfile: tampered, equipment: FULL_GYM, exercises }).status).toBe('unavailable');
+    expect(generateSession({ ...SAFE_FACTS, capacity, safetyProfile: tampered, equipment: FULL_GYM, minutesAvailable: 45 }, FIXTURE_LIBRARY, ctx()).status).toBe('unavailable');
+    expect(buildAssessmentPlan(ASSESSMENT_PROTOCOLS.gym, { ...ASSESS_FACTS, safetyProfile: tampered, equipment: FULL_GYM, exercises }).status).toBe('unavailable');
     expect(generateProgram(programInput({ profile: tampered }), PROGRAM_LIBRARY, ctx()).status).toBe('unavailable');
   });
 });

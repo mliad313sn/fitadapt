@@ -18,7 +18,7 @@ import { aerobicMinutesLedger, cardioDone, ledgerEntriesFrom } from './ledger.js
 import { cardioAlternatives } from './movements.js';
 import { M03_REASON_CODES } from './reason-codes.js';
 import { movementContext } from './session.js';
-import { ageOn, estimatedHrMax, karvonenBpm, zonesFor } from './zones.js';
+import { ageOn, estimatedHrMax, heartRateZonesAllowed, karvonenBpm, zonesFor } from './zones.js';
 
 const NOW = Date.parse('2026-10-05T07:30:00.000Z');
 const DAY = 86_400_000;
@@ -145,6 +145,43 @@ describe('packages/engine/cardio generates HIIT, Tabata, EMOM, AMRAP and steady-
       expect(z.zones.every((x) => x.minBpm === null && x.maxBpm === null && x.talkTest !== undefined)).toBe(true);
       expect(z.reasonCodes).toEqual(['cardio.zones.perceived_exertion', 'cardio.zones.medication_effort_only', 'cardio.zones.talk_test']);
     }
+  });
+
+  it('integration FIX-A × FIX-B (CS-7): heart-rate targets only when the profile says heartRateZonesAllowed === true; absent or false means effort only', () => {
+    const heartRate = { source: 'manual' as const, restingBpm: 60 };
+    const facts = (profile: SafetyProfile) => zonesFor({ profile, birthDate: { year: 1986, month: 3, day: 1 }, heartRate, nowMs: NOW });
+    const open = cleared();
+    expect(open.heartRateZonesAllowed).toBe(true);
+    expect(facts(open).method).toBe('heart_rate_reserve');
+    const { heartRateZonesAllowed: _drop, ...legacy } = open;
+    for (const profile of [{ ...open, heartRateZonesAllowed: false }, legacy as SafetyProfile]) {
+      const z = facts(profile);
+      expect(z).toMatchObject({ method: 'perceived_exertion', hrMaxBpm: null, restingBpm: null });
+      expect(z.reasonCodes).toEqual(['cardio.zones.perceived_exertion', 'cardio.zones.profile_effort_only', 'cardio.zones.talk_test']);
+    }
+    // The restriction form of the medication answer is honoured even if a profile still claimed zones (stricter wins).
+    const restricted = { ...open, reasonCodes: [...open.reasonCodes, 'safety_profile.restriction.medication_affecting_heart_rate'] };
+    expect(heartRateZonesAllowed(restricted)).toEqual({ allowed: false, medication: true });
+    expect(facts(restricted).reasonCodes).toContain('cardio.zones.medication_effort_only');
+    const flagged = { ...open, reasonCodes: [...open.reasonCodes, 'safety_profile.flag.medication_affecting_effort'] };
+    expect(facts(flagged).method).toBe('perceived_exertion');
+  });
+
+  it('property (CS-7): a heart-rate band is only ever given when heartRateZonesAllowed === true and no medication reason is present', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom<boolean | undefined>(true, false, undefined),
+        fc.subarray(['safety_profile.flag.medication_affecting_effort', 'safety_profile.restriction.medication_affecting_heart_rate', 'safety_profile.cleared']),
+        fc.integer({ min: 35, max: 100 }),
+        (allowed, extra, restingBpm) => {
+          const { heartRateZonesAllowed: _drop, ...base } = cleared();
+          const profile = { ...base, ...(allowed === undefined ? {} : { heartRateZonesAllowed: allowed }), reasonCodes: [...base.reasonCodes, ...extra] } as SafetyProfile;
+          const z = zonesFor({ profile, birthDate: { year: 1986, month: 3, day: 1 }, heartRate: { source: 'manual', restingBpm }, nowMs: NOW });
+          const medication = extra.some((c) => c.includes('medication'));
+          if (z.zones.some((x) => x.minBpm !== null || x.maxBpm !== null)) expect(allowed === true && !medication).toBe(true);
+        },
+      ),
+    );
   });
 
   it('EMOM: a set of reps at the top of every minute, at a moderate (controlled) effort, rotating movements from different patterns', () => {

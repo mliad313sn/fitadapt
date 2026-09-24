@@ -57,6 +57,7 @@ export const cardioFr: Record<keyof typeof cardioEn, string> = {
   'engine.reason.cardio.zones.hr_max_estimated': 'La fréquence cardiaque maximale est une estimation d’après votre âge, pas une mesure.',
   'engine.reason.cardio.zones.perceived_exertion': 'Guidé par l’effort ressenti (de 0 à 10) et par le test de la parole.',
   'engine.reason.cardio.zones.no_resting_hr': 'Ajoutez une fréquence cardiaque au repos si vous voulez aussi des plages de fréquence.',
+  'engine.reason.cardio.zones.profile_effort_only': 'D’après vos réponses santé, les plages de fréquence cardiaque ne sont pas utilisées pour vous pour l’instant. Fiez-vous à la sensation d’effort et au test de la parole.',
   'engine.reason.cardio.zones.medication_effort_only': 'Vous avez indiqué qu’un médicament peut changer la réponse de votre corps à l’effort : la fréquence cardiaque n’est donc pas un repère fiable. Fiez-vous à la sensation d’effort et au test de la parole.',
   'engine.reason.cardio.zones.no_age': 'Les plages de fréquence cardiaque demandent votre date de naissance.',
   'engine.reason.cardio.zones.reserve_too_small': 'Pas de plages de fréquence pour ces valeurs : l’effort ressenti et le test de la parole vous guident.',

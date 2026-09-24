@@ -56,6 +56,7 @@ export const cardioEn = {
   'engine.reason.cardio.zones.hr_max_estimated': 'The maximum heart rate is an estimate from your age, not a measurement.',
   'engine.reason.cardio.zones.perceived_exertion': 'Guided by how hard it feels (0 to 10) and by the talk test.',
   'engine.reason.cardio.zones.no_resting_hr': 'Add a resting heart rate if you want heart-rate ranges too.',
+  'engine.reason.cardio.zones.profile_effort_only': 'Your health answers mean heart-rate ranges are not used for you for now. Go by how hard it feels and the talk test.',
   'engine.reason.cardio.zones.medication_effort_only': 'You said a medicine can change how your body responds to effort, so your heart rate is not a reliable guide. Go by how hard it feels and the talk test.',
   'engine.reason.cardio.zones.no_age': 'Heart-rate ranges need your date of birth.',
   'engine.reason.cardio.zones.reserve_too_small': 'Heart-rate ranges are not shown for these numbers; effort and the talk test guide you.',

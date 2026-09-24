@@ -1,4 +1,4 @@
-import { S1_RPE_AT_ZERO_RIR } from '@fitadapt/safety';
+import { S1_RPE_AT_ZERO_RIR, trainingHoldFlags } from '@fitadapt/safety';
 import { SCREENING_QUESTION_IDS, SafetyProfileSchema, type AssessmentResult, type AssessmentTestResult, type SafetyProfile } from '@fitadapt/shared';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
@@ -102,11 +102,19 @@ describe('protocols (goal condition 1)', () => {
     expect(ASSESSMENT_CONFIG.rpeAtZeroRir.value).toBeGreaterThanOrEqual(S1_RPE_AT_ZERO_RIR);
     for (let rir = 0; rir <= 10; rir++) expect(rpeForRir(rir)).toBeGreaterThanOrEqual(S1_RPE_AT_ZERO_RIR - rir);
     // An unresolved flag caps effort at RPE 7: every reserve the engine picks for it is at least 3 (first session and tests).
+    // Integration FIX-A × FIX-B: a HOLDING flag (CS-1, e.g. chest_discomfort) is stricter still: no reserve at all (null).
     for (const yes of [['chest_discomfort'], ['medication_affecting_effort'], ['heart_or_blood_pressure']] as const) {
       const flagged = profileFrom([...yes]);
+      if (trainingHoldFlags(flagged).length > 0) {
+        expect(firstSessionRir(flagged)).toBeNull();
+        expect(assessmentStopRir(flagged)).toBeNull();
+        continue;
+      }
       expect(firstSessionRir(flagged)).toBeGreaterThanOrEqual(3);
       expect(assessmentStopRir(flagged)).toBeGreaterThanOrEqual(3);
     }
+    expect(trainingHoldFlags(profileFrom(['chest_discomfort']))).toEqual(['chest_discomfort']);
+    expect(trainingHoldFlags(profileFrom(['heart_or_blood_pressure']))).toEqual([]);
   });
 });
 

@@ -64,14 +64,28 @@ export interface ZoneFacts {
  * cleared or not): those users get perceived exertion and the talk test only.
  */
 export const HR_MEDICATION_REASON = 'safety_profile.flag.medication_affecting_effort';
+/** FIX-B (CS-7): the restriction form of the same answer (a medicine that changes the heart-rate response). */
+export const HR_MEDICATION_RESTRICTION_REASON = 'safety_profile.restriction.medication_affecting_heart_rate';
+
+/**
+ * Integration FIX-A × FIX-B (CS-7): heart-rate targets only when the safety
+ * profile says so explicitly (`heartRateZonesAllowed === true`; absent means
+ * not allowed, fail closed) AND no medication reason is on the profile. Both
+ * checks apply; the stricter wins.
+ */
+export function heartRateZonesAllowed(profile: SafetyProfile): { allowed: boolean; medication: boolean } {
+  const medication = profile.reasonCodes.includes(HR_MEDICATION_REASON) || profile.reasonCodes.includes(HR_MEDICATION_RESTRICTION_REASON);
+  return { allowed: !medication && profile.heartRateZonesAllowed === true, medication };
+}
 
 export function zonesFor(facts: ZoneFacts): HrZoneSet {
   const age = ageOn(facts.birthDate, facts.nowMs, facts.localDate);
-  const medication = facts.profile.reasonCodes.includes(HR_MEDICATION_REASON);
+  const gate = heartRateZonesAllowed(facts.profile);
+  const medication = gate.medication;
   const resting = facts.heartRate && facts.heartRate.source !== 'none' ? facts.heartRate.restingBpm : null;
   const hrMax = age !== null ? estimatedHrMax(age) : null;
   const reasons: string[] = [];
-  const hrr = !medication && resting !== null && hrMax !== null && hrMax - resting >= cardioValue('hrr.minReserveBpm');
+  const hrr = gate.allowed && resting !== null && hrMax !== null && hrMax - resting >= cardioValue('hrr.minReserveBpm');
   const zones: HrZone[] = INTENSITIES.map((intensity) => {
     const rpe = rpeRange(intensity, facts.profile);
     const band = hrr
@@ -86,6 +100,7 @@ export function zonesFor(facts: ZoneFacts): HrZoneSet {
   else {
     reasons.push('cardio.zones.perceived_exertion');
     if (medication) reasons.push('cardio.zones.medication_effort_only');
+    else if (!gate.allowed) reasons.push('cardio.zones.profile_effort_only');
     else if (resting === null) reasons.push('cardio.zones.no_resting_hr');
     else if (hrMax === null) reasons.push('cardio.zones.no_age');
     else reasons.push('cardio.zones.reserve_too_small');
