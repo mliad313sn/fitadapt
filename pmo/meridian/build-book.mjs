@@ -359,6 +359,10 @@ allocations.push({ person: "PE-14", project: dog.id, from: dog.start, to: dog.fi
 for (const pe of core) allocations.push({ person: pe, project: dog.id, from: dog.start, to: dog.finish, pct: 5 });
 
 const book = {
+  /* Meridian 5.17.0+ refuses a book that does not say what its money
+     means (its D-36.04). Every budget and ledger line here is 0, so the
+     unit changes no figure; "units" is the honest reading. */
+  currencyUnit: "units",
   orgName: "FitAdapt (codename)",
   statusDate: STATUS,
   sites: SITES,
