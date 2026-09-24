@@ -112,7 +112,7 @@ export const onboardingEn = {
   'onboarding.healthConsent.agree': 'I agree',
   'onboarding.healthConsent.agreeHint': 'Records your consent to the health-data text above',
   'onboarding.healthConsent.decline': 'Not now',
-  'onboarding.healthConsent.declined': 'Without this consent your answers cannot be saved, and your first session stays locked. You can agree later in Privacy settings.',
+  'onboarding.healthConsent.declined': 'Without this consent your answers cannot be saved, so sessions, assessments, programmes and nutrition targets stay locked. The exercise library stays available. You can agree later in Privacy settings.',
 
   // Screening result
   'onboarding.result.title.cleared': 'You are all set',
@@ -123,7 +123,7 @@ export const onboardingEn = {
   'onboarding.result.body.cleared': 'Sessions can use the full range of intensities. You stay in control of every exercise.',
   'onboarding.result.body.cleared_with_restrictions': 'Sessions will avoid some movements and keep impact lower where needed.',
   'onboarding.result.body.consult_professional': 'Before harder training, speak with a doctor or another health professional. Until you confirm they cleared you, sessions stay at a moderate effort, without high-intensity intervals or maximal tests.',
-  'onboarding.result.body.not_screened': 'Sessions stay at the most cautious level until you answer every question.',
+  'onboarding.result.body.not_screened': 'Sessions are not available until you answer every question.',
   'onboarding.result.body.blocked': 'You need to be 16 or older to use this app. Thank you for your interest.',
   'onboarding.result.pregnancy': 'During pregnancy and after giving birth, talk with your midwife, doctor or another health professional before exercising. In the meantime the app offers only a low-intensity exercise library and does not build programmes for you.',
   'onboarding.result.why': 'Why',

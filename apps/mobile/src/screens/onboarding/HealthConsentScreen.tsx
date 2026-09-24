@@ -13,8 +13,10 @@ import { useLegal } from '../../profile/ProfileProvider';
 /**
  * Step 5: explicit health-data consent (GDPR Art. 9, L2, L9) before any health
  * data is entered. Declining is always possible; the first workout then stays
- * locked (M20 decision, open question for counsel) and S1 treats screening as
- * not done.
+ * locked and S1 treats screening as not done (fail closed). FIX-B (B pre-review
+ * §1.5 item 4, GDPR Art. 7(4)): no screening-free mode exists, so the consent
+ * text now says exactly that (training features locked, library available)
+ * instead of promising "the most cautious training"; B1 to confirm the basis.
  */
 export function HealthConsentScreen() {
   const { t, locale } = useI18n();

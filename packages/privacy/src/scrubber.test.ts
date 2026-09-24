@@ -245,6 +245,11 @@ describe('retention schedule config', () => {
     expect(RETENTION_UNVALIDATED).toHaveLength(Object.keys(retentionConfig).length);
   });
 
+  it('FIX-B (B pre-review §3.4): inactive accounts are kept at most 2 years (CNIL reference), unvalidated, citing the pre-review', () => {
+    expect(retentionDays('inactiveAccountDays')).toBeLessThanOrEqual(730);
+    expect(retentionConfig.inactiveAccountDays).toMatchObject({ validated: false, source: expect.stringContaining('B-legal-regulatory.md') });
+  });
+
   it('deletion completes within 30 days, backups included', () => {
     expect(retentionDays('deletionCompletionMaxDays')).toBeLessThanOrEqual(30);
     expect(backupRotationMeetsDeletionDeadline()).toBe(true);

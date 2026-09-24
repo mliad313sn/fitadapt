@@ -64,8 +64,8 @@ export const legalEn = {
 
   // Consent texts (versions referenced by packages/privacy CONSENT_POLICIES)
   'legal.consent.health.v1.title': 'Health data consent',
-  'legal.consent.health.v1.body': 'I agree that the app processes my health data (screening answers, pain check-ins and related safety information) to adapt my training and keep it safe. This data is never used for advertising or sold.',
-  'legal.consent.health.v1.withdraw': 'You can withdraw this consent at any time in Privacy settings. Without it, the app considers your screening not completed and only offers the most cautious training.',
+  'legal.consent.health.v1.body': 'I agree that the app processes my health data to adapt my training and nutrition guidance and keep them safe: my screening answers, my pain and readiness check-ins, the safety stops I report and the reviews I confirm after them, my assessment results, and the body measurements (weight, height, body fat) and food logs I enter. This data is stored on my device and, when I sign in, on the app’s servers in [region to be chosen]. It is never used for advertising or sold.',
+  'legal.consent.health.v1.withdraw': 'You can withdraw this consent at any time in Privacy settings. Without it, the app cannot use your health answers, so it cannot check that training is safe for you: sessions, assessments, programmes and nutrition targets are not available. The exercise library and your account stay available. Withdrawing does not affect processing done before.',
   'legal.consent.photos.v1.title': 'Progress photos consent',
   'legal.consent.photos.v1.body': 'I agree that the app stores my progress photos, encrypted on my device, and, only if I turn it on, in an encrypted backup.',
   'legal.consent.photos.v1.withdraw': 'You can withdraw this consent at any time. Your photos and their backup are then deleted.',
@@ -126,7 +126,7 @@ export const legalEn = {
   'legal.notice.assessment.v1.title': 'Before this test',
   'legal.notice.assessment.v1.body': 'This test asks for a sustained effort, never a maximal one. Stop whenever you want; a stopped test is not a failure.',
   'legal.notice.nutritionDeficit.v1.title': 'Eating less to lose weight',
-  'legal.notice.nutritionDeficit.v1.body': 'The app keeps targets above safe floors and a slow rate of loss. This is general guidance, not a diet prescription. If you have or had an eating disorder, or a health condition, talk to a professional first.',
+  'legal.notice.nutritionDeficit.v1.body': 'The app keeps targets above minimum floors and a slow rate of loss. This is general guidance, not a diet prescription. If you have or had an eating disorder, or a health condition, talk to a professional first.',
   'legal.notice.aiCoach.v1.title': 'You are talking to an AI',
   'legal.notice.aiCoach.v1.body': 'This coach is an AI system, not a person or a health professional. It gives general fitness information and can make mistakes.',
   'legal.notice.aiCoach.label': 'AI assistant',

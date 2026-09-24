@@ -20,7 +20,7 @@
 | Ended sign-in sessions and their refresh-token hashes | `endedSessionRetentionDays` | 90 days | Session revoked, or its last refresh token expired | Retention job | Security investigations (refresh-token reuse) |
 | Pseudonymous audit entries (consent history, requests handled) | `auditEntryRetentionDays` | 6 years | Entry written | Retention job | Defensibility file (L11); period to be set by counsel against limitation periods in launch markets |
 | Pseudonymous data-request records | `dataRequestRetentionDays` | 6 years | Request made | Retention job (completed requests only) | Proof that rights requests were honoured; period to be set by counsel |
-| Inactive accounts | `inactiveAccountDays` | 3 years | Last sign-in or sync | Notice to the user, then deletion (**not built**: needs the mail provider, deferred) | Storage limitation; period to be set by counsel |
+| Inactive accounts | `inactiveAccountDays` | 2 years (was 3; FIX-B, CNIL reference via the B pre-review, validated:false) | Last sign-in or sync | Notice to the user, then deletion (**not built**: needs the mail provider, deferred) | Storage limitation; period to be set by counsel |
 | Application logs | `applicationLogRetentionDays` | 30 days | Log line written | Log store rotation (M19) | Operations; logs carry no personal data |
 
 ## What survives an account deletion

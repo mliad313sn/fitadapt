@@ -301,3 +301,25 @@ describe('point-of-risk notices (L3, L5)', () => {
     expect(noticesToShow('camera.start', [impression('camera_mode', 'shown')], custom)).toEqual([]);
   });
 });
+
+describe('FIX-B (B pre-review §1.5 item 4, §3.1): the texts say what the app really does', () => {
+  const NOW_B = new Date('2026-10-01T00:00:00.000Z');
+  it('health-data consent: refusing locks training features (no "most cautious training" promise) and every dependent data type is named, FR and EN', () => {
+    const doc = DEFAULT_REGISTRY.get('consent.health')!;
+    const text = (locale: 'en' | 'fr') => renderDocument(doc, versionInForce(doc, NOW_B), locale, 'FR').sections.map((s) => s.text).join(' ');
+    // It must match firstWorkoutGate: without the consent the first workout is refused.
+    expect(firstWorkoutGate([], [], { jurisdiction: 'FR', now: NOW_B }).missing).toContain('consent.health');
+    expect(text('en')).not.toMatch(/cautious/i);
+    expect(text('fr')).not.toMatch(/prudent/i);
+    for (const part of ['screening answers', 'pain and readiness check-ins', 'safety stops', 'assessment results', 'body measurements', 'food logs', 'sessions, assessments, programmes and nutrition targets are not available']) expect(text('en')).toContain(part);
+    for (const part of ['questionnaire de santé', 'suivis de douleur et de forme du jour', 'arrêts de sécurité', 'résultats de mes évaluations', 'mesures corporelles', 'journaux alimentaires', 'ne sont pas disponibles']) expect(text('fr')).toContain(part);
+  });
+
+  it('nutrition_deficit notice: "minimum floors", never "safe floors" (the S4 floors are validated:false)', () => {
+    const n = notice('nutrition_deficit');
+    expect(renderNotice(n, 'en', 'GB').body).toContain('above minimum floors');
+    expect(renderNotice(n, 'en', 'GB').body).not.toMatch(/safe floors/i);
+    expect(renderNotice(n, 'fr', 'FR').body).toContain('seuils minimaux');
+    expect(renderNotice(n, 'fr', 'FR').body).not.toMatch(/seuils sûrs/i);
+  });
+});

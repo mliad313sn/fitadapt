@@ -9,7 +9,9 @@ import {
   LegalReleaseError,
   MemoryDefensibilityLog,
   NOTICES,
+  NOTICES_BLOCKED_UNTIL_BUILT,
   assertLegalReleaseReady,
+  blockedNotices,
   buildLegalHoldExport,
   buildProfileFrom,
   catalogueTargets,
@@ -34,7 +36,8 @@ const fixtureApproved = (approvals: readonly CounselApproval[]): CounselApproval
 describe('production build refuses unapproved legal texts', () => {
   it('fails today: every enabled text is a draft pending counsel review', () => {
     const unapproved = unapprovedTexts();
-    const texts = DEFAULT_REGISTRY.documents.reduce((sum, d) => sum + d.versions.length, 0) + NOTICES.length;
+    // FIX-B: notices of features not built (camera_mode) are not even enabled in the default release.
+    const texts = DEFAULT_REGISTRY.documents.reduce((sum, d) => sum + d.versions.length, 0) + NOTICES.length - Object.keys(NOTICES_BLOCKED_UNTIL_BUILT).length;
     expect(unapproved).toHaveLength(texts * DEFAULT_RELEASE.variants.length);
     expect(() => assertLegalReleaseReady('production')).toThrow(LegalReleaseError);
     expect(() => assertLegalReleaseReady('production')).toThrow(/lack counsel approval/);
@@ -51,6 +54,17 @@ describe('production build refuses unapproved legal texts', () => {
     expect(unapprovedTexts(DEFAULT_RELEASE, oneMissing, approvedNotices)).toEqual([{ text: 'terms v1', variant: 'SN' }]);
     const release = { ...DEFAULT_RELEASE, variants: ['GB'] as const };
     expect(() => assertLegalReleaseReady('production', release, oneMissing, approvedNotices)).not.toThrow();
+  });
+
+  it('FIX-B (B pre-review §3.1): the camera_mode notice ("No video leaves your device", SUB-C7) is refused in production even when approved, until M14 exists', () => {
+    expect(DEFAULT_RELEASE.notices).not.toContain('camera_mode');
+    expect(NOTICES_BLOCKED_UNTIL_BUILT.camera_mode).toMatch(/SUB-C7/);
+    const approvedRegistry = new LegalRegistry(DEFAULT_REGISTRY.documents.map((d) => ({ ...d, versions: d.versions.map((v) => ({ ...v, approvals: fixtureApproved(v.approvals) })) })));
+    const approvedNotices = NOTICES.map((x) => ({ ...x, approvals: fixtureApproved(x.approvals) }));
+    const withCamera = { ...DEFAULT_RELEASE, notices: [...DEFAULT_RELEASE.notices, 'camera_mode' as const] };
+    expect(blockedNotices(withCamera)).toHaveLength(DEFAULT_RELEASE.variants.length);
+    expect(() => assertLegalReleaseReady('production', withCamera, approvedRegistry, approvedNotices)).toThrow(/camera_mode/);
+    expect(() => assertLegalReleaseReady('preview', withCamera, approvedRegistry, approvedNotices)).not.toThrow();
   });
 
   it('an approval needs a reviewer, a record and a date', () => {

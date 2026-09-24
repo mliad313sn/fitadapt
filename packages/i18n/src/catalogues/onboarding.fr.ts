@@ -106,7 +106,7 @@ export const onboardingFr: Record<keyof typeof onboardingEn, string> = {
   'onboarding.healthConsent.agree': 'J’accepte',
   'onboarding.healthConsent.agreeHint': 'Enregistre votre consentement au texte sur les données de santé ci-dessus',
   'onboarding.healthConsent.decline': 'Pas maintenant',
-  'onboarding.healthConsent.declined': 'Sans ce consentement, vos réponses ne peuvent pas être enregistrées et votre première séance reste verrouillée. Vous pourrez accepter plus tard dans les paramètres de confidentialité.',
+  'onboarding.healthConsent.declined': 'Sans ce consentement, vos réponses ne peuvent pas être enregistrées : les séances, les évaluations, les programmes et les objectifs nutritionnels restent verrouillés. La bibliothèque d’exercices reste accessible. Vous pourrez accepter plus tard dans les paramètres de confidentialité.',
 
   'onboarding.result.title.cleared': 'Tout est prêt',
   'onboarding.result.title.cleared_with_restrictions': 'Tout est prêt, avec quelques ajustements',
@@ -116,7 +116,7 @@ export const onboardingFr: Record<keyof typeof onboardingEn, string> = {
   'onboarding.result.body.cleared': 'Les séances peuvent utiliser toute la gamme d’intensités. Vous gardez la main sur chaque exercice.',
   'onboarding.result.body.cleared_with_restrictions': 'Les séances éviteront certains mouvements et limiteront les impacts si besoin.',
   'onboarding.result.body.consult_professional': 'Avant un entraînement plus intense, parlez-en à un médecin ou à un autre professionnel de santé. Tant que vous n’avez pas confirmé son accord, les séances restent d’intensité modérée, sans intervalles à haute intensité ni tests maximaux.',
-  'onboarding.result.body.not_screened': 'Les séances restent au niveau le plus prudent tant que chaque question n’a pas de réponse.',
+  'onboarding.result.body.not_screened': 'Les séances ne sont pas disponibles tant que chaque question n’a pas de réponse.',
   'onboarding.result.body.blocked': 'Vous devez avoir 16 ans ou plus pour utiliser cette application. Merci de votre intérêt.',
   'onboarding.result.pregnancy': 'Pendant la grossesse et après un accouchement, parlez-en à votre sage-femme, à votre médecin ou à un autre professionnel de santé avant de faire de l’exercice. En attendant, l’application ne propose qu’une bibliothèque d’exercices de faible intensité et ne construit pas de programme pour vous.',
   'onboarding.result.why': 'Pourquoi',
