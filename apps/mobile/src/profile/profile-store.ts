@@ -48,6 +48,32 @@ import type { KeyValueStore } from '../storage/app-state';
 
 const DRAFT_KEY = 'onboarding_draft';
 const NEW_CONDITION_KEY = 'health_new_condition_reported_at';
+/** Rejected screening/assessment mutations a later screening (or assessment) of the user answered. */
+const RESOLVED_REJECTIONS_KEY = 'health_resolved_rejections';
+
+function resolvedRejections(kv: KeyValueStore): Set<string> {
+  try {
+    const raw: unknown = JSON.parse(kv.get(RESOLVED_REJECTIONS_KEY) ?? '[]');
+    return new Set(Array.isArray(raw) ? raw.filter((v): v is string => typeof v === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * Integration FIX-B × FIX-E: the server rejected the device's screening (or
+ * assessment) and sync removed it, so the history only holds the previous,
+ * accepted one — which may be looser. Until the user answers again, the device
+ * treats this as `screeningRejected` (fail closed). A rejection is answered only
+ * by a later save in the same collection on this device (never by a clock).
+ */
+export function unresolvedHealthRejections(sync: Pick<SyncClient, 'rejectedMutations'>, kv: KeyValueStore): string[] {
+  const resolved = resolvedRejections(kv);
+  return sync
+    .rejectedMutations()
+    .filter((r) => (r.collection === PROFILE_COLLECTIONS.screenings || r.collection === ASSESSMENT_COLLECTION) && !resolved.has(r.mutationId))
+    .map((r) => r.mutationId);
+}
 
 /** What the user has entered so far; kept on the device so onboarding resumes after a relaunch. */
 export interface OnboardingDraft {
@@ -145,6 +171,8 @@ export interface ProfileState {
   executionLogs: StoredExecutionLog[];
   /** M05 readiness checks (append-only; the latest of a day counts). */
   readinessChecks: StoredReadinessCheck[];
+  /** FIX-B × FIX-E: the server rejected the latest screening or assessment and the user has not answered again (fail closed). */
+  screeningRejected: boolean;
   draft: OnboardingDraft;
   newConditionReportedAt: string | null;
   /** Re-reads the synced records (after a pull). */
@@ -252,7 +280,14 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
       .map((r) => ({ id: r.id, data: parsed(ReadinessCheckSchema, r.data) }))
       .filter((r): r is StoredReadinessCheck => r.data !== null)
       .sort((a, b) => a.data.at.localeCompare(b.data.at) || a.id.localeCompare(b.id)),
+    screeningRejected: unresolvedHealthRejections(sync, kv).length > 0,
   });
+  /** A new save in `collection` answers every rejection of that collection seen so far. */
+  const resolveRejections = (collection: string) => {
+    const ids = sync.rejectedMutations().filter((r) => r.collection === collection).map((r) => r.mutationId);
+    if (ids.length === 0) return;
+    kv.set(RESOLVED_REJECTIONS_KEY, JSON.stringify([...new Set([...resolvedRejections(kv), ...ids])]));
+  };
   const writeProfile = (profile: Profile) => {
     const data = ProfileSchema.parse(profile);
     if (sync.get(PROFILE_COLLECTIONS.profile, PROFILE_RECORD_ID)) sync.update(PROFILE_COLLECTIONS.profile, PROFILE_RECORD_ID, data);
@@ -331,6 +366,7 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
         // ADR-023: the new screening names every screening it replaces, so neither the clock nor the arrival order can make an older one "latest".
         const record = ScreeningRecordSchema.parse({ reason, responses, safetyProfile: evaluateScreening(responses), completedAt: now().toISOString(), supersedes: screeningHeads(get().screenings) });
         sync.insert(PROFILE_COLLECTIONS.screenings, record);
+        resolveRejections(PROFILE_COLLECTIONS.screenings);
         kv.remove(NEW_CONDITION_KEY);
         set({ newConditionReportedAt: null });
         written();
@@ -345,6 +381,7 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
       saveAssessment(record) {
         const data = AssessmentRecordSchema.parse({ ...record, supersedes: orderAssessments(get().assessments).heads.map((a) => a.id) });
         sync.insert(ASSESSMENT_COLLECTION, data);
+        resolveRejections(ASSESSMENT_COLLECTION);
         written();
         return data;
       },

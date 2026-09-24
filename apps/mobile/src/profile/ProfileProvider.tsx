@@ -67,15 +67,17 @@ export function useSession(): SessionStore | undefined {
 /** The typed SafetyProfile selector every screen and module reads (S1, S4, S7; fail-closed). */
 export function useSafetyProfile(): SafetyProfile {
   const screenings = useProfile((s) => s.screenings);
+  const rejected = useProfile((s) => s.screeningRejected);
   const consents = useConsents((s) => s.records);
-  return useMemo(() => selectSafetyProfile(screenings, consents), [screenings, consents]);
+  return useMemo(() => selectSafetyProfile(screenings, consents, rejected), [screenings, consents, rejected]);
 }
 
 /** Whether a re-screen is due (12 months, or a newly reported condition), on the app clock. */
 export function useRescreen(): RescreenStatus {
   const screenings = useProfile((s) => s.screenings);
   const reported = useProfile((s) => s.newConditionReportedAt);
-  return selectRescreen(screenings, reported, clock.now());
+  const rejected = useProfile((s) => s.screeningRejected);
+  return selectRescreen(screenings, reported, clock.now(), rejected);
 }
 
 /** M07: the latest CapacityModel (null before the first assessment or without health consent). */

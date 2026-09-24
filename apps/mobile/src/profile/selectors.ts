@@ -16,14 +16,15 @@ import type { StoredAssessment, StoredExecutionLog, StoredProgram, StoredReadine
  *   newest timestamp (ADR-023); several heads → the strictest combination.
  *   The server derives it with the same function (packages/safety).
  */
-export function selectSafetyProfile(screenings: readonly StoredScreening[], consents: readonly ConsentRecord[]): SafetyProfile {
+export function selectSafetyProfile(screenings: readonly StoredScreening[], consents: readonly ConsentRecord[], screeningRejected = false): SafetyProfile {
   if (!featureOn('health.screening', consents)) return notScreenedSafetyProfile('safety_profile.not_screened.no_consent');
-  return safetyProfileFromScreenings(screenings);
+  // FIX-B × FIX-E: a server-rejected latest screening/assessment never lets the older, accepted one count as it is.
+  return safetyProfileFromScreenings(screenings, { screeningRejected });
 }
 
 /** Re-screen every 12 months or after a newly reported condition (M01); several heads → the earliest (due soonest). */
-export function selectRescreen(screenings: readonly StoredScreening[], newConditionReportedAt: string | null, now: Date): RescreenStatus {
-  return rescreenStatus(lastScreenedAt(screenings), now, newConditionReportedAt);
+export function selectRescreen(screenings: readonly StoredScreening[], newConditionReportedAt: string | null, now: Date, screeningRejected = false): RescreenStatus {
+  return rescreenStatus(lastScreenedAt(screenings), now, newConditionReportedAt, screeningRejected);
 }
 
 /**
