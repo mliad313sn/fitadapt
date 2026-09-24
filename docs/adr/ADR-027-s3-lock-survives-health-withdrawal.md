@@ -1,4 +1,4 @@
-# ADR-024: The S3 intensity lock survives a health-consent withdrawal (server side)
+# ADR-027: The S3 intensity lock survives a health-consent withdrawal (server side)
 
 - Status: Proposed (fix wave after the deep code review; finding MOB-08, server side). The retention choice below is **validated: false** and needs seat B1 (data protection) and counsel before launch.
 - Date: 2026-09-24

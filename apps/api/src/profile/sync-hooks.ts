@@ -242,7 +242,7 @@ export function profileSyncListener(deps: ProfileSyncDeps): MutationListener<PgS
 
 /**
  * Health consent withdrawn: erase the synced health collections in the withdrawal transaction (ADR-004).
- * MOB-08 (ADR-024): an S3 intensity lock that is on is NOT lifted by the erasure; its minimal facts stay
+ * MOB-08 (ADR-027): an S3 intensity lock that is on is NOT lifted by the erasure; its minimal facts stay
  * in safety_locks until an attestation lifts it (a lock already lifted leaves nothing behind).
  */
 export function healthWithdrawalHandler(): ConsentWithdrawalHandler {

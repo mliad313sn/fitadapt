@@ -232,7 +232,7 @@ describe('access control and stubs', () => {
       '/v1/privacy/consents',
       '/v1/privacy/deletion',
       '/v1/privacy/export',
-      // MOB-08: the S3 intensity lock that outlives a health-consent withdrawal (ADR-024).
+      // MOB-08: the S3 intensity lock that outlives a health-consent withdrawal (ADR-027).
       '/v1/safety/intensity-lock',
       '/v1/sync/pull',
       '/v1/sync/push',

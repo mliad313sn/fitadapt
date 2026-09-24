@@ -358,7 +358,7 @@ export const pairEvents = pgTable(
 );
 
 /**
- * MOB-08 (ADR-024): the S3 intensity lock as a minimal, non-descriptive
+ * MOB-08 (ADR-027): the S3 intensity lock as a minimal, non-descriptive
  * safety fact that survives a health-consent withdrawal. Only what S3's lock
  * rule reads is kept: whether a row is a red flag or an attestation, its time
  * and the causal ids (ADR-023), never the symptom, the plan or any other

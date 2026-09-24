@@ -14,7 +14,7 @@ const IntensityLockResponseSchema = z.object({
 });
 
 /**
- * MOB-08 (ADR-024): the S3 intensity lock the server retains apart from the
+ * MOB-08 (ADR-027): the S3 intensity lock the server retains apart from the
  * erasable execution logs, so a device that no longer holds the red flag
  * (health consent withdrawn and granted again, a new phone, a reinstall)
  * still applies the lock and can ask for the medical-review attestation that

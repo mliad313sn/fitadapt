@@ -3,7 +3,7 @@
 - Run date: 2026-09-24
 - Scope: apps/api. Findings API-1 … API-12 (review/api-security.md). Server side of SAF-5 (review/safety-engine.md), MOB-08 (review/mobile.md) and PKG-06 (review/packages-tooling.md).
 - Branch: worktree based on `0315a69`. Committed locally, signed, not pushed.
-- ADRs: [ADR-024](../adr/ADR-024-s3-lock-survives-health-withdrawal.md) (S3 lock survives a health withdrawal), [ADR-025](../adr/ADR-025-api-abuse-limits-and-trusted-proxy.md) (abuse limits, bounded waits, trusted proxy).
+- ADRs: [ADR-027](../adr/ADR-027-s3-lock-survives-health-withdrawal.md) (S3 lock survives a health withdrawal), [ADR-028](../adr/ADR-028-api-abuse-limits-and-trusted-proxy.md) (abuse limits, bounded waits, trusted proxy).
 - **No S1–S7 constant, engine coefficient or prescription changed.** `ENGINE_VERSION` is unchanged; no golden changed. Nothing was set `validated: true`, and nothing is marked counsel-approved.
 
 ## Fixed
@@ -17,12 +17,12 @@
 | API-5 / SAF-5 | The server bounds these client times with `clientTimeInRange` (skew, offline window): session `plan.generatedAt` and `startedAt`, nutrition `createdAt` and `today` (`today` must also be the local date of `createdAt`). S5 is also checked at min(generatedAt, server now). A screening's birth date must equal the stored profile's. Sessions and nutrition plans are refused while the latest screening head states another birth date. | `nutrition.test.ts` › the review's minor scenario (screening refused; future `today`, far `createdAt` refused); birth-date correction fails closed until a re-screen. `session.test.ts` › a plan 8 days ahead, or older than the window, is refused (before: applied). |
 | API-6 | Pair WebSocket: the session is re-checked on every message, on a timer, and at token expiry. A logout or reuse revocation on this instance closes the socket at once (4401). | `pair.test.ts` › logout closes the socket (4401); an expired token or a session revoked elsewhere closes it on the next message. |
 | API-7 | Every authenticated route authenticates in `onRequest`, before the body is read. Photos: 1 GiB per account and 120 uploads per hour. | `security.test.ts` › 16 MB without a token answers 401 (before: 413); byte quota; upload rate. |
-| API-8 | `TRUST_PROXY_HOPS` (env, default 0) sets the exact trusted hop count for `request.ip` and the WebSocket client address. Documented in ADR-025 and `.env.example`. | `security.test.ts` › one hop: per-client sign-in buckets, a spoofed left-most XFF does not help; default: XFF ignored. Unit: parsing, `clientAddress`. |
+| API-8 | `TRUST_PROXY_HOPS` (env, default 0) sets the exact trusted hop count for `request.ip` and the WebSocket client address. Documented in ADR-028 and `.env.example`. | `security.test.ts` › one hop: per-client sign-in buckets, a spoofed left-most XFF does not help; default: XFF ignored. Unit: parsing, `clientAddress`. |
 | API-9 | Pending hellos are capped per process and per address (upgrade answered 429). Per-socket queue depth and message rate are bounded (4429). Empty rooms are freed. | `pair.test.ts` › 1000 unawaited messages close the socket with 4429 and the room returns to 0; pending cap per address. |
 | API-10 | Per-user limits: consent decisions 60/h, acceptances 60/h, notices 300/h, pair create 20 / 15 min. A withdrawal of a granted consent is never refused. | `security.test.ts` › 429 after each limit; the withdrawal still goes through. |
 | API-11 | Per-push cache of stored rows (`profile/stored-rows.ts`): one full load, then incremental loads, checked against count and last revision (an erasure forces a reload); each row parsed once per schema. `latestState` filters by record id in SQL. | `security.test.ts` › cache behaviour; the whole suite is unchanged (same outcomes). |
 | API-12 | Photo count quota under the user lock. A join-code collision is drawn again (5 draws). `set_logs` and `preferences` are validated (`SetLogSchema`, new strict `PreferencesRecordSchema`). An unknown collection, or one without a validator, fails closed (`sync.collection_not_validated`). | `security.test.ts` › 6 parallel uploads at the limit store exactly one (before: 6); collision redraw. Unit: every `SYNC_COLLECTIONS` entry has a validator; unvalidated collection refused. `privacy.test.ts` › the free-text set log is refused and absent from the export. |
-| MOB-08 (server) | `safety_locks` keeps only the S3 facts (kind, time, causal ids; no symptom), and only while the lock is on. It survives a health withdrawal. The session gate reads both logs and retained facts. `GET /v1/safety/intensity-lock` returns `{locked, since, flagIds}`. Export section `safetyLocks`. Migration `0011_…` backfills. See ADR-024. | `recovery.test.ts` › red flag, then withdraw, re-grant and re-onboard: sessions are refused until an attestation names the retained flag; nothing is kept once the lock is lifted; migration backfill. |
+| MOB-08 (server) | `safety_locks` keeps only the S3 facts (kind, time, causal ids; no symptom), and only while the lock is on. It survives a health withdrawal. The session gate reads both logs and retained facts. `GET /v1/safety/intensity-lock` returns `{locked, since, flagIds}`. Export section `safetyLocks`. Migration `0011_…` backfills. See ADR-027. | `recovery.test.ts` › red flag, then withdraw, re-grant and re-onboard: sessions are refused until an attestation names the retained flag; nothing is kept once the lock is lifted; migration backfill. |
 
 Coordinated with FIX-E: `/v1/sync/push` has an explicit 1 MiB body limit (`config/sync.config.ts`). New tests push only schema-valid records (except the deliberately invalid ones, which assert only `rejected`).
 
@@ -49,7 +49,7 @@ Each test file below changed only as described.
 | `apps/api/src/config/photos.config.ts` | `maxBytesPerUser`, `uploadsPerUserPerWindow`, `uploadRateLimitWindowSeconds` | 1 GiB, 120, 3600 s |
 | `apps/api/src/config/privacy.config.ts` | `consentDecisionsPerWindow`, `acceptancesPerWindow`, `noticesPerWindow` | 60, 60, 300 per `privacyRateLimitWindowSeconds` |
 | packages/shared `pair.ts` | `PAIR_JOIN_CODE_LENGTH` (a format constant, like `MAX_CHANGES_PER_PULL`) | 8 |
-| **Retention (MOB-08, ADR-024)** | `safety_locks` kept after a health-consent withdrawal while the lock is on; proposed basis GDPR Art. 9(2)(f) with 17(3)(e) | **validated: false: B1 and counsel** (also in docs/compliance/retention-schedule.md) |
+| **Retention (MOB-08, ADR-027)** | `safety_locks` kept after a health-consent withdrawal while the lock is on; proposed basis GDPR Art. 9(2)(f) with 17(3)(e) | **validated: false: B1 and counsel** (also in docs/compliance/retention-schedule.md) |
 
 ## Remaining open items
 
@@ -57,7 +57,7 @@ Each test file below changed only as described.
 - **API-5, back-dating.** A back-dated `generatedAt` within the 30-day offline window can still evaluate the deload and readiness at an earlier day. S3 and S2 are not date-filtered. Tightening needs a product decision on how long a session may be synced after it was generated.
 - **Engine side of SAF-5.** An assert that `today` is within ±1 day of the engine clock is FIX-A's scope. The server check above does not depend on it.
 - **MOB-08, device side.** The device must read `GET /v1/safety/intensity-lock` and attest naming `flagIds` (FIX-D). Until then a reinstalled device shows unlocked, and its sessions are refused on sync.
-- **MOB-08, residuals R1–R3** (ADR-024):
+- **MOB-08, residuals R1–R3** (ADR-027):
   - R1: account deletion followed by a new sign-up starts unlocked.
   - R2: the red-flag deload after an attestation is not enforced once the logs are erased.
   - R3: the retained reading can be stricter than the logs', never looser.

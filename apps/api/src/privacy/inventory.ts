@@ -93,6 +93,6 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = Object.freeze([
     table: 'safety_locks',
     export: { section: 'safetyLocks' },
     erase: 'cascade_from_users',
-    personalData: 'while an S3 intensity lock is on: whether each fact is a red flag or a medical-review attestation, its time and causal ids (no symptom, no other health value); kept after a health-consent withdrawal, deleted when the lock is lifted (MOB-08, ADR-024; retention basis validated:false, B1/counsel)',
+    personalData: 'while an S3 intensity lock is on: whether each fact is a red flag or a medical-review attestation, its time and causal ids (no symptom, no other health value); kept after a health-consent withdrawal, deleted when the lock is lifted (MOB-08, ADR-027; retention basis validated:false, B1/counsel)',
   },
 ]);

@@ -5,7 +5,7 @@ import type { DbExecutor, DbTx } from '../db/client.js';
 import { safetyLocks } from '../db/schema.js';
 
 /**
- * MOB-08 (ADR-024): the S3 intensity lock survives a health-consent
+ * MOB-08 (ADR-027): the S3 intensity lock survives a health-consent
  * withdrawal. The execution logs that hold the red flag are health data and
  * are erased on withdrawal (ADR-004); the lock itself must not go with them
  * (S3: intensity stays locked until the user attests medical review). The

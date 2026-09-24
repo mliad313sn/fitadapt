@@ -85,7 +85,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({
     logger: loggerOptions(deps.logLevel ?? 'info', deps.logStream),
     // API-8: trust exactly `trustedHops` proxies (0: none, X-Forwarded-For ignored). Behind the M19 edge, request.ip
-    // is then the client, not the proxy, so per-address limits are per client (ADR-025).
+    // is then the client, not the proxy, so per-address limits are per client (ADR-028).
     trustProxy: trustedHops > 0 ? (_address: string, hop: number) => hop < trustedHops : false,
   }).withTypeProvider<ZodTypeProvider>();
 
@@ -172,7 +172,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   // M09: multi-device Fair Pair (REST to create/join, WebSocket for the session itself; ADR-001, ADR-021).
   await app.register(pairRoutes(auth, pair));
   attachPairSockets(app, auth, pair, { trustProxyHops: deps.trustProxyHops ?? 0, now });
-  // MOB-08: the S3 intensity lock that outlives a health-consent withdrawal (ADR-024).
+  // MOB-08: the S3 intensity lock that outlives a health-consent withdrawal (ADR-027).
   await app.register(safetyRoutes(auth, deps.db));
   return app;
 }

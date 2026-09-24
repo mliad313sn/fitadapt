@@ -1,4 +1,4 @@
-# ADR-025: API abuse limits, bounded waits and the trusted-proxy hop count
+# ADR-028: API abuse limits, bounded waits and the trusted-proxy hop count
 
 - Status: Proposed. Fix wave after the deep code review (review/api-security.md, findings API-1, 4, 6, 7, 8, 9, 10, 12). Every value below is **validated: false** and awaits security review (seat B1) and operations (M19).
 - Date: 2026-09-24

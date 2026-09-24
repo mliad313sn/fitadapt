@@ -1,4 +1,4 @@
-# ADR-024: The phone's data lifecycle — one account per phone, atomic photo keys, a backup is never replaced, the device log is never discarded
+# ADR-026: The phone's data lifecycle — one account per phone, atomic photo keys, a backup is never replaced, the device log is never discarded
 
 - Status: Accepted (fix wave after the mobile code review, FIX-D)
 - Date: 2026-09-24

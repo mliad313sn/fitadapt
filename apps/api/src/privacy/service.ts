@@ -263,7 +263,7 @@ export class PrivacyService {
       // M09: this person's participations in multi-device pair sessions and the events they sent (never the partner's).
       const pairRows = await tx.select().from(pairParticipants).where(eq(pairParticipants.userId, userId)).orderBy(asc(pairParticipants.joinedAt));
       const pairEventRows = await tx.select().from(pairEvents).where(eq(pairEvents.fromUserId, userId)).orderBy(asc(pairEvents.createdAt), asc(pairEvents.seq));
-      // MOB-08: the S3 lock facts retained apart from the erasable logs (ADR-024).
+      // MOB-08: the S3 lock facts retained apart from the erasable logs (ADR-027).
       const lockFacts = await exportLockFacts(tx, userId);
 
       return {
