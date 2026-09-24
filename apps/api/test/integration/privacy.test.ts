@@ -308,7 +308,7 @@ describe('in-app export (goal condition 2)', () => {
     );
     expect(live.rows.map((r) => r.table_name)).toEqual(DATA_INVENTORY.map((e) => e.table).sort());
 
-    const { token, userId } = await populatedUser();
+    const { token, userId, first } = await populatedUser();
     // M09: a multi-device pair session this user started and an event they sent (the pair sections of the export).
     for (const documentId of ['privacy', 'exercise_risk']) {
       const d = (await h.app.inject({ method: 'GET', url: `/v1/legal/documents/${documentId}?locale=fr&jurisdiction=FR` })).json() as { version: number; contentHash: string };
@@ -318,6 +318,10 @@ describe('in-app export (goal condition 2)', () => {
     const created = await h.app.inject({ method: 'POST', url: '/v1/pair/sessions', headers: bearer(token), payload: { displayName: 'Mariam', scopes: [], jurisdiction: 'FR' } });
     expect(created.statusCode).toBe(201);
     await h.app.services.pair.append(userId, (created.json() as { pairSessionId: string }).pairSessionId, randomUUID(), { type: 'left' });
+    // MOB-08: an S3 red flag (the lock fact retained in safety_locks while the lock is on).
+    const flag = { mutationId: randomUUID(), collection: 'execution_logs', recordId: randomUUID(), op: 'insert', baseRevision: null, data: { kind: 'red_flag', planId: null, symptom: 'fainting', at: h.clock.now().toISOString(), eventId: randomUUID() }, clientCreatedAt: h.clock.now().toISOString() };
+    const flagged = await h.app.inject({ method: 'POST', url: '/v1/sync/push', headers: bearer(token), payload: { deviceId: first.deviceId, mutations: [flag] } });
+    expect((flagged.json() as { results: { status: string }[] }).results[0]!.status).toBe('applied');
     const doc = (await exportData(token)).json() as Record<string, unknown>;
     for (const entry of DATA_INVENTORY) {
       if (!('section' in entry.export)) continue;

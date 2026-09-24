@@ -7,6 +7,7 @@ import {
   AssessmentRecordSchema,
   BodyMetricSchema,
   EquipmentProfileSchema,
+  ExecutionLogSchema,
   MeasurementSchema,
   NUTRITION_COLLECTIONS,
   PROFILE_COLLECTIONS,
@@ -29,6 +30,7 @@ import type { LegalService } from '../legal/service.js';
 import type { ConsentWithdrawalHandler, PrivacyService } from '../privacy/service.js';
 import type { PgServerTx } from '../sync/pg-store.js';
 import { onProgramApplied, validateProgram, validateReflow } from './program-hooks.js';
+import { pruneLiftedLock, recordLockFact } from './intensity-lock.js';
 import { latestSafetyProfile, storedProfileBirthDate } from './screenings.js';
 import { onSessionApplied, validateExecutionLog, validateWorkoutSession } from './session-hooks.js';
 import { onNutritionApplied, validateHabitCheck, validateIntakeLog, validateNutritionPlan } from './nutrition-hooks.js';
@@ -229,6 +231,8 @@ export function profileSyncListener(deps: ProfileSyncDeps): MutationListener<PgS
     } else if (m.collection === SESSION_COLLECTIONS.workoutSessions || m.collection === SESSION_COLLECTIONS.executionLogs) {
       // M02: "prescription issued" (engine and rules versions) and its safety events, or the S3 events, in the same transaction as the record.
       await onSessionApplied(deps.legal, userId, m.collection, m.data, tx);
+      // MOB-08: the S3 fact (red flag or attestation) is kept apart from the erasable log, in the same transaction.
+      if (m.collection === SESSION_COLLECTIONS.executionLogs) await recordLockFact(tx.db, userId, m.recordId, ExecutionLogSchema.parse(m.data));
     } else if (m.collection === NUTRITION_COLLECTIONS.plans) {
       // M10: "nutrition target set" (engine and nutrition-rules versions, mode, codes) and its S4 events, in the same transaction as the record.
       await onNutritionApplied(deps.legal, userId, m.collection, m.data, tx);
@@ -236,9 +240,14 @@ export function profileSyncListener(deps: ProfileSyncDeps): MutationListener<PgS
   };
 }
 
-/** Health consent withdrawn: erase the synced health collections in the withdrawal transaction (ADR-004). */
+/**
+ * Health consent withdrawn: erase the synced health collections in the withdrawal transaction (ADR-004).
+ * MOB-08 (ADR-024): an S3 intensity lock that is on is NOT lifted by the erasure; its minimal facts stay
+ * in safety_locks until an attestation lifts it (a lock already lifted leaves nothing behind).
+ */
 export function healthWithdrawalHandler(): ConsentWithdrawalHandler {
   return async (tx, userId) => {
+    await pruneLiftedLock(tx, userId);
     await tx.delete(syncChanges).where(and(eq(syncChanges.userId, userId), inArray(syncChanges.collection, [...HEALTH_COLLECTIONS])));
   };
 }

@@ -83,4 +83,10 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = Object.freeze([
     erase: 'cascade_from_users',
     personalData: 'events a participant sent to the partner (turns; reps and loads, body weight or score only with that scope) (M09); also erased on a partner_sharing withdrawal',
   },
+  {
+    table: 'safety_locks',
+    export: { section: 'safetyLocks' },
+    erase: 'cascade_from_users',
+    personalData: 'while an S3 intensity lock is on: whether each fact is a red flag or a medical-review attestation, its time and causal ids (no symptom, no other health value); kept after a health-consent withdrawal, deleted when the lock is lifted (MOB-08, ADR-024; retention basis validated:false, B1/counsel)',
+  },
 ]);

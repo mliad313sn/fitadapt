@@ -180,5 +180,12 @@ export const DataExportSchema = z.object({
     })
     // Exports produced before M09 have no pair section.
     .default({ participations: [], events: [] }),
+  /**
+   * MOB-08: the S3 intensity-lock facts the server keeps while a lock is on, apart from the erasable
+   * execution logs (kind, time, causal ids; no symptom). Exports produced before have none.
+   */
+  safetyLocks: z
+    .array(z.object({ kind: z.enum(['red_flag', 'medical_review_attested']), at: z.string(), flagId: UuidSchema.nullable(), attests: z.array(UuidSchema).nullable(), recordedAt: IsoDateTimeSchema }))
+    .default([]),
 });
 export type DataExport = z.infer<typeof DataExportSchema>;

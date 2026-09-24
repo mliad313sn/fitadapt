@@ -337,3 +337,35 @@ export const pairEvents = pgTable(
   },
   (t) => [primaryKey({ columns: [t.pairSessionId, t.seq] }), uniqueIndex('pair_events_client_idx').on(t.pairSessionId, t.fromUserId, t.clientEventId)],
 );
+
+/**
+ * MOB-08 (ADR-024): the S3 intensity lock as a minimal, non-descriptive
+ * safety fact that survives a health-consent withdrawal. Only what S3's lock
+ * rule reads is kept: whether a row is a red flag or an attestation, its time
+ * and the causal ids (ADR-023), never the symptom, the plan or any other
+ * health value. Rows exist only while the lock is on: the attestation that
+ * lifts it deletes them. Erased with the account. Retention basis
+ * (GDPR Art. 9(2)(f) and 17(3)(e), or 9(2)(c)): validated:false, awaits seat
+ * B1 and counsel.
+ */
+export const safetyLocks = pgTable(
+  'safety_locks',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** Order the records were stored in (S3's lock rule reads the order as well as the times). */
+    seq: bigserial('seq', { mode: 'number' }).notNull(),
+    /** The execution log this fact was taken from (a replay is stored once). */
+    recordId: uuid('record_id').notNull(),
+    kind: text('kind', { enum: ['red_flag', 'medical_review_attested'] }).notNull(),
+    /** The device time of the flag or attestation, as recorded. */
+    at: text('at').notNull(),
+    /** ADR-023: a red flag's own id. */
+    flagId: uuid('flag_id'),
+    /** ADR-023: the red flags an attestation covers. */
+    attests: jsonb('attests').$type<string[]>(),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.seq] }), uniqueIndex('safety_locks_record_idx').on(t.userId, t.recordId)],
+);

@@ -47,6 +47,7 @@ import type { LegalService } from '../legal/service.js';
 import { clientTimeInRange } from '../lib/client-time.js';
 import type { PgServerTx } from '../sync/pg-store.js';
 import { screeningsAgreeOnBirthDate } from './screenings.js';
+import { retainedIntensityLock } from './intensity-lock.js';
 import { orderedReflows } from './program-hooks.js';
 
 /**
@@ -125,6 +126,8 @@ async function checkInputs(db: DbExecutor, userId: string, record: WorkoutSessio
   const { sessions, setLogs, events } = await storedExecution(db, userId);
   const lock = intensityLockStatus(events);
   if (lock.locked) return 'safety.s3.intensity_locked';
+  // MOB-08: and the lock the server retains apart from the erasable logs (it survives a health-consent withdrawal).
+  if ((await retainedIntensityLock(db, userId)).locked) return 'safety.s3.intensity_locked';
   if (!isDeepStrictEqual(input.intensityLock ?? { locked: false, since: null }, lock)) return 'session.lock_mismatch';
   // M05 S2: the joint flags are at least as strict as the pain reports the server stores (red stays red, amber at least amber).
   const flags = jointFlagsFromPain(painReportsFrom(events));

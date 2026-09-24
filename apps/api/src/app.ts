@@ -38,6 +38,7 @@ import { PhotoBackupService, photosWithdrawalHandler } from './photos/service.js
 import { PairService, pairWithdrawalHandler } from './pair/service.js';
 import { attachPairSockets } from './pair/ws.js';
 import { pairRoutes } from './routes/pair.js';
+import { safetyRoutes } from './routes/safety.js';
 
 export interface AppDeps {
   db: Database;
@@ -166,5 +167,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   // M09: multi-device Fair Pair (REST to create/join, WebSocket for the session itself; ADR-001, ADR-021).
   await app.register(pairRoutes(auth, pair));
   attachPairSockets(app, auth, pair);
+  // MOB-08: the S3 intensity lock that outlives a health-consent withdrawal (ADR-024).
+  await app.register(safetyRoutes(auth, deps.db));
   return app;
 }
