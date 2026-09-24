@@ -105,3 +105,16 @@ export function lowImpactDefault(facts: ImpactFacts): boolean {
   return impactRank(ceiling) < impactRank(facts.profile.impactCeiling);
 }
 
+
+/**
+ * The SafetyProfile a session's exercise choice uses (M03 "impact levels per
+ * exercise; the default is set from SafetyProfile, bodyweight and joint
+ * flags"): the same profile with its impact ceiling lowered to today's
+ * default (knee/ankle/hip flag or BMI ≥ 35 → low until the user opts up; a red
+ * knee, ankle or hip → low). Strength slots, swaps and pain replacements read
+ * it as well as the cardio block, so no part of a session goes above it.
+ */
+export function sessionSafetyProfile(input: Omit<ImpactFacts, 'profile'> & { readonly safetyProfile: SafetyProfile }): SafetyProfile {
+  const { ceiling } = cardioImpactCeiling({ ...input, profile: input.safetyProfile });
+  return ceiling === input.safetyProfile.impactCeiling ? input.safetyProfile : { ...input.safetyProfile, impactCeiling: ceiling };
+}

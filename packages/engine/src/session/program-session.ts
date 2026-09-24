@@ -42,6 +42,7 @@ import { fitToTime, planSeconds, type WorkExercise } from './timebox.js';
 import { applyTriggeredDeload } from '../recovery/deload.js';
 import { amberHints, buildCoolDown, buildWarmUp, type WarmupContext } from '../recovery/warmup.js';
 import { cardioBlock, programIntervalsGate } from '../cardio/session.js';
+import { sessionSafetyProfile } from '../cardio/gates.js';
 import type { GenerateSessionInput, GenerateSessionResult, SessionSafetyEvent } from './types.js';
 
 /**
@@ -475,7 +476,8 @@ function makeCtx(input: GenerateSessionInput, library: SessionLibrary, nowMs: nu
     loads: input.equipmentLoads ?? null,
     legacyStep: input.loadIncrementKg ?? assessmentValue('defaultLoadIncrementKg'),
     jointFlags: input.jointFlags ?? {},
-    profile: input.safetyProfile,
+    // M03: the impact default (knee/ankle/hip flags, BMI ≥ 35) applies to every exercise of the session.
+    profile: sessionSafetyProfile(input),
     nowMs,
     history: [...(input.history ?? [])].slice(-sessionValue('history.maxSessions')),
     targetRir,
@@ -529,7 +531,7 @@ function intentFromRange(codes: readonly string[]): SlotIntent {
 export function programSession(input: GenerateSessionInput, library: SessionLibrary, ctx: EngineContext): GenerateSessionResult {
   const program = input.programSession!;
   const session = program.session;
-  const profile = input.safetyProfile;
+  const profile = sessionSafetyProfile(input);
   const reduced = input.readiness === 'reduced';
   const rir = sessionRir(profile, session.targetRpe, reduced ? sessionValue('readiness.extraRir') : 0);
   if (rir === null) return { status: 'unavailable', reasonCodes: ['session.unavailable.effort_cap'] };

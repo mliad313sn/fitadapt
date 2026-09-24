@@ -11,7 +11,7 @@ import { planSeconds } from '../session/timebox.js';
 import type { GenerateSessionInput, GenerateSessionResult } from '../session/types.js';
 import { CARDIO_CONFIG } from './config.js';
 import { CARDIO_CUE_KEYS, cueSchedule, segmentAt } from './cues.js';
-import { cardioImpactCeiling, consistentTraining, hiitGate, lowImpactDefault } from './gates.js';
+import { cardioImpactCeiling, consistentTraining, hiitGate, lowImpactDefault, sessionSafetyProfile } from './gates.js';
 import { aerobicMinutesLedger, cardioDone, ledgerEntriesFrom } from './ledger.js';
 import { cardioAlternatives } from './movements.js';
 import { M03_REASON_CODES } from './reason-codes.js';
@@ -468,5 +468,37 @@ describe('readiness (M05) and cardio', () => {
     const { plan, cardio } = run(cardioInput('steady', { readiness: 'reduced' }));
     expect(plan.reasonCodes).toContain('cardio.readiness.reduced');
     expect(cardio.hiit).toBe(false);
+  });
+});
+
+describe('the impact default applies to the whole session, not only its cardio block', () => {
+  it('sessionSafetyProfile lowers the impact ceiling for a knee/ankle/hip flag or BMI ≥ 35 (unless opted up), never raises it, and keeps every other field', () => {
+    const p = cleared();
+    expect(sessionSafetyProfile({ safetyProfile: p })).toBe(p);
+    const heavy = sessionSafetyProfile({ safetyProfile: p, bodyweightKg: 120, heightCm: 178 });
+    expect(heavy).toEqual({ ...p, impactCeiling: 'low' });
+    expect(sessionSafetyProfile({ safetyProfile: p, bodyweightKg: 120, heightCm: 178, impactOptIn: true })).toBe(p);
+    expect(sessionSafetyProfile({ safetyProfile: p, jointFlags: { ankle: 'red' }, impactOptIn: true }).impactCeiling).toBe('low');
+    const none = with_(p, { impactCeiling: 'none' });
+    expect(sessionSafetyProfile({ safetyProfile: none, bodyweightKg: 120, heightCm: 178 }).impactCeiling).toBe('none');
+  });
+
+  it('a program session for a BMI ≥ 35 user uses only low-impact exercises in every slot, and so does its finisher', () => {
+    const input: GenerateSessionInput = {
+      safetyProfile: cleared(),
+      equipment: [],
+      minutesAvailable: 45,
+      bodyweightKg: 120,
+      heightCm: 178,
+      history: trainedHistory(NOW),
+      programSession: programContext({ slots: [{ pattern: 'squat', role: 'primary', intent: 'general', hardSets: 3 }, { pattern: 'locomotion', role: 'secondary', intent: 'general', hardSets: 2 }], conditioning: { kind: 'intervals', placement: 'finisher', minutes: 10 } }),
+      experience: 'intermediate',
+    };
+    const { plan, cardio } = run(input);
+    for (const e of plan.exercises) expect(impactRank(CARDIO_LIBRARY.graph.exercises.get(e.exerciseId)!.impact), e.exerciseId).toBeLessThanOrEqual(impactRank('low'));
+    for (const m of cardio.movements) expect(impactRank(m.impact)).toBeLessThanOrEqual(impactRank('low'));
+    // Without the BMI default, the same day may use high-impact moves (the fictional library has jumps).
+    const free = run({ ...input, bodyweightKg: null, heightCm: null });
+    expect([...free.plan.exercises.map((e) => CARDIO_LIBRARY.graph.exercises.get(e.exerciseId)!.impact), ...free.cardio.movements.map((m) => m.impact)]).toContain('high');
   });
 });

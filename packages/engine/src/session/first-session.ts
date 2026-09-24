@@ -20,6 +20,7 @@ import type { SessionLibrary } from './library.js';
 import { loadReferencesFor } from './program-session.js';
 import type { GenerateSessionInput, GenerateSessionResult, SessionSafetyEvent } from './types.js';
 import { buildWarmUp } from '../recovery/warmup.js';
+import { sessionSafetyProfile } from '../cardio/gates.js';
 
 export type { SessionLibrary } from './library.js';
 export type { GenerateSessionInput, GenerateSessionResult, RecentLoad, SessionSafetyEvent } from './types.js';
@@ -53,7 +54,7 @@ interface Choice {
 function chooseExercise(slot: CapacitySlot, input: GenerateSessionInput, library: SessionLibrary): Choice | null {
   const allowed = (id: string) => {
     const exercise = library.graph.exercises.get(id);
-    return exercise !== undefined && blockingReasons(exercise, input.equipment, input.jointFlags ?? {}, input.safetyProfile).length === 0;
+    return exercise !== undefined && blockingReasons(exercise, input.equipment, input.jointFlags ?? {}, sessionSafetyProfile(input)).length === 0;
   };
   if (allowed(slot.exerciseId)) return { exerciseId: slot.exerciseId, reasonCode: 'session.exercise.from_assessment', fromCapacity: true, event: null };
   const ladder = library.ladders.find((l) => l.id === slot.ladderId);
@@ -62,7 +63,7 @@ function chooseExercise(slot: CapacitySlot, input: GenerateSessionInput, library
     if (found) return { exerciseId: found, reasonCode: 'session.exercise.stepped_down', fromCapacity: false, event: null };
   }
   if (!library.graph.exercises.has(slot.exerciseId)) return null;
-  const sub = substitute(library.graph, slot.exerciseId, input.equipment, input.jointFlags ?? {}, input.safetyProfile);
+  const sub = substitute(library.graph, slot.exerciseId, input.equipment, input.jointFlags ?? {}, sessionSafetyProfile(input));
   if (!sub) return null;
   const s2 = substitutionSafetyEvent(sub);
   return { exerciseId: sub.exerciseId, reasonCode: 'session.exercise.substituted', fromCapacity: false, event: s2 ? { ...s2, engineVersion: ENGINE_VERSION } : null };
@@ -199,7 +200,7 @@ export function firstSession(input: GenerateSessionInput, library: SessionLibrar
       minimumMinutes: firstSessionValue('warmUpMinutes'),
       // M05: what the warm-up is (general, ramp-up before the first loaded exercise, mobility for today's patterns).
       content: buildWarmUp(
-        { library, equipment: new Set(input.equipment), loads: input.equipmentLoads ?? null, legacyStep: input.loadIncrementKg ?? assessmentValue('defaultLoadIncrementKg'), jointFlags: input.jointFlags ?? {}, profile: input.safetyProfile },
+        { library, equipment: new Set(input.equipment), loads: input.equipmentLoads ?? null, legacyStep: input.loadIncrementKg ?? assessmentValue('defaultLoadIncrementKg'), jointFlags: input.jointFlags ?? {}, profile: sessionSafetyProfile(input) },
         exercises,
         firstSessionValue('warmUpMinutes'),
       ),
