@@ -4,7 +4,7 @@
 - Branch: worktree of `claude/vigilant-franklin-76iok4` at `0315a69` (signed commits, not pushed, not merged)
 - Scope: `packages/engine`, engine configs, the session/nutrition input schemas in `packages/shared`, the S5/S4 primitives in `packages/safety`, and the mobile/API callers only where a finding required it.
 - Inputs: `review/safety-engine.md` (SAF-1 … SAF-12), `fix-queue.md` (AI pre-review corrections), `docs/governance/ai-reviews/*.md`.
-- ADR: [ADR-024](../adr/ADR-024-fail-closed-engine-inputs.md) (required safety facts, stored vs engine input schema, bounded history, golden digests).
+- ADR: [ADR-029](../adr/ADR-029-fail-closed-engine-inputs.md) (required safety facts, stored vs engine input schema, bounded history, golden digests).
 - Engine version: **0.5.0** (was 0.4.0). Session rules 0.4.0, cardio 0.2.0, recovery 0.2.0, nutrition 0.2.0, analytics 0.2.0.
 - Nothing was set `validated: true`; no `validatedBy` / `signOff` was added; nothing is marked counsel-approved. Every pre-review correction applied is **stricter** (safer, or narrower in claims) and cites its pre-review file in `source`.
 

@@ -1,4 +1,4 @@
-# ADR-024: Engine inputs fail closed — required safety facts, bounded history, versioned goldens
+# ADR-029: Engine inputs fail closed — required safety facts, bounded history, versioned goldens
 
 - Status: Accepted (FIX-A, fix wave after the deep review)
 - Date: 2026-09-24
