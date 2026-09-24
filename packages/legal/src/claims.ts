@@ -34,6 +34,14 @@ export const CLAIM_DENYLIST: readonly DenyRule[] = Object.freeze([
     description: 'prevent + disease, illness, injury or condition',
     pattern: /(?<!\p{L})prevent(?:s|ed|ing|ion|ive)?(?!\p{L})[^.!?\n]{0,40}(?<!\p{L})(?:diseases?|illness(?:es)?|injur(?:y|ies)|conditions?|diabetes|cancer|heart attacks?)(?!\p{L})/giu,
   },
+  // PKG-05: the noun first ("injury-prevention program", "disease prevention").
+  {
+    id: 'en.disease_prevention',
+    locale: 'en',
+    category: 'medical',
+    description: 'disease, illness or injury + prevention',
+    pattern: /(?<!\p{L})(?:diseases?|illness(?:es)?|injur(?:y|ies)|diabetes|cancer)[\s-]{1,3}prevent(?:ion|ive|ing)?(?!\p{L})/giu,
+  },
   { id: 'en.clinically_proven', locale: 'en', category: 'medical', description: 'clinically / medically proven', pattern: /(?<!\p{L})(?:clinically|medically|scientifically) proven(?!\p{L})/giu },
   { id: 'en.guarantee', locale: 'en', category: 'results', description: 'guarantee(d) results', pattern: /(?<!\p{L})guarantee(?:s|d)?(?!\p{L})/giu },
   {
@@ -41,9 +49,11 @@ export const CLAIM_DENYLIST: readonly DenyRule[] = Object.freeze([
     locale: 'en',
     category: 'results',
     description: 'lose N kg/lb in N days/weeks',
-    pattern: /(?<!\p{L})lose\s{1,3}\d{1,3}\s{0,2}(?:kg|kilos?|lbs?|pounds)(?!\p{L})[^.!?\n]{0,20}(?<!\p{L})(?:in|within)\s{1,3}\d{1,3}\s{0,2}(?:days?|weeks?)(?!\p{L})/giu,
+    // PKG-05: "up to" / "as much as" before the number, number words, losing / shed.
+    pattern:
+      /(?<!\p{L})(?:lose|losing|shed|shedding)\s{1,3}(?:up\sto\s{1,3}|as\smuch\sas\s{1,3}|over\s{1,3})?(?:\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|twenty)\s{0,2}(?:kg|kilos?|lbs?|pounds)(?!\p{L})[^.!?\n]{0,20}(?<!\p{L})(?:in|within)\s{1,3}(?:\d{1,3}|one|two|three|four|five|six|seven|eight|nine|ten|a)\s{0,2}(?:days?|weeks?|months?)(?!\p{L})/giu,
   },
-  { id: 'en.burn_fat', locale: 'en', category: 'fat_loss', description: 'burn fat (fast) / fat-burning', pattern: /(?<!\p{L})(?:burn(?:s|ing)?\s{1,3}fat|burn(?:s|ing)?\s{1,3}belly\sfat|fat[\s-]burn(?:ing|er|ers)?)(?!\p{L})/giu },
+  { id: 'en.burn_fat', locale: 'en', category: 'fat_loss', description: 'burn fat (fast) / fat-burning', pattern: /(?<!\p{L})(?:burn(?:s|ing|ed|t)?\s{1,3}(?:more\s|extra\s|off\s|away\s|the\s|your\s|stubborn\s){0,2}(?:belly\s|body\s)?fat|fat[\s-]{1,3}burn(?:ing|er|ers)?)(?!\p{L})/giu },
   { id: 'en.melt_fat', locale: 'en', category: 'fat_loss', description: 'melt (away) fat', pattern: /(?<!\p{L})melt(?:s|ing)?\s{1,3}(?:away\sthe\s|away\s|the\s)?(?:fat|pounds|kilos)(?!\p{L})/giu },
   // M03 (C9): no lipolysis claim and no "fat-loss zone" — fat loss depends on energy balance, not on a heart-rate zone.
   { id: 'en.lipolysis', locale: 'en', category: 'fat_loss', description: 'lipolysis / lipolytic (e.g. "maximum lipolysis")', pattern: /(?<!\p{L})lipoly(?:sis|ses|tic)(?!\p{L})/giu },
@@ -57,8 +67,9 @@ export const CLAIM_DENYLIST: readonly DenyRule[] = Object.freeze([
     description: 'traiter / traitement + douleur, maladie, blessure…',
     pattern: /(?<!\p{L})trait(?:e|es|er|ez|ons|ent|ement|ements)(?!\p{L})[^.!?\n]{0,40}(?<!\p{L})(?:douleurs?|maladies?|blessures?|symptômes?|pathologies?|mal de dos|tendinites?|arthrose|diabète|obésité|hypertension)(?!\p{L})/giu,
   },
-  { id: 'fr.guerir', locale: 'fr', category: 'medical', description: 'guérir / guérison', pattern: /(?<!\p{L})guéri(?:r|t|s|ssez|ssent|son|sons)?(?!\p{L})/giu },
-  { id: 'fr.soigner', locale: 'fr', category: 'medical', description: 'soigner', pattern: /(?<!\p{L})soign(?:e|es|er|ez|ons|ent)(?!\p{L})/giu },
+  // PKG-05: every inflection (guérie, guérira, guérissent… soignera, soignait…).
+  { id: 'fr.guerir', locale: 'fr', category: 'medical', description: 'guérir / guérison', pattern: /(?<!\p{L})guéri\p{L}{0,6}(?!\p{L})/giu },
+  { id: 'fr.soigner', locale: 'fr', category: 'medical', description: 'soigner', pattern: /(?<!\p{L})soign(?:e|é|ée|és|ées|es|er|ez|ons|ent|era|eras|erai|erez|erons|eront|erait|eraient|ait|aient|ant)(?!\p{L})/giu },
   {
     id: 'fr.prevenir_maladie',
     locale: 'fr',
@@ -73,14 +84,16 @@ export const CLAIM_DENYLIST: readonly DenyRule[] = Object.freeze([
     locale: 'fr',
     category: 'results',
     description: 'perdre N kg en N jours/semaines',
-    pattern: /(?<!\p{L})perd(?:re|ez|ez)?\s{1,3}\d{1,3}\s{0,2}(?:kg|kilos?)(?!\p{L})[^.!?\n]{0,20}(?<!\p{L})en\s{1,3}\d{1,3}\s{0,2}(?:jours?|semaines?)(?!\p{L})/giu,
+    // PKG-05: « jusqu'à » / « plus de » avant le nombre, nombres en lettres.
+    pattern:
+      /(?<!\p{L})perd(?:re|ez|s|ons|rez|ra)?\s{1,3}(?:jusqu'à\s{0,3}|jusqu'a\s{0,3}|plus\sde\s{1,3})?(?:\d{1,3}|un|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|vingt)\s{0,2}(?:kg|kilos?)(?!\p{L})[^.!?\n]{0,20}(?<!\p{L})en\s{1,3}(?:\d{1,3}|un|une|deux|trois|quatre|cinq|six|sept|huit|neuf|dix)\s{0,2}(?:jours?|semaines?|mois)(?!\p{L})/giu,
   },
   {
     id: 'fr.bruler_graisses',
     locale: 'fr',
     category: 'fat_loss',
     description: 'brûler les graisses (vite) / brûle-graisse / zone de combustion des graisses',
-    pattern: /(?<!\p{L})(?:brûl(?:e|er|ez|ent)\s{1,3}(?:les\s|la\s|vos\s|du\s)?(?:graisses?|gras)|brûle-graisses?|zone\s{1,3}de\s{1,3}(?:combustion|brûlage)\s{1,3}des\s{1,3}graisses)(?!\p{L})/giu,
+    pattern: /(?<!\p{L})(?:brûl(?:e|er|ez|ent|ons|era|erez)\s{1,3}(?:plus\sde\s|davantage\sde\s|encore\splus\sde\s|les\s|la\s|vos\s|du\s|des\s|de\s)?(?:graisses?|gras)|brûle-graisses?|zone\s{1,3}de\s{1,3}(?:combustion|brûlage)\s{1,3}des\s{1,3}graisses)(?!\p{L})/giu,
   },
   // M03 (C9): pas d'allégation de lipolyse ni de « zone de perte de graisse ».
   { id: 'fr.lipolyse', locale: 'fr', category: 'fat_loss', description: 'lipolyse / lipolytique (ex. « lipolyse maximale »)', pattern: /(?<!\p{L})lipoly(?:se|ses|tique|tiques)(?!\p{L})/giu },
@@ -117,7 +130,28 @@ export interface ClaimFinding {
   readonly match: string;
 }
 
-const normalise = (text: string) => text.replace(/[\u2018\u2019]/g, "'").replace(/[\u00a0\u202f]/g, ' ').toLowerCase();
+/**
+ * Canonical form before matching (PKG-05), so typography cannot hide a claim:
+ * NFKC (composes NFD accents, folds compatibility forms), invisible
+ * characters removed (soft hyphen, zero-width space/joiners, word joiner,
+ * BOM), every dash variant to '-', curly apostrophes to "'", whitespace runs
+ * (double spaces, hard-wrapped lines) collapsed to one space. A blank line
+ * stays a sentence break.
+ */
+export function normaliseClaimText(text: string): string {
+  return text
+    .normalize('NFKC')
+    .replace(/[\u00ad\u034f\u061c\u115f\u1160\u17b4\u17b5\u180e\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u206f\ufeff]/gu, '')
+    .replace(/[\u2010-\u2015\u2212\ufe58\ufe63\uff0d]/gu, '-')
+    .replace(/[\u2018\u2019\u201b\u2032\u02bc]/gu, "'")
+    .replace(/\r\n?/gu, '\n')
+    .split(/\n[^\S\n]*\n/u)
+    .map((paragraph) => paragraph.replace(/\s+/gu, ' ').trim())
+    .filter((paragraph) => paragraph !== '')
+    .join('\n')
+    .toLowerCase();
+}
+const normalise = normaliseClaimText;
 
 /** Replaces substantiated phrases by spaces so deny rules cannot match inside them. */
 function mask(text: string, entries: readonly SubstantiationEntry[], locale: ClaimLocale | 'any'): string {
