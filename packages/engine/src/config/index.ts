@@ -6,6 +6,7 @@ import { INCREMENT_CONFIG, SESSION_CONFIG } from './session.js';
 import { RECOVERY_CONFIG } from '../recovery/config.js';
 import { CARDIO_CONFIG } from '../cardio/config.js';
 import { ANALYTICS_CONFIG } from '../analytics/config.js';
+import { PAIR_CONFIG } from '../pair/config.js';
 
 export * from './session.js';
 
@@ -27,4 +28,6 @@ export const ENGINE_CONFIGS: Readonly<Record<string, Readonly<Record<string, Con
   cardio: CARDIO_CONFIG,
   // M04: read-only analytics (trend, rate, guardrail, hard sets, forecasts); no prescription reads them.
   analytics: ANALYTICS_CONFIG,
+  // M09: the pair planner's turn time model and the Fair Challenge Score (no prescription changes).
+  pair: PAIR_CONFIG,
 });
