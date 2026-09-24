@@ -236,6 +236,48 @@ describe('consent (goal condition 7): each person’s own L2 documents and shari
   });
 });
 
+describe('the S7 / M17 age gate applies to the partner too', () => {
+  it.each([
+    ['2011', true], // 15 on Monday 28 September 2026: blocked, nothing kept
+    ['2010', false], // 16: allowed
+  ])('a partner born in 1 June %s → blocked: %s', (year, blocked) => {
+    const d = device();
+    renderWith(d, <PairScreen onExit={() => undefined} />);
+    press('pair-add-partner');
+    fireEvent.changeText(screen.getByTestId('pair-guest-name'), 'Nour');
+    fireEvent.changeText(screen.getByTestId('pair-guest-birth-day'), '1');
+    fireEvent.changeText(screen.getByTestId('pair-guest-birth-month'), '6');
+    fireEvent.changeText(screen.getByTestId('pair-guest-birth-year'), year);
+    press('pair-guest-next');
+    if (blocked) {
+      expect(screen.getByTestId('pair-guest-error').props.children).toBe(tr('en').t('pair.guest.notAvailable'));
+      expect(screen.queryByTestId('pair-guest-legal')).toBeNull();
+      // Nothing about the minor is kept: no guest record, no ledger.
+      expect(d.pair.getState().guests.map((g) => g.displayName)).toEqual(['Awa']);
+      expect(text()).not.toMatch(/\b(15|16) years?\b/i);
+    } else {
+      expect(screen.getByTestId('pair-guest-legal')).toBeTruthy();
+      expect(d.pair.getState().guests.map((g) => g.displayName)).toEqual(['Awa', 'Nour']);
+    }
+  });
+
+  it('an invalid or future date is refused', () => {
+    const d = device();
+    renderWith(d, <PairScreen onExit={() => undefined} />);
+    press('pair-add-partner');
+    fireEvent.changeText(screen.getByTestId('pair-guest-name'), 'Nour');
+    fireEvent.changeText(screen.getByTestId('pair-guest-birth-day'), '31');
+    fireEvent.changeText(screen.getByTestId('pair-guest-birth-month'), '2');
+    fireEvent.changeText(screen.getByTestId('pair-guest-birth-year'), '1990');
+    press('pair-guest-next');
+    expect(screen.getByTestId('pair-guest-error').props.children).toBe(tr('en').t('pair.guest.birthInvalid'));
+    fireEvent.changeText(screen.getByTestId('pair-guest-birth-day'), '1');
+    fireEvent.changeText(screen.getByTestId('pair-guest-birth-year'), '2030');
+    press('pair-guest-next');
+    expect(screen.getByTestId('pair-guest-error').props.children).toBe(tr('en').t('pair.guest.birthInvalid'));
+  });
+});
+
 describe('each person’s safety applies on its own (S2, S3) and logs stay per person', () => {
   it('S3: Awa reports chest pain — her session ends, she sees seek-care, her intensity locks; Ibrahima goes on alone and is not told why', () => {
     const d = device({ ownerScopes: ['challenge'], guestScopes: ['challenge'] });

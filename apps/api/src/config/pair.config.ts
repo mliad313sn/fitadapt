@@ -7,7 +7,7 @@ import { defineConfig } from '@fitadapt/shared';
  * (PE-11 with seat B1). No timer lives here: rests and turns are timed on the
  * devices (ADR-001: Redis and the server never hold timer state).
  */
-const SOURCE = 'docs/adr/ADR-021-fair-pair.md (engineering default, no external source)';
+const SOURCE = 'docs/adr/ADR-021-fair-pair-partner-training.md (engineering default, no external source)';
 
 export const pairConfig = defineConfig({
   /** How long a join code stays valid after the host creates the pair session. */
