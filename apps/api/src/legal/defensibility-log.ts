@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   GLOBAL_CHAIN,
+  automaticLegalHold,
   chainEvent,
   legalValue,
   sha256Hex,
@@ -45,6 +46,11 @@ export class DefensibilityLog {
     const [head] = await tx.select().from(defensibilityEvents).where(eq(defensibilityEvents.chain, input.chain)).orderBy(desc(defensibilityEvents.chainSeq)).limit(1);
     const event = chainEvent(head ? toEvent(head) : undefined, input, randomUUID());
     await tx.insert(defensibilityEvents).values({ ...event, payload: event.payload });
+    // FIX-B (B pre-review): an incident report places a legal hold on its chain in the same transaction.
+    if (event.type === 'incident.recorded') {
+      const hold = automaticLegalHold(await this.chain(input.chain, tx).then((c) => c.filter((e) => e.id !== event.id)), event, randomUUID());
+      if (hold) await this.append(tx, hold);
+    }
     return event;
   }
 

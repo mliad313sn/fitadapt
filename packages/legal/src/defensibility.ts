@@ -168,15 +168,45 @@ export function verifyChain(events: readonly DefensibilityEvent[]): ChainVerific
   return { ok: true, length: events.length, head: prev };
 }
 
+/** Reason code of a legal hold placed automatically by an incident report (FIX-B). */
+export const AUTO_LEGAL_HOLD_REASON = 'legal_hold.auto.incident_reported' as const;
+
+/** The holds placed and not released in a chain (by hold id). */
+export function openLegalHolds(chain: readonly DefensibilityEvent[]): Set<string> {
+  const open = new Set<string>();
+  for (const e of chain) {
+    if (e.type === 'legal_hold.placed') open.add((e.payload as { holdId: string }).holdId);
+    else if (e.type === 'legal_hold.released') open.delete((e.payload as { holdId: string }).holdId);
+  }
+  return open;
+}
+
+/**
+ * FIX-B (B pre-review §2 item 3, §3.2): any incident report puts the subject's chain under legal hold
+ * AUTOMATICALLY, so the retention purge can never remove evidence a claim may need. Called after an event is
+ * appended, with the chain as it was before it: returns the `legal_hold.placed` to append next, or null (not an
+ * incident, the incident is closed, or a hold is already open). Releasing a hold stays a human decision (counsel).
+ */
+export function automaticLegalHold(chainBefore: readonly DefensibilityEvent[], appended: Pick<DefensibilityEventInput, 'type' | 'chain' | 'occurredAt' | 'payload'>, holdId: string): DefensibilityEventInput<'legal_hold.placed'> | null {
+  if (appended.type !== 'incident.recorded') return null;
+  if ((appended.payload as DefensibilityPayload<'incident.recorded'>).step === 'closed') return null;
+  if (openLegalHolds(chainBefore).size > 0) return null;
+  return { type: 'legal_hold.placed', chain: appended.chain, occurredAt: appended.occurredAt, payload: { holdId, reasonCode: AUTO_LEGAL_HOLD_REASON } };
+}
+
 /** In-memory log (device-side buffer and tests). The API keeps the durable log in PostgreSQL. */
 export class MemoryDefensibilityLog {
   private readonly chains = new Map<string, DefensibilityEvent[]>();
   constructor(private readonly newId: () => string) {}
   append(input: DefensibilityEventInput): DefensibilityEvent {
     const chain = this.chains.get(input.chain) ?? [];
+    const before = [...chain];
     const event = chainEvent(chain[chain.length - 1], input, this.newId());
     chain.push(event);
     this.chains.set(input.chain, chain);
+    // FIX-B: an incident report places a legal hold on its chain at once.
+    const hold = automaticLegalHold(before, event, this.newId());
+    if (hold) chain.push(chainEvent(event, hold, this.newId()));
     return event;
   }
   events(chain: string): readonly DefensibilityEvent[] {

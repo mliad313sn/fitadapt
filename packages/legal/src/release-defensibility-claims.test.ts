@@ -7,7 +7,10 @@ import {
   GLOBAL_CHAIN,
   LegalRegistry,
   LegalReleaseError,
+  AUTO_LEGAL_HOLD_REASON,
   MemoryDefensibilityLog,
+  automaticLegalHold,
+  openLegalHolds,
   NOTICES,
   NOTICES_BLOCKED_UNTIL_BUILT,
   assertLegalReleaseReady,
@@ -283,5 +286,42 @@ describe('claims linter (L1)', () => {
   it('finds the codename in any spelling', () => {
     expect(findCodename('Welcome to FitAdapt, fit-adapt and Fit Adapt')).toEqual(['FitAdapt', 'fit-adapt', 'Fit Adapt']);
     expect(findCodename('Companion (working title)')).toEqual([]);
+  });
+});
+
+describe('FIX-B (B pre-review §2 item 3): an incident report places a legal hold automatically', () => {
+  const ids = () => {
+    let n = 0;
+    return () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`;
+  };
+  const SUBJ = 'subject-with-incident';
+  const incident = (step: 'received' | 'triaged' | 'closed', incidentId = '00000000-0000-4000-8000-0000000000aa') =>
+    ({ type: 'incident.recorded', chain: SUBJ, occurredAt: '2026-10-01T08:00:00.000Z', payload: { incidentId, category: 'injury_report', step } }) as const;
+
+  it('the first report of an incident places one hold; later steps, a closed step or another open hold add none; the chain verifies', () => {
+    const log = new MemoryDefensibilityLog(ids());
+    log.append({ type: 'notice.shown', chain: SUBJ, occurredAt: '2026-09-30T08:00:00.000Z', payload: { noticeId: 'seek_care', version: 1, locale: 'en', jurisdiction: 'GB', contentHash: 'a'.repeat(64) } });
+    log.append(incident('received'));
+    log.append(incident('triaged'));
+    log.append(incident('closed'));
+    const chain = log.events(SUBJ);
+    expect(chain.map((e) => e.type)).toEqual(['notice.shown', 'incident.recorded', 'legal_hold.placed', 'incident.recorded', 'incident.recorded']);
+    expect(chain[2]!.payload).toMatchObject({ reasonCode: AUTO_LEGAL_HOLD_REASON });
+    expect(openLegalHolds(chain).size).toBe(1);
+    expect(log.verify(SUBJ)).toMatchObject({ ok: true });
+    expect(buildLegalHoldExport(SUBJ, chain, '2026-10-02T00:00:00.000Z').legalHolds).toHaveLength(1);
+  });
+
+  it('after counsel released the hold, a new report holds the chain again; a closed step alone never does', () => {
+    const log = new MemoryDefensibilityLog(ids());
+    log.append(incident('received'));
+    const holdId = (log.events(SUBJ)[1]!.payload as { holdId: string }).holdId;
+    log.append({ type: 'legal_hold.released', chain: SUBJ, occurredAt: '2026-10-05T08:00:00.000Z', payload: { holdId, reasonCode: 'legal_hold.released.counsel' } });
+    expect(openLegalHolds(log.events(SUBJ)).size).toBe(0);
+    log.append(incident('closed'));
+    expect(openLegalHolds(log.events(SUBJ)).size).toBe(0);
+    log.append(incident('received', '00000000-0000-4000-8000-0000000000bb'));
+    expect(openLegalHolds(log.events(SUBJ)).size).toBe(1);
+    expect(automaticLegalHold([], { type: 'notice.shown', chain: SUBJ, occurredAt: '2026-10-01T08:00:00.000Z', payload: {} as never }, 'x')).toBeNull();
   });
 });
