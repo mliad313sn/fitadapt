@@ -9,6 +9,7 @@ import {
   ledgerEntriesFrom,
   measurementSeries,
   mondayOf,
+  safetyProtectedDays,
   sessionWasTrained,
   sustainedLossEvent,
   trainedExercises,
@@ -29,6 +30,7 @@ import {
   type IsoDate,
   type MeasurementSite,
   type ProgramRecord,
+  type ReadinessCheck,
   type ReflowRecord,
   type SessionHistoryEntry,
   type TrendPoint,
@@ -59,6 +61,8 @@ export interface DashboardInput {
   readonly program: ProgramRecord | null;
   readonly reflows: readonly ReflowRecord[];
   readonly executionLogs: readonly ExecutionLog[];
+  /** L4: low readiness days protect the streak (with pain, red-flag stops and the S3 lock from the execution logs). */
+  readonly readinessChecks: readonly ReadinessCheck[];
   readonly experience: ExperienceLevel;
   readonly today: IsoDate;
   readonly dateOf: DateOf;
@@ -109,7 +113,9 @@ export function buildDashboard(input: DashboardInput): DashboardModel {
   if (input.program) {
     const start = input.program.program.startDate;
     const from = [start, addDays(today, -(DASHBOARD_LIMITS.adherenceDays - 1))].sort().at(-1)!;
-    if (from <= today) stat = adherence({ planned: plannedDates(input.program, input.reflows), trained: trained.map((h) => dateOf(h.startedAt)), from, to: today });
+    // L4: safety pauses never end the streak, and training through one earns nothing.
+    const protectedDays = safetyProtectedDays({ executionLogs: input.executionLogs, readinessChecks: input.readinessChecks, dateOf, to: today });
+    if (from <= today) stat = adherence({ planned: plannedDates(input.program, input.reflows), trained: trained.map((h) => dateOf(h.startedAt)), from, to: today, protectedDays });
   }
 
   const strength: StrengthRow[] = trainedExercises(history, dateOf)

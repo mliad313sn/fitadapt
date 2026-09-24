@@ -14,7 +14,7 @@ import { createTranslator, en, fr } from '@fitadapt/i18n';
 import { JOINTS, type SessionPlan } from '@fitadapt/shared';
 import { describe, expect, it } from 'vitest';
 import { PERSONA_INPUTS } from './__fixtures__/personas.js';
-import { PERSONA_SESSIONS } from './__fixtures__/session-personas.js';
+import { SAFE_FACTS, PERSONA_SESSIONS } from './__fixtures__/session-personas.js';
 import { buildCapacityModel, generateProgram, generateSession, seedLibrary, WARM_UP_DRILLS } from './index.js';
 
 /**
@@ -39,7 +39,7 @@ function firstWeeks(persona: (typeof personas)[number], weeks = 2): { input: Gen
     const day = programDay(r.program, [], date);
     for (const session of day?.sessions ?? []) {
       const place = input.locations.find((l) => l.equipmentProfileId === session.equipmentProfileId)!;
-      const gen: GenerateSessionInput = { safetyProfile: input.safetyProfile, equipment: place.equipment, equipmentLoads: p.loads[place.equipmentProfileId]!, equipmentProfileId: place.equipmentProfileId, minutesAvailable: input.minutesPerSession, jointFlags: p.jointFlags, capacity: buildCapacityModel(p.assessment), programSession: programSessionContext(day!, session), bodyweightKg: p.bodyweightKg, birthDate: p.birthDate, experience: p.experience };
+      const gen: GenerateSessionInput = { ...SAFE_FACTS, safetyProfile: input.safetyProfile, equipment: place.equipment, equipmentLoads: p.loads[place.equipmentProfileId]!, equipmentProfileId: place.equipmentProfileId, minutesAvailable: input.minutesPerSession, jointFlags: p.jointFlags, capacity: buildCapacityModel(p.assessment), programSession: programSessionContext(day!, session), bodyweightKg: p.bodyweightKg, birthDate: p.birthDate, experience: p.experience };
       const res = generateSession(gen, createEngineContext({ clock: fixedClock(Date.parse(`${date}T07:00:00.000Z`)), seed: d }));
       if (res.status === 'ok') out.push({ input: gen, plan: res.plan });
     }
@@ -122,7 +122,7 @@ describe('M05 mobility and balance session for P4 on the seed', () => {
     const input = PERSONA_INPUTS.P4;
     const place = input.locations[0]!;
     for (const minutes of [15, 20, 30]) {
-      const r = generateSession({ safetyProfile: input.safetyProfile, equipment: place.equipment, equipmentProfileId: place.equipmentProfileId, minutesAvailable: minutes, mode: 'mobility_balance', experience: 'returning', birthDate: PERSONA_SESSIONS.P4.birthDate }, createEngineContext({ clock: fixedClock(PROGRAM_NOW), seed: 4 }));
+      const r = generateSession({ ...SAFE_FACTS, safetyProfile: input.safetyProfile, equipment: place.equipment, equipmentProfileId: place.equipmentProfileId, minutesAvailable: minutes, mode: 'mobility_balance', experience: 'returning', birthDate: PERSONA_SESSIONS.P4.birthDate }, createEngineContext({ clock: fixedClock(PROGRAM_NOW), seed: 4 }));
       if (r.status !== 'ok') throw new Error(r.reasonCodes.join());
       expect(r.plan.kind).toBe('mobility_session');
       expect(planSeconds(r.plan)).toBeLessThanOrEqual(minutes * 60);

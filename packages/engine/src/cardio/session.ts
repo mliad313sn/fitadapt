@@ -8,7 +8,7 @@ import type { SessionLibrary } from '../session/library.js';
 import type { GenerateSessionInput, GenerateSessionResult, SessionSafetyEvent } from '../session/types.js';
 import { ENGINE_VERSION } from '../version.js';
 import { cardioValue } from './config.js';
-import { cardioImpactCeiling, consistentTraining, hiitGate } from './gates.js';
+import { cardioImpactCeiling, consistentTraining, hiitFirstExposure, hiitGate } from './gates.js';
 import type { MovementContext } from './movements.js';
 import { buildCardio, isHiitRequest, type CardioBuildContext } from './plan.js';
 import { zoneOf, zonesFor } from './zones.js';
@@ -39,7 +39,7 @@ export function movementContext(input: GenerateSessionInput, library: SessionLib
 
 function buildContext(input: GenerateSessionInput, library: SessionLibrary, nowMs: number): CardioBuildContext {
   const m = movementContext(input, library);
-  return { ...m, zones: zonesFor({ profile: input.safetyProfile, birthDate: input.birthDate, heartRate: input.heartRate, nowMs }) };
+  return { ...m, zones: zonesFor({ profile: input.safetyProfile, birthDate: input.birthDate, localDate: input.localDate, heartRate: input.heartRate, nowMs }) };
 }
 
 /** The HIIT gate for M08 interval blocks: null when intervals may stay, else the reason they become steady. */
@@ -60,7 +60,7 @@ export function cardioBlock(
   warmUpMinutes: number,
 ): { plan: CardioPlan; conditioning: Conditioning; fellBack: boolean; events: SessionSafetyEvent[] } | null {
   const ctx = buildContext(input, library, nowMs);
-  const block = (protocol: 'hiit' | 'steady') => buildCardio({ protocol, placement: conditioning.placement, minutes: conditioning.minutes, warmUpSeconds: warmUpMinutes * 60 }, ctx);
+  const block = (protocol: 'hiit' | 'steady') => buildCardio({ protocol, placement: conditioning.placement, minutes: conditioning.minutes, warmUpSeconds: warmUpMinutes * 60, firstExposure: hiitFirstExposure(input.history) }, ctx);
   const events = (redBlocked: boolean): SessionSafetyEvent[] => (redBlocked ? [{ invariant: 'S2', reasonCode: 'substitution.joint_red', action: 'blocked', engineVersion: ENGINE_VERSION }] : []);
   const first = block(conditioning.kind === 'intervals' ? 'hiit' : 'steady');
   if (first) return { plan: first.plan, conditioning, fellBack: false, events: events(first.redBlocked) };
@@ -90,7 +90,7 @@ export function cardioSession(input: GenerateSessionInput, library: SessionLibra
   const warmUpMinutes = sessionValue('warmUp.minimumMinutes');
   const minutes = Math.min(180, Math.floor(input.minutesAvailable - warmUpMinutes));
   if (minutes * 60 - cardioValue('coolDown.sessionSeconds') < cardioValue('session.minMainSeconds')) return unavailable('cardio.session.standalone', 'session.unavailable.no_time');
-  const built = buildCardio({ protocol: request.protocol, placement: 'session', minutes, warmUpSeconds: warmUpMinutes * 60, custom: request.custom, preferred: request.exerciseId ?? null }, bctx);
+  const built = buildCardio({ protocol: request.protocol, placement: 'session', minutes, warmUpSeconds: warmUpMinutes * 60, custom: request.custom, preferred: request.exerciseId ?? null, firstExposure: hiitFirstExposure(input.history) }, bctx);
   if (!built) return unavailable('cardio.session.standalone', 'cardio.unavailable.no_movement');
 
   const warm: WarmupContext = { library, equipment: bctx.equipment, loads: input.equipmentLoads ?? null, legacyStep: input.loadIncrementKg ?? 2.5, jointFlags: bctx.jointFlags, profile };

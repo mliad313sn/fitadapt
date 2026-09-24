@@ -132,6 +132,10 @@ function sessionInput(r: Ready, over: Partial<GenerateSessionInput> = {}, date =
     capacity: r.capacity,
     programSession: programSessionContext(day, day.sessions[0]!),
     history: [],
+    // SAF-3/SAF-12: every safety fact is explicit.
+    jointFlags: {},
+    recentLoads: [],
+    localDate: null,
     birthDate: BIRTH,
     experience: 'intermediate',
     intensityLock: { locked: false, since: null },

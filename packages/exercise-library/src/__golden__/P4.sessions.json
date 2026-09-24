@@ -1,4 +1,6 @@
 {
+  "engineVersion": "0.5.0",
+  "rulesVersion": "0.4.0",
   "reflows": [],
   "sessions": [
     {
@@ -364,7 +366,7 @@
             "A harder version: you are ready for the next step.",
             "You reached 6 reps on every set in your last 2 sessions.",
             "Your body weight is the load; the version sets the difficulty.",
-            "In this version you move about 41 % of your body weight.",
+            "In this version you move about 48 % of your body weight.",
             "4–6 reps, the range you are building on.",
             "Stop each set with about 3 reps to spare."
           ]
@@ -585,7 +587,7 @@
           "why": [
             "The same exercise as last time, so your progress carries on.",
             "Your body weight is the load; the version sets the difficulty.",
-            "In this version you move about 41 % of your body weight.",
+            "In this version you move about 48 % of your body weight.",
             "Same version: add reps until every set reaches 6.",
             "4–6 reps, the range you are building on.",
             "Stop each set with about 3 reps to spare."

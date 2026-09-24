@@ -1,6 +1,6 @@
 import { SafetyProfileSchema, SessionPlanSchema, type SessionPlan } from '@fitadapt/shared';
 import { describe, expect, it } from 'vitest';
-import { FULL_GYM, P1_HOME, profileFrom } from '../__fixtures__/library.js';
+import { SAFE_FACTS, FULL_GYM, P1_HOME, profileFrom } from '../__fixtures__/library.js';
 import { GYM_ID, GYM_LOADS, HOME_ID, HOME_LOADS, SESSION_LIBRARY, programContext, slot } from '../__fixtures__/session.js';
 import { Diary, atTop, belowRange } from '../__fixtures__/simulate.js';
 import { trainedHistory } from '../__fixtures__/cardio.js';
@@ -17,7 +17,7 @@ const MON = Date.parse('2026-09-28T08:00:00.000Z');
 const DAY = 86_400_000;
 const GYM = [...FULL_GYM, 'cable_station'] as const;
 const ctxAt = (ms: number, seed = 5) => createEngineContext({ clock: fixedClock(ms), seed });
-const gymInput = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({
+const gymInput = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({ ...SAFE_FACTS,
   safetyProfile: profileFrom(),
   equipment: GYM,
   equipmentLoads: GYM_LOADS,
@@ -103,7 +103,9 @@ describe('program session from the M08 session of the day (ADR-015 API)', () => 
 
   it('S7 and S3 gates: under 16 on the engine clock, or intensity locked after a red flag → no session; no program and no assessment → none either', () => {
     expect(generateSession(gymInput({ birthDate: { year: 2011, month: 1, day: 1 } }), SESSION_LIBRARY, ctxAt(MON))).toEqual({ status: 'unavailable', reasonCodes: ['session.unavailable.s7_age'] });
-    expect(generateSession(gymInput({ birthDate: { year: 2010, month: 9, day: 28 } }), SESSION_LIBRARY, ctxAt(MON)).status).toBe('ok');
+    // SAF-12: exactly 16 on the user's local date → ok; with no local date the gate assumes the day before (fail closed).
+    expect(generateSession(gymInput({ birthDate: { year: 2010, month: 9, day: 28 }, localDate: { year: 2026, month: 9, day: 28 } }), SESSION_LIBRARY, ctxAt(MON)).status).toBe('ok');
+    expect(generateSession(gymInput({ birthDate: { year: 2010, month: 9, day: 28 } }), SESSION_LIBRARY, ctxAt(MON)).status).toBe('unavailable');
     expect(generateSession(gymInput({ birthDate: { year: 2010, month: 9, day: 29 } }), SESSION_LIBRARY, ctxAt(MON)).status).toBe('unavailable');
     expect(generateSession(gymInput({ intensityLock: { locked: true, since: '2026-09-27T10:00:00.000Z' } }), SESSION_LIBRARY, ctxAt(MON))).toEqual({ status: 'unavailable', reasonCodes: ['session.unavailable.s3_intensity_locked'] });
     expect(generateSession(gymInput({ intensityLock: { locked: false, since: null } }), SESSION_LIBRARY, ctxAt(MON)).status).toBe('ok');
@@ -162,7 +164,7 @@ describe('double progression across sessions (history → next load)', () => {
   });
 
   it('bodyweight ladder: two sessions at the top → next variant at its bottom; two below → one variant down', () => {
-    const home = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({
+    const home = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({ ...SAFE_FACTS,
       safetyProfile: profileFrom(),
       equipment: ['sturdy_chair'],
       equipmentLoads: HOME_LOADS,
@@ -199,7 +201,7 @@ describe('double progression across sessions (history → next load)', () => {
   });
 
   it('a fixed dumbbell at the top of the range: the next variant of the ladder instead of a heavier weight', () => {
-    const input = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({
+    const input = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({ ...SAFE_FACTS,
       safetyProfile: profileFrom(),
       equipment: P1_HOME,
       equipmentLoads: HOME_LOADS,

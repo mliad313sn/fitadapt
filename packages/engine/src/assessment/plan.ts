@@ -1,8 +1,9 @@
-import { screeningGateCheck } from '@fitadapt/safety';
-import type { AssessmentSkipReason, AssessmentTestKind, JointFlags, SafetyProfile } from '@fitadapt/shared';
+import { evaluateAgeGate, screeningGateCheck } from '@fitadapt/safety';
+import type { AssessmentSkipReason, AssessmentTestKind, CalendarDateValue, IntensityLock, JointFlags, SafetyProfile } from '@fitadapt/shared';
+import { ageGateDate } from '../local-date.js';
 import { ENGINE_VERSION } from '../version.js';
 import { blockingReasons, type EquipmentSet, type GraphExercise } from '../substitution.js';
-import { assessmentValue } from './config.js';
+import { assessmentValue, rpeForRir } from './config.js';
 import type { AssessmentProtocol, AssessmentTestDefinition } from './protocols.js';
 
 /**
@@ -17,7 +18,24 @@ export type AssessmentUnavailableReason =
   | 'assessment.unavailable.blocked'
   | 'assessment.unavailable.not_screened'
   | 'assessment.unavailable.professional_guidance'
-  | 'assessment.unavailable.effort_cap';
+  | 'assessment.unavailable.effort_cap'
+  | 'assessment.unavailable.s3_intensity_locked'
+  | 'assessment.unavailable.s7_age'
+  | 'assessment.unavailable.clock_mismatch';
+
+/**
+ * The safety facts an assessment needs, all required (SAF-2, SAF-3: an absent
+ * fact never reads as "safe"): the S3 lock, the S2 joint flags, the date of
+ * birth and local date for the S7 re-check, and the engine time.
+ */
+export interface AssessmentSafetyFacts {
+  readonly jointFlags: JointFlags;
+  readonly intensityLock: IntensityLock;
+  readonly birthDate: CalendarDateValue | null;
+  readonly localDate: CalendarDateValue | null;
+  /** The injected clock's time (the engine never reads the system clock). */
+  readonly nowMs: number;
+}
 
 export interface StopRule {
   /** Stop with at least this many reps in reserve (for holds: this much effort left, see rpe). */
@@ -65,7 +83,7 @@ export type AssessmentPlan =
     }
   | { readonly status: 'unavailable'; readonly reasonCode: AssessmentUnavailableReason };
 
-const rpeFor = (rir: number) => assessmentValue('rpeAtZeroRir') - rir;
+const rpeFor = rpeForRir;
 const value = (key: AssessmentTestDefinition['capReps']) => (key ? assessmentValue(key) : null);
 
 /**
@@ -87,11 +105,15 @@ export function assessmentStopRir(profile: SafetyProfile): number | null {
  *   (screeningGateCheck); otherwise they are given as submaximal tests;
  * - every submaximal test stops at the reserve of assessmentStopRir (≥ 2).
  * Users the screening blocks, did not screen, or routes to professional
- * guidance (S7: no automatic programming) get no assessment.
+ * guidance (S7: no automatic programming) get no assessment. SAF-2: nor do
+ * users whose intensity is locked after a red-flag stop (S3: loaded tests to
+ * RPE 8 are intensity), users under 16 on the local date (S7), or a device
+ * whose date is far from the engine clock; a red joint (S2) removes every
+ * option loading it (the test is skipped for safety).
  */
 export function buildAssessmentPlan(
   protocol: AssessmentProtocol,
-  input: { safetyProfile: SafetyProfile; equipment: EquipmentSet; exercises: ReadonlyMap<string, GraphExercise>; jointFlags?: JointFlags },
+  input: { safetyProfile: SafetyProfile; equipment: EquipmentSet; exercises: ReadonlyMap<string, GraphExercise> } & AssessmentSafetyFacts,
 ): AssessmentPlan {
   const profile = input.safetyProfile;
   if (profile.screeningOutcome === 'blocked') return { status: 'unavailable', reasonCode: 'assessment.unavailable.blocked' };
@@ -99,6 +121,10 @@ export function buildAssessmentPlan(
   if (!profile.automaticProgrammingAllowed || profile.lowIntensityLibraryOnly) return { status: 'unavailable', reasonCode: 'assessment.unavailable.professional_guidance' };
   const stopRir = assessmentStopRir(profile);
   if (stopRir === null) return { status: 'unavailable', reasonCode: 'assessment.unavailable.effort_cap' };
+  const gateDate = ageGateDate(input.localDate, input.nowMs);
+  if (gateDate === null) return { status: 'unavailable', reasonCode: 'assessment.unavailable.clock_mismatch' };
+  if (input.birthDate && evaluateAgeGate(input.birthDate, gateDate).status !== 'allowed') return { status: 'unavailable', reasonCode: 'assessment.unavailable.s7_age' };
+  if (input.intensityLock.locked) return { status: 'unavailable', reasonCode: 'assessment.unavailable.s3_intensity_locked' };
 
   const safetyEvents: AssessmentSafetyEvent[] = [];
   const event = (reasonCode: AssessmentSafetyEvent['reasonCode']) => {
@@ -125,7 +151,7 @@ export function buildAssessmentPlan(
     let safetyBlocked = false;
     for (const id of t.options) {
       const exercise = input.exercises.get(id);
-      const blocked = exercise ? blockingReasons(exercise, input.equipment, input.jointFlags ?? {}, profile) : [{ code: 'substitution.equipment_unavailable' }];
+      const blocked = exercise ? blockingReasons(exercise, input.equipment, input.jointFlags, profile) : [{ code: 'substitution.equipment_unavailable' }];
       if (blocked.length === 0) options.push(id);
       else if (blocked.some((b) => b.code !== 'substitution.equipment_unavailable')) safetyBlocked = true;
     }

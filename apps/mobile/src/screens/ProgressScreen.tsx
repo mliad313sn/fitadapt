@@ -11,7 +11,7 @@ import { clock } from '../clock';
 import { reportError } from '../observability';
 import { useConsents, useFeature, usePrivacy } from '../privacy/PrivacyProvider';
 import { featureOn } from '../privacy/consents';
-import { useLegal, useProfile, useProgram, useReflows, useSessionHistory } from '../profile/ProfileProvider';
+import { useLegal, useProfile, useProgram, useReadinessChecks, useReflows, useSessionHistory } from '../profile/ProfileProvider';
 import { localIsoDate } from '../profile/selectors';
 import { buildDashboard, type DashboardModel, type StrengthRow } from '../progress/dashboard';
 import { buildExport, parseExport, toCsv, toJson, ExportFormatError, type ExportPhoto } from '../progress/export';
@@ -43,6 +43,7 @@ export function ProgressScreen({ onExit, onOpenPhotos, onOpenPrivacy }: Progress
   const history = useSessionHistory();
   const profile = useProfile((s) => s.profile);
   const executionLogs = useProfile((s) => s.executionLogs);
+  const readinessChecks = useReadinessChecks();
   const program = useProgram();
   const reflows = useReflows();
   const bodyMetrics = useProgress((s) => s.bodyMetrics);
@@ -57,11 +58,12 @@ export function ProgressScreen({ onExit, onOpenPhotos, onOpenPrivacy }: Progress
         program,
         reflows,
         executionLogs: health ? executionLogs.map((e) => e.data) : [],
+        readinessChecks: health ? readinessChecks : [],
         experience: profile?.experience ?? 'beginner',
         today,
         dateOf,
       }),
-    [history, bodyMetrics, measurements, program, reflows, executionLogs, profile?.experience, today, health],
+    [history, bodyMetrics, measurements, program, reflows, executionLogs, readinessChecks, profile?.experience, today, health],
   );
   const { analytics } = usePrivacy();
   useEffect(() => {

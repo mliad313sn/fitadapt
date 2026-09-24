@@ -225,12 +225,12 @@ describe('goal condition 7: the deficit set-up shows the L3 notice first', () =>
     expect(d.legal.getState().notices.map((n) => [n.noticeId, n.kind])).toEqual([['nutrition_deficit', 'shown']]);
     press('notice-nutrition_deficit-ack');
     expect(screen.queryByTestId('notice-nutrition_deficit')).toBeNull();
-    press('nutrition-pace-0.75');
+    press('nutrition-pace-1');
     fireEvent.changeText(screen.getByTestId('nutrition-goal-weight'), '95');
     press('nutrition-setup-save');
     const [plan] = plans(d);
     expect(plan!.reason).toBe('setup');
-    expect(plan!.input).toMatchObject({ goal: 'fat_loss', plannedLossPercentPerWeek: 0.75, goalWeightKg: 95, weightKg: 120, heightCm: 178 });
+    expect(plan!.input).toMatchObject({ goal: 'fat_loss', plannedLossPercentPerWeek: 1, goalWeightKg: 95, weightKg: 120, heightCm: 178 });
     expect(plan!.target).toMatchObject({ mode: 'numeric', deficitAllowed: true, goalWeightKg: 95, engineVersion: ENGINE_VERSION, rulesVersion: NUTRITION_RULES_VERSION });
     expect(plan!.target.energy!.targetKcal).toBeGreaterThanOrEqual(plan!.target.energy!.floorKcal);
     expect(screen.getByTestId('nutrition-target-energy')).toBeTruthy();
@@ -240,7 +240,8 @@ describe('goal condition 7: the deficit set-up shows the L3 notice first', () =>
     const types = events.map((e) => e.type);
     expect(types.indexOf('notice.shown')).toBeLessThan(types.indexOf('notice.acknowledged'));
     expect(types.indexOf('notice.acknowledged')).toBeLessThan(types.indexOf('nutrition.target_set'));
-    // 0.75 %/week of this sedentary-to-light profile would go below the estimated BMR: S4 keeps it at the floor, and logs it.
+    // 1 %/week of this profile would go below the estimated BMR: S4 keeps it at the floor, and logs it. (0.75 %/week no
+    // longer does since the A4/A6 activity factors, sedentary 1.4 and light 1.5, raised the expenditure estimate.)
     expect(plan!.target.reasonCodes).toContain('nutrition.s4.bmr_floor');
     expect(events.filter((e) => e.type === 'safety.event').map((e) => e.payload)).toEqual([{ invariant: 'S4', reasonCode: 'safety.s4.bmr_floor', action: 'capped', engineVersion: ENGINE_VERSION }]);
     expect(events.find((e) => e.type === 'nutrition.target_set')!.payload).toEqual({ targetId: plan!.target.targetId, engineVersion: ENGINE_VERSION, rulesVersion: NUTRITION_RULES_VERSION, mode: 'numeric', reason: 'setup', deficitAllowed: true, reasonCodes: plan!.target.reasonCodes });

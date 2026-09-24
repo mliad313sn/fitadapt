@@ -1,5 +1,5 @@
-import { defaultEquipmentLoads, programDay, programSessionContext, type GenerateSessionInput } from '@fitadapt/engine';
-import type { CapacityModel, CardioRequest, HeartRateInfo, IntensityLock, IsoDate, JointFlags, Profile, ProgramRecord, ReflowRecord, SafetyProfile, SessionHistoryEntry } from '@fitadapt/shared';
+import { calendarOf, defaultEquipmentLoads, programDay, programSessionContext, type GenerateSessionInput } from '@fitadapt/engine';
+import { SESSION_HISTORY_MAX, type CapacityModel, type CardioRequest, type HeartRateInfo, type IntensityLock, type IsoDate, type JointFlags, type Profile, type ProgramRecord, type ReflowRecord, type SafetyProfile, type SessionHistoryEntry } from '@fitadapt/shared';
 import type { StoredEquipmentProfile } from '../profile/profile-store';
 
 /**
@@ -61,13 +61,18 @@ export function todayInput(f: TodayFacts): TodayInput {
     jointFlags: f.jointFlags,
     capacity: f.capacity,
     programSession: day && session ? programSessionContext(day, session) : null,
-    history: [...f.history],
+    // SAF-1: the newest 60 sessions at most (the engine's boundSessionInput at generation also folds older S5 references in).
+    history: f.history.slice(-SESSION_HISTORY_MAX),
+    // SAF-3: every safety fact is explicit (M07 recent loads: none outside the history on the device).
+    recentLoads: [],
     bodyweightKg: f.profile.biometrics.weightKg,
     // M03: height for the BMI ≥ 35 low-impact default; heart-rate facts for the zones.
     heightCm: f.profile.biometrics.heightCm,
     ...(f.heartRate ? { heartRate: f.heartRate } : {}),
     ...(f.impactOptIn ? { impactOptIn: true } : {}),
     birthDate: f.profile.birthDate,
+    // SAF-12: the user's local calendar date (the S7 re-check uses it, and the engine refuses one far from its clock).
+    localDate: calendarOf(f.today),
     experience: f.profile.experience,
     intensityLock: f.intensityLock,
     ...(f.readiness && !mobility ? { readiness: f.readiness } : {}),

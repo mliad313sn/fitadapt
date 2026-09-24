@@ -1,3 +1,4 @@
+import { S1_RPE_AT_ZERO_RIR } from '@fitadapt/safety';
 import { defineConfig } from '@fitadapt/shared';
 
 /**
@@ -14,10 +15,21 @@ export const ASSESSMENT_CONFIG = defineConfig({
   // ---- e1RM (gym tests)
   /** Epley: 1RM = w × (1 + reps / 30). */
   epleyRepDivisor: { value: 30, source: 'Epley B (1985), Poundage chart, as quoted in docs/specs/00-product-vision.md; not checked against the source', validated: false },
-  /** Epley is used only for 1–12 reps (M02: "Epley, valid ≤ 12 reps"). */
-  epleyMaxReps: { value: 12, unit: 'reps', source: 'docs/specs/M02-adaptive-training-engine.md ("valid ≤ 12 reps"); not checked against a primary source', validated: false },
-  /** RPE = rpeAtZeroRir − RIR (RIR-based RPE scale). */
-  rpeAtZeroRir: { value: 10, source: 'Zourdos MC et al. (2016), J Strength Cond Res 30(1):267–275, as listed in docs/specs/00-product-vision.md; not checked against the source', validated: false },
+  /** Epley is used only while the effective reps (performed reps + reps in reserve) are 1–12 (A3/A5 pre-review #2). */
+  epleyMaxReps: {
+    value: 12,
+    unit: 'effective reps (reps + RIR)',
+    source:
+      'docs/specs/M02-adaptive-training-engine.md ("valid ≤ 12 reps"); not checked against a primary source. Applied to reps + RIR, not to performed reps only, per docs/governance/ai-reviews/A3-A5-training-science.md (item 2: LeSuer 1997 and Reynolds 2006 as cited there support ≤ 10 better; seat A5 to decide the value)',
+    validated: false,
+  },
+  /** RPE = rpeAtZeroRir − RIR (RIR-based RPE scale); never below packages/safety S1_RPE_AT_ZERO_RIR (rpeForRir). */
+  rpeAtZeroRir: {
+    value: 10,
+    source:
+      'Zourdos MC et al. (2016), J Strength Cond Res 30(1):267–275, as listed in docs/specs/00-product-vision.md; not checked against the source. Tied to S1 (CS-8, docs/governance/ai-reviews/A1-A2-clinical-safety.md M07-45): the engine uses max(this, S1_RPE_AT_ZERO_RIR), so it can raise the reserve but never loosen it',
+    validated: false,
+  },
 
   // ---- Starting loads from e1RM
   firstSessionTargetReps: { value: 8, unit: 'reps', source: 'docs/specs/M02 rep range example 6–10 (middle value chosen by the engineer)', validated: false },
@@ -39,7 +51,12 @@ export const ASSESSMENT_CONFIG = defineConfig({
   defaultHoldSeconds: { value: 15, unit: 's', source: ENG, validated: false },
 
   // ---- Protocol choice and re-assessment
-  olderAdultProtocolAge: { value: 55, unit: 'years', source: `${SPEC} ("30-second chair stand (Jones et al., 1999, for 55+)")`, validated: false },
+  olderAdultProtocolAge: {
+    value: 55,
+    unit: 'years',
+    source: `${SPEC} ("30-second chair stand (Jones et al., 1999, for 55+)"). Jones et al. validated the test in adults over 60; 55 is a product choice (a conservative extrapolation), per docs/governance/ai-reviews/A1-A2-clinical-safety.md M07-41`,
+    validated: false,
+  },
   chairStandWindowSeconds: { value: 30, unit: 's', source: 'Jones CJ, Rikli RE, Beam WC (1999), Res Q Exerc Sport 70(2):113–119, as quoted in the M07 spec; not checked against the source', validated: false },
   defaultMesocycleWeeks: { value: 4, unit: 'weeks', source: `${SPEC} ("end of each mesocycle (4–6 weeks)"); lower bound chosen by the engineer until M08 sets the real end`, validated: false },
   restBetweenTestsSeconds: { value: 60, unit: 's', source: ENG, validated: false },
@@ -100,4 +117,14 @@ export const FIRST_SESSION_CONFIG = defineConfig({
 
 export function firstSessionValue(key: keyof typeof FIRST_SESSION_CONFIG): number {
   return FIRST_SESSION_CONFIG[key].value;
+}
+
+/**
+ * RPE on the RIR-based scale for a reserve (CS-8): the anchor is the S1
+ * invariant's (packages/safety S1_RPE_AT_ZERO_RIR); the configured
+ * `rpeAtZeroRir` can only raise it. Every S1 check of a reserve goes through
+ * here, so no coefficient change can make a reserve pass S1 at a lower RPE.
+ */
+export function rpeForRir(rir: number): number {
+  return Math.max(assessmentValue('rpeAtZeroRir'), S1_RPE_AT_ZERO_RIR) - rir;
 }

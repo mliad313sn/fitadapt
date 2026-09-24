@@ -1,7 +1,7 @@
 import { JOINTS, type EquipmentId, type JointFlags, type SessionPlan } from '@fitadapt/shared';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { FULL_GYM, profileFrom } from '../__fixtures__/library.js';
+import { SAFE_FACTS, FULL_GYM, profileFrom } from '../__fixtures__/library.js';
 import { GYM_CAPACITY, RECOVERY_LIBRARY, RECOVERY_LIBRARY_NO_LISTS, WARMUP_LISTS } from '../__fixtures__/recovery.js';
 import { GYM_ID, GYM_LOADS, HOME_ID, HOME_LOADS, programContext, slot } from '../__fixtures__/session.js';
 import { fixedClock } from '../clock.js';
@@ -17,7 +17,7 @@ import { buildCoolDown, buildWarmUp, dayPatterns } from './warmup.js';
 const MON = Date.parse('2026-09-28T08:00:00.000Z');
 const GYM: EquipmentId[] = [...FULL_GYM, 'cable_station'];
 const HOME: EquipmentId[] = ['pull_up_bar', 'resistance_band', 'dumbbell'];
-const gymInput = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({
+const gymInput = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({ ...SAFE_FACTS,
   safetyProfile: profileFrom(),
   equipment: GYM,
   equipmentLoads: GYM_LOADS,

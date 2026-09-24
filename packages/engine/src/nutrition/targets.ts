@@ -12,7 +12,8 @@ import { activityFactor, ageOnIsoDate, calendarOf, mifflinStJeorBmr } from './en
  * The M10 nutrition prescription: `computeNutritionTarget(input, ctx)`.
  * Deterministic (injected seed for the target id), pure, and every target
  * goes through packages/safety `enforceNutritionFloors` (S4), so no path
- * can produce a target below the estimated BMR, a planned loss above 1 %
+ * can produce a target below the estimated BMR or 1,200 kcal/day (then the
+ * supportive mode: no number), a planned loss above 1 %
  * body weight a week, a goal weight below BMI 18.5, or a deficit for a
  * user under 18 / advised against calorie restriction / not screened / in
  * a special population. Those users — and anyone who chose habits — get the
@@ -70,6 +71,7 @@ const S4_REASON: Record<string, string> = {
 };
 
 const unique = <T>(list: readonly T[]) => [...new Set(list)];
+const isoDateOf = (ms: number): IsoDate => new Date(ms).toISOString().slice(0, 10);
 const roundTo = (v: number, step: number) => Math.round(v / step) * step;
 
 export function computeNutritionTarget(rawInput: NutritionInput, ctx: EngineContext): NutritionResult {
@@ -87,6 +89,9 @@ export function computeNutritionTarget(rawInput: NutritionInput, ctx: EngineCont
     safetyEvents,
   });
 
+  // SAF-5: `today` comes from the device; it must be within a day of the injected clock's date (any time zone),
+  // or no number is given (the S4 age check and the guardrail windows would run at a date nothing bounds).
+  if (Math.abs(daysBetween(isoDateOf(ctx.clock.now()), input.today)) > 1) return noNumbers('supportive', ['nutrition.unavailable.clock_mismatch'], false);
   const today = calendarOf(input.today);
   const features = deficitFeatures(input.safetyProfile, input.birthDate, today);
   // S4: deficit features disabled → the supportive mode, whatever the goal (no calorie number for these users).
@@ -137,6 +142,8 @@ export function computeNutritionTarget(rawInput: NutritionInput, ctx: EngineCont
   }
 
   const s4 = enforceNutritionFloors({ targetKcal: proposed, plannedLossPercentPerWeek: rate, goalWeightKg: input.goalWeightKg }, { safetyProfile: input.safetyProfile, birthDate: input.birthDate, today, weightKg, heightCm, bmrKcal: bmr, maintenanceKcal: maintenance });
+  // A4/A6: below the absolute energy floor, no number at all — the supportive mode (habits) with its reason.
+  if (s4.status === 'supportive') return noNumbers('supportive', ['nutrition.supportive.low_energy'], false, s4.adjustments.map((a) => ({ invariant: 'S4' as const, reasonCode: a.reasonCode, action: a.reasonCode === 'safety.s4.absolute_floor' ? ('blocked' as const) : ('capped' as const) })));
   if (s4.status !== 'ok') return noNumbers('needs_measurements', ['nutrition.energy.unavailable'], false);
   // "At the BMI floor" only concerns a planned loss.
   for (const a of s4.adjustments.filter((x) => input.goal === 'fat_loss' || x.reasonCode !== 'safety.s4.at_bmi_floor')) {
@@ -154,7 +161,7 @@ export function computeNutritionTarget(rawInput: NutritionInput, ctx: EngineCont
 
   const referenceWeight = Math.min(weightKg, nutritionValue('protein.referenceBmi') * (heightCm / 100) ** 2);
   if (referenceWeight < weightKg) reasons.push('nutrition.protein.reference_weight');
-  reasons.push('nutrition.protein.range');
+  reasons.push('nutrition.protein.range', 'nutrition.protein.kidney_notice');
   const gStep = nutritionValue('rounding.proteinG');
   const protein = { minG: Math.max(gStep, roundTo(nutritionValue('protein.minGPerKg') * referenceWeight, gStep)), maxG: Math.max(gStep, roundTo(nutritionValue('protein.maxGPerKg') * referenceWeight, gStep)) };
 

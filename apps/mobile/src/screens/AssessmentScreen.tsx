@@ -10,7 +10,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { clock } from '../clock';
 import { localToday } from '../privacy/age-gate';
-import { useCapacity, useLegal, useProfile, useReassessment, useSafetyProfile } from '../profile/ProfileProvider';
+import { useCapacity, useIntensityLock, useJointFlags, useLegal, useProfile, useReassessment, useSafetyProfile } from '../profile/ProfileProvider';
 
 type Phase = 'choose' | 'notice' | 'test' | 'result';
 const WHOLE = /^\d{1,3}$/;
@@ -62,7 +62,14 @@ export function AssessmentScreen({ onExit, onFirstWorkout }: AssessmentScreenPro
   const [results, setResults] = useState<AssessmentTestResult[]>([]);
   const [capacity, setCapacity] = useState<CapacityModel | null>(null);
   const startedAt = useRef<string>('');
-  const plan = useMemo(() => buildAssessmentPlan(ASSESSMENT_PROTOCOLS[protocolId], { safetyProfile, equipment }), [protocolId, safetyProfile, equipment]);
+  // SAF-2: the S3 lock, the S2 joint flags and the S7 re-check (date of birth, local date) decide the tests too.
+  const jointFlags = useJointFlags();
+  const intensityLock = useIntensityLock();
+  const birthDate = profile?.birthDate ?? null;
+  const plan = useMemo(() => {
+    const now = clock.now();
+    return buildAssessmentPlan(ASSESSMENT_PROTOCOLS[protocolId], { safetyProfile, equipment, jointFlags, intensityLock, birthDate, localDate: localToday(now), nowMs: now.getTime() });
+  }, [protocolId, safetyProfile, equipment, jointFlags, intensityLock, birthDate]);
   const rendered = renderNotice(noticeDefinition('assessment'), locale, jurisdiction);
   const text = { color: theme.colors.text, fontSize: theme.fontSize.body } as const;
   const reason = (code: string) => t(`engine.reason.${code}` as MessageKey);

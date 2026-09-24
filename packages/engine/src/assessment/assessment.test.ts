@@ -1,9 +1,12 @@
+import { S1_RPE_AT_ZERO_RIR } from '@fitadapt/safety';
 import { SCREENING_QUESTION_IDS, SafetyProfileSchema, type AssessmentResult, type AssessmentTestResult, type SafetyProfile } from '@fitadapt/shared';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { FIXTURE_EXERCISES, FIXTURE_LIBRARY, FULL_GYM, P1_HOME, profileFrom } from '../__fixtures__/library.js';
 import { fixedClock } from '../clock.js';
 import { ENGINE_VERSION } from '../version.js';
+import { firstSessionRir } from '../session/first-session.js';
+import { rpeForRir } from './config.js';
 import {
   ASSESSMENT_CONFIG,
   ASSESSMENT_MIN_STOP_RIR,
@@ -43,6 +46,9 @@ const done = (testId: string, exerciseId: string, m: { reps?: number; seconds?: 
 });
 const map = (p: AssessmentProtocol, testId: string, r: AssessmentTestResult, stopRir = 2) => mapTestResult(def(p, testId), r, FIXTURE_LIBRARY, stopRir);
 
+/** SAF-2: the safety facts an assessment requires, at their "nothing reported" values. */
+const ASSESS_FACTS = { jointFlags: {}, intensityLock: { locked: false, since: null }, birthDate: null, localDate: null, nowMs: Date.parse('2026-09-24T08:00:00.000Z') } as const;
+
 describe('protocols (goal condition 1)', () => {
   it('defines home, gym and 55+ protocols of submaximal tests only', () => {
     expect(Object.keys(ASSESSMENT_PROTOCOLS).sort()).toEqual(['gym', 'home', 'home_55plus']);
@@ -65,7 +71,7 @@ describe('protocols (goal condition 1)', () => {
   it('the home assessment takes at most 15 minutes; the 55+ one uses the 30-second chair stand', () => {
     expect(estimatedMinutes(HOME_PROTOCOL)).toBeLessThanOrEqual(15);
     expect(estimatedMinutes(OLDER_ADULT_PROTOCOL)).toBeLessThanOrEqual(15);
-    const chair = buildAssessmentPlan(OLDER_ADULT_PROTOCOL, { safetyProfile: cleared, equipment: ['sturdy_chair'], exercises });
+    const chair = buildAssessmentPlan(OLDER_ADULT_PROTOCOL, { ...ASSESS_FACTS, safetyProfile: cleared, equipment: ['sturdy_chair'], exercises });
     expect(chair.status === 'available' && chair.instructions[0]).toMatchObject({ testId: 'chair_stand', kind: 'timed_reps', stop: { windowSeconds: 30 } });
   });
 
@@ -87,11 +93,25 @@ describe('protocols (goal condition 1)', () => {
     expect(ASSESSMENT_CONFIG.epleyRepDivisor.source).toMatch(/not checked against the source/);
     expect(ASSESSMENT_CONFIG.rpeAtZeroRir.source).toMatch(/not checked against the source/);
     expect(ASSESSMENT_CONFIG.chairStandWindowSeconds.source).toMatch(/not checked against the source/);
+    // A1/A2 M07-41: the 55+ protocol age is a product choice (the paper's population was 60+).
+    expect(ASSESSMENT_CONFIG.olderAdultProtocolAge.source).toMatch(/product choice/);
+  });
+
+  it('CS-8: the RIR→RPE anchor is the S1 invariant: the configured coefficient can only raise it, so the S1 reserve never loosens', () => {
+    expect(S1_RPE_AT_ZERO_RIR).toBe(10);
+    expect(ASSESSMENT_CONFIG.rpeAtZeroRir.value).toBeGreaterThanOrEqual(S1_RPE_AT_ZERO_RIR);
+    for (let rir = 0; rir <= 10; rir++) expect(rpeForRir(rir)).toBeGreaterThanOrEqual(S1_RPE_AT_ZERO_RIR - rir);
+    // An unresolved flag caps effort at RPE 7: every reserve the engine picks for it is at least 3 (first session and tests).
+    for (const yes of [['chest_discomfort'], ['medication_affecting_effort'], ['heart_or_blood_pressure']] as const) {
+      const flagged = profileFrom([...yes]);
+      expect(firstSessionRir(flagged)).toBeGreaterThanOrEqual(3);
+      expect(assessmentStopRir(flagged)).toBeGreaterThanOrEqual(3);
+    }
   });
 });
 
 describe('e1RM by RIR-adjusted Epley (goal condition 2)', () => {
-  it('is w × (1 + (reps + RIR) / 30) for every rep count from 1 to 12', () => {
+  it('is w × (1 + (reps + RIR) / 30) for every effective rep count (reps + RIR) from 1 to 12', () => {
     const table: [number, number, number, number][] = [
       [100, 1, 0, 103.333],
       [100, 1, 2, 110],
@@ -100,21 +120,26 @@ describe('e1RM by RIR-adjusted Epley (goal condition 2)', () => {
       [60, 10, 2, 84],
       [140, 8, 2, 186.667],
       [20, 12, 0, 28],
-      [80, 12, 2, 117.333],
+      [80, 10, 2, 112],
     ];
     for (const [w, reps, rir, expected] of table) expect(epleyE1RM(w, reps, rir)).toBeCloseTo(expected, 3);
     for (let reps = 1; reps <= 12; reps++) {
-      for (let rir = 0; rir <= 4; rir++) expect(epleyE1RM(100, reps, rir)).toBeCloseTo(100 * (1 + (reps + rir) / 30), 9);
+      for (let rir = 0; rir <= 4; rir++) {
+        // A3/A5 pre-review #2: the limit is on the reps the formula is fed (reps + RIR), never above 12.
+        if (reps + rir <= 12) expect(epleyE1RM(100, reps, rir)).toBeCloseTo(100 * (1 + (reps + rir) / 30), 9);
+        else expect(epleyE1RM(100, reps, rir)).toBeNull();
+      }
     }
   });
 
   it('property: grows with reps and RIR, is above the load, and inverts with loadForReps', () => {
     fc.assert(
       fc.property(fc.double({ min: 1, max: 400, noNaN: true }), fc.integer({ min: 1, max: 12 }), fc.integer({ min: 0, max: 4 }), (w, reps, rir) => {
+        fc.pre(reps + rir <= 12);
         const e = epleyE1RM(w, reps, rir)!;
         expect(e).toBeGreaterThan(w);
-        if (reps < 12) expect(epleyE1RM(w, reps + 1, rir)!).toBeGreaterThan(e);
-        expect(epleyE1RM(w, reps, rir + 1)!).toBeGreaterThan(e);
+        if (reps + rir < 12) expect(epleyE1RM(w, reps + 1, rir)!).toBeGreaterThan(e);
+        if (reps + rir < 12) expect(epleyE1RM(w, reps, rir + 1)!).toBeGreaterThan(e);
         expect(loadForReps(e, reps, rir)).toBeCloseTo(w, 6);
       }),
       { numRuns: 1000 },
@@ -124,6 +149,10 @@ describe('e1RM by RIR-adjusted Epley (goal condition 2)', () => {
   it('refuses to estimate outside 1–12 reps, without a positive load or with an invalid RIR', () => {
     expect(epleyE1RM(100, 0)).toBeNull();
     expect(epleyE1RM(100, 13)).toBeNull();
+    // Effective reps above 12 (reps + RIR): no estimate (it would inflate the e1RM and the first loads).
+    expect(epleyE1RM(100, 12, 1)).toBeNull();
+    expect(epleyE1RM(100, 10, 3)).toBeNull();
+    expect(epleyE1RM(100, 7, 5)).toBeCloseTo(140, 9);
     expect(epleyE1RM(100, 2.5)).toBeNull();
     expect(epleyE1RM(0, 5)).toBeNull();
     expect(epleyE1RM(Number.POSITIVE_INFINITY, 5)).toBeNull();
@@ -138,6 +167,16 @@ describe('e1RM by RIR-adjusted Epley (goal condition 2)', () => {
     expect(roundDownToIncrement(9.99, 1.25)).toBe(8.75);
     expect(roundDownToIncrement(0.3)).toBe(0);
     expect(() => roundDownToIncrement(10, 0)).toThrow(RangeError);
+    // SAF-4: never rounds up to the next hundredth before flooring.
+    expect(roundDownToIncrement(49.9995, 0.5)).toBe(49.5);
+    expect(roundDownToIncrement(45.45 * 1.1, 0.5)).toBe(49.5);
+    expect(roundDownToIncrement(99.99957, 0.5)).toBe(99.5);
+    fc.assert(
+      fc.property(fc.constantFrom(0.5, 1, 1.25, 2, 2.5, 5), fc.integer({ min: 1, max: 400 }), fc.double({ min: 0, max: 0.009, noNaN: true }), (step, k, below) => {
+        const x = k * step - below;
+        expect(roundDownToIncrement(x, step)).toBeLessThanOrEqual(x + 1e-9);
+      }),
+    );
     fc.assert(
       fc.property(fc.double({ min: 0, max: 500, noNaN: true }), fc.constantFrom(0.5, 1, 1.25, 2, 2.5, 5), (x, step) => {
         const r = roundDownToIncrement(x, step);
@@ -225,7 +264,9 @@ describe('mapping tables: result → ladder rung and starting load (goal conditi
     // 100 kg × 10 at RIR 2: e1RM 140; load for 8 at RIR 2 = 140 / (1 + 10/30) = 105; × 0.9 = 94.5 → 92.5.
     expect(map(GYM_PROTOCOL, 'press_load', done('press_load', 'barbell_bench_press', { loadKg: 100, reps: 10, rir: 2 })).slot).toMatchObject({ e1rmKg: 140, loadKg: 92.5 });
     // No RIR reported: the instructed reserve is used.
-    expect(map(GYM_PROTOCOL, 'press_load', done('press_load', 'barbell_bench_press', { loadKg: 100, reps: 10 }), 3).slot.e1rmKg).toBe(143.3);
+    expect(map(GYM_PROTOCOL, 'press_load', done('press_load', 'barbell_bench_press', { loadKg: 100, reps: 9 }), 3).slot.e1rmKg).toBe(140);
+    // 10 reps with the instructed reserve 3 is 13 effective reps: no Epley estimate, the tested load is the reference.
+    expect(map(GYM_PROTOCOL, 'press_load', done('press_load', 'barbell_bench_press', { loadKg: 100, reps: 10 }), 3).slot).toMatchObject({ e1rmKg: null });
     // More than 12 reps: no Epley estimate, the tested load is the reference.
     const pulldown = map(GYM_PROTOCOL, 'pulldown_load', done('pulldown_load', 'lat_pulldown', { loadKg: 40, reps: 20, rir: 2 }));
     expect(pulldown.slot).toMatchObject({ e1rmKg: null, loadKg: 35 });
@@ -312,7 +353,7 @@ describe('S1 gating: allowMaxTests=false → every test stops at RIR 2 or furthe
     let gatedSeen = 0;
     fc.assert(
       fc.property(arbProfile, fc.constantFrom(...Object.values(ASSESSMENT_PROTOCOLS), MAXIMAL), fc.subarray(FULL_GYM), (profile, p, equipment) => {
-        const plan = buildAssessmentPlan(p, { safetyProfile: profile, equipment, exercises });
+        const plan = buildAssessmentPlan(p, { ...ASSESS_FACTS, safetyProfile: profile, equipment, exercises });
         if (profile.allowMaxTests && profile.unresolvedFlags.length === 0) return;
         gatedSeen += 1;
         if (plan.status === 'unavailable') return;
@@ -332,7 +373,7 @@ describe('S1 gating: allowMaxTests=false → every test stops at RIR 2 or furthe
   it('a hand-built profile with allowMaxTests=false and no flag: every instruction stops at exactly RIR 2', () => {
     const profile = SafetyProfileSchema.parse({ ...cleared, allowMaxTests: false });
     for (const p of [...Object.values(ASSESSMENT_PROTOCOLS), MAXIMAL]) {
-      const plan = buildAssessmentPlan(p, { safetyProfile: profile, equipment: FULL_GYM, exercises });
+      const plan = buildAssessmentPlan(p, { ...ASSESS_FACTS, safetyProfile: profile, equipment: FULL_GYM, exercises });
       expect(plan.status).toBe('available');
       if (plan.status !== 'available') continue;
       expect(plan.instructions.every((i) => i.stop.rir === 2 && !i.stop.toFailure)).toBe(true);
@@ -341,7 +382,7 @@ describe('S1 gating: allowMaxTests=false → every test stops at RIR 2 or furthe
   });
 
   it('an unresolved flag (S1, RPE ≤ 7) stops every test at RIR 3 and records an S1 safety event', () => {
-    const plan = buildAssessmentPlan(HOME_PROTOCOL, { safetyProfile: flagged, equipment: P1_HOME, exercises });
+    const plan = buildAssessmentPlan(HOME_PROTOCOL, { ...ASSESS_FACTS, safetyProfile: flagged, equipment: P1_HOME, exercises });
     expect(plan).toMatchObject({ status: 'available', stopRir: 3, cappedByS1: true, noticeId: 'assessment' });
     if (plan.status !== 'available') return;
     expect(plan.instructions.every((i) => i.stop.rir === 3 && i.stop.rpe === 7 && i.reasonCodes.includes('assessment.stop.s1_reserve'))).toBe(true);
@@ -350,38 +391,55 @@ describe('S1 gating: allowMaxTests=false → every test stops at RIR 2 or furthe
   });
 
   it('only a cleared user with allowMaxTests may get a to-failure test, and no shipped protocol has one', () => {
-    const maximal = buildAssessmentPlan(MAXIMAL, { safetyProfile: cleared, equipment: FULL_GYM, exercises });
+    const maximal = buildAssessmentPlan(MAXIMAL, { ...ASSESS_FACTS, safetyProfile: cleared, equipment: FULL_GYM, exercises });
     expect(maximal.status === 'available' && maximal.instructions.every((i) => i.stop.toFailure && i.stop.rir === 0)).toBe(true);
     for (const p of Object.values(ASSESSMENT_PROTOCOLS)) {
-      const plan = buildAssessmentPlan(p, { safetyProfile: cleared, equipment: FULL_GYM, exercises });
+      const plan = buildAssessmentPlan(p, { ...ASSESS_FACTS, safetyProfile: cleared, equipment: FULL_GYM, exercises });
       expect(plan.status === 'available' && plan.instructions.every((i) => !i.stop.toFailure && i.stop.rir === 2 && i.reasonCodes[0] === 'assessment.stop.reserve')).toBe(true);
       expect(plan.status === 'available' && plan.safetyEvents).toEqual([]);
     }
   });
 
   it('offers only variants the equipment and SafetyProfile allow, and skips a test with none', () => {
-    const plan = buildAssessmentPlan(HOME_PROTOCOL, { safetyProfile: cleared, equipment: P1_HOME, exercises });
+    const plan = buildAssessmentPlan(HOME_PROTOCOL, { ...ASSESS_FACTS, safetyProfile: cleared, equipment: P1_HOME, exercises });
     if (plan.status !== 'available') throw new Error('expected a plan');
     const byId = Object.fromEntries(plan.instructions.map((i) => [i.testId, i]));
     expect(byId.push_reps!.options).toEqual(['wall_push_up', 'incline_push_up_high', 'knee_push_up', 'push_up']);
     expect(byId.row_reps!.options).toEqual(['pull_up']);
     expect(byId.squat_reps!.options).toEqual(['air_squat']);
-    const noBar = buildAssessmentPlan(HOME_PROTOCOL, { safetyProfile: cleared, equipment: [], exercises });
+    const noBar = buildAssessmentPlan(HOME_PROTOCOL, { ...ASSESS_FACTS, safetyProfile: cleared, equipment: [], exercises });
     if (noBar.status !== 'available') throw new Error('expected a plan');
     expect(noBar.instructions.find((i) => i.testId === 'dead_hang_hold')).toMatchObject({ options: [], skipReason: 'equipment', reasonCodes: ['assessment.stop.reserve', 'assessment.skip.equipment'] });
     const noFloor = SafetyProfileSchema.parse({ ...cleared, avoidTags: ['floor_transfer'] });
-    const floor = buildAssessmentPlan(HOME_PROTOCOL, { safetyProfile: noFloor, equipment: P1_HOME, exercises });
+    const floor = buildAssessmentPlan(HOME_PROTOCOL, { ...ASSESS_FACTS, safetyProfile: noFloor, equipment: P1_HOME, exercises });
     if (floor.status !== 'available') throw new Error('expected a plan');
     expect(floor.instructions.find((i) => i.testId === 'plank_hold')).toMatchObject({ options: [], skipReason: 'safety' });
-    const unknown = buildAssessmentPlan(HOME_PROTOCOL, { safetyProfile: cleared, equipment: P1_HOME, exercises: new Map() });
+    const unknown = buildAssessmentPlan(HOME_PROTOCOL, { ...ASSESS_FACTS, safetyProfile: cleared, equipment: P1_HOME, exercises: new Map() });
     expect(unknown.status === 'available' && unknown.instructions.every((i) => i.skipReason === 'equipment')).toBe(true);
   });
 
+  it('SAF-2: no assessment while intensity is locked (S3), under 16 on the local date (S7) or with a wrong device date; a red joint removes the tests loading it (S2)', () => {
+    const gym = (facts: Partial<typeof ASSESS_FACTS> | Record<string, unknown>) => buildAssessmentPlan(GYM_PROTOCOL, { ...ASSESS_FACTS, ...facts, safetyProfile: cleared, equipment: FULL_GYM, exercises } as never);
+    expect(gym({ intensityLock: { locked: true, since: '2026-09-23T08:00:00.000Z' } })).toEqual({ status: 'unavailable', reasonCode: 'assessment.unavailable.s3_intensity_locked' });
+    expect(gym({ birthDate: { year: 2010, month: 9, day: 25 }, localDate: { year: 2026, month: 9, day: 24 } })).toEqual({ status: 'unavailable', reasonCode: 'assessment.unavailable.s7_age' });
+    expect(gym({ birthDate: { year: 2010, month: 9, day: 24 }, localDate: { year: 2026, month: 9, day: 24 } }).status).toBe('available');
+    expect(gym({ localDate: { year: 2026, month: 10, day: 24 } })).toEqual({ status: 'unavailable', reasonCode: 'assessment.unavailable.clock_mismatch' });
+    const open = gym({});
+    const red = gym({ jointFlags: { knee: 'red' } });
+    if (open.status !== 'available' || red.status !== 'available') throw new Error('expected plans');
+    const squat = (p: typeof open) => p.instructions.find((i) => i.testId === 'squat_load')!;
+    expect(squat(open).options.length).toBeGreaterThan(0);
+    for (const id of squat(red).options) expect(['medium', 'high']).not.toContain(exercises.get(id)!.jointLoad.knee);
+    expect(squat(red).options.length < squat(open).options.length || squat(red).skipReason === 'safety').toBe(true);
+    // Missing facts are an error at the type level and fail closed at run time (no lock read → never "unlocked").
+    expect(() => buildAssessmentPlan(GYM_PROTOCOL, { safetyProfile: cleared, equipment: FULL_GYM, exercises } as never)).toThrow();
+  });
+
   it('no assessment for blocked, not-screened or professional-guidance users, or when no reserve satisfies the cap', () => {
-    const at = (p: Partial<SafetyProfile>) => buildAssessmentPlan(HOME_PROTOCOL, { safetyProfile: SafetyProfileSchema.parse({ ...cleared, ...p }), equipment: P1_HOME, exercises });
-    expect(buildAssessmentPlan(HOME_PROTOCOL, { safetyProfile: profileFrom([], { birthYear: 2015 }), equipment: P1_HOME, exercises })).toEqual({ status: 'unavailable', reasonCode: 'assessment.unavailable.blocked' });
+    const at = (p: Partial<SafetyProfile>) => buildAssessmentPlan(HOME_PROTOCOL, { ...ASSESS_FACTS, safetyProfile: SafetyProfileSchema.parse({ ...cleared, ...p }), equipment: P1_HOME, exercises });
+    expect(buildAssessmentPlan(HOME_PROTOCOL, { ...ASSESS_FACTS, safetyProfile: profileFrom([], { birthYear: 2015 }), equipment: P1_HOME, exercises })).toEqual({ status: 'unavailable', reasonCode: 'assessment.unavailable.blocked' });
     expect(at({ screeningOutcome: 'not_screened' })).toEqual({ status: 'unavailable', reasonCode: 'assessment.unavailable.not_screened' });
-    expect(buildAssessmentPlan(HOME_PROTOCOL, { safetyProfile: profileFrom(['pregnancy_or_recent_birth']), equipment: P1_HOME, exercises })).toEqual({ status: 'unavailable', reasonCode: 'assessment.unavailable.professional_guidance' });
+    expect(buildAssessmentPlan(HOME_PROTOCOL, { ...ASSESS_FACTS, safetyProfile: profileFrom(['pregnancy_or_recent_birth']), equipment: P1_HOME, exercises })).toEqual({ status: 'unavailable', reasonCode: 'assessment.unavailable.professional_guidance' });
     expect(at({ maxRPE: 4 })).toEqual({ status: 'unavailable', reasonCode: 'assessment.unavailable.effort_cap' });
   });
 });

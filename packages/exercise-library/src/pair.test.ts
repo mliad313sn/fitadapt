@@ -5,8 +5,9 @@ import { M09_REASON_CODES, M09_REASON_PARAMS, addDays, createEngineContext, expe
 import { createTranslator, en, fr, type MessageKey } from '@fitadapt/i18n';
 import { SharedTimelineSchema, type ScoredSet, type SessionPlan } from '@fitadapt/shared';
 import { describe, expect, it } from 'vitest';
+import { versioned } from './__fixtures__/golden.js';
 import { HOME_ID, PERSONA_INPUTS } from './__fixtures__/personas.js';
-import { PERSONA_SESSIONS } from './__fixtures__/session-personas.js';
+import { SAFE_FACTS, PERSONA_SESSIONS } from './__fixtures__/session-personas.js';
 import { buildCapacityModel, fairScore, generatePairSession, generateProgram, seedLibrary } from './index.js';
 
 /**
@@ -34,6 +35,7 @@ function wednesdayInputs(): { a: GenerateSessionInput; b: GenerateSessionInput; 
     return {
       date,
       input: {
+        ...SAFE_FACTS,
         safetyProfile: PERSONA_INPUTS[persona].safetyProfile,
         equipment: place.equipment,
         equipmentLoads: p.loads[HOME_ID]!,
@@ -91,7 +93,7 @@ describe('Fair Pair on the M06 seed: P1 + P2 at P1’s home', () => {
     };
     const file = './__golden__/P1-P2.pair.json';
     expect(existsSync(join(here, file)), `${file} must be committed`).toBe(true);
-    await expect(JSON.stringify(golden, null, 2) + '\n').toMatchFileSnapshot(file);
+    await expect(JSON.stringify(versioned('pair', golden), null, 2) + '\n').toMatchFileSnapshot(file);
   });
 
   it('each plays their own prescription: P1 with his amber knees and one pair of 10 kg dumbbells, P2 at her own level', () => {

@@ -17,6 +17,9 @@ export const ASSESSMENT_REASON_CODES: readonly string[] = Object.freeze([
   'assessment.unavailable.not_screened',
   'assessment.unavailable.professional_guidance',
   'assessment.unavailable.effort_cap',
+  'assessment.unavailable.s3_intensity_locked',
+  'assessment.unavailable.s7_age',
+  'assessment.unavailable.clock_mismatch',
   'assessment.mapping.zero_lowest_rung',
   'assessment.mapping.step_down',
   'assessment.mapping.in_range',
@@ -47,5 +50,6 @@ export const SESSION_REASON_CODES: readonly string[] = Object.freeze([
   'session.unavailable.not_screened',
   'session.unavailable.professional_guidance',
   'session.unavailable.effort_cap',
+  'session.unavailable.clock_mismatch',
   'session.unavailable.no_exercise',
 ]);

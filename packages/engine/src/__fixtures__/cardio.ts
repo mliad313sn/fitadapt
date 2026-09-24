@@ -66,13 +66,16 @@ export const CARDIO_LIBRARY: SessionLibrary = {
 /**
  * A logged-training history for the HIIT gate: a first session `weeks` weeks
  * (and an hour) before `nowMs`, then `perWeek` logged sessions (cardio blocks
- * that were run) in each of the last `weeks` 7-day windows.
+ * that were run) in each of the last `weeks` 7-day windows. The last
+ * `intervalsCompleted` sessions were interval blocks run to the end (A3/A5
+ * #66: the first-exposure interval caps apply until enough of them).
  */
-export function trainedHistory(nowMs: number, weeks = 2, perWeek = 3): SessionHistoryEntry[] {
+export function trainedHistory(nowMs: number, weeks = 2, perWeek = 3, intervalsCompleted = 0): SessionHistoryEntry[] {
   const offsets = [weeks * 7 * DAY + 3_600_000];
   for (let w = weeks - 1; w >= 0; w--) for (let k = perWeek - 1; k >= 0; k--) offsets.push(w * 7 * DAY + DAY + Math.round((k * 5 * DAY) / Math.max(1, perWeek)));
   return offsets.map((o, i) => {
     const at = new Date(nowMs - o).toISOString();
-    return { planId: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`, prescribedAt: at, startedAt: at, countsForProgression: false, exercises: [], cardioSeconds: 1200 };
+    const entry: SessionHistoryEntry = { planId: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`, prescribedAt: at, startedAt: at, countsForProgression: false, exercises: [], cardioSeconds: 1200 };
+    return i >= offsets.length - intervalsCompleted ? { ...entry, hiitCompleted: true as const } : entry;
   });
 }

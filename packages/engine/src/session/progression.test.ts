@@ -101,9 +101,12 @@ describe('regression (Rules: two sessions below the range, or RPE ≥ 9.5 → re
   });
 
   it('a changed rep range (new block) re-derives the load from the RIR-adjusted e1RM', () => {
-    // 60 kg × 12 @ RIR 2 → e1RM 60 × (1 + 14/30) = 88; 4–6 reps @ RIR 2 → 88 / (1 + 8/30) = 69.5 → 67.5 on 2.5 kg steps.
-    const d = evaluateProgression(loaded([session(sets(3, 12, 2, 60), { prescribedLoadKg: 60 }, 10)], { target: range(4, 6) }));
-    expect(d).toMatchObject({ action: 'rebase', loadKg: 67.5, target: range(4, 6), reasonCodes: ['session.progression.range_changed'] });
+    // 60 kg × 10 @ RIR 2 → e1RM 60 × (1 + 12/30) = 84; 4–6 reps @ RIR 2 → 84 / (1 + 8/30) = 66.3 → 65 on 2.5 kg steps.
+    const d = evaluateProgression(loaded([session(sets(3, 10, 2, 60), { prescribedLoadKg: 60 }, 10)], { target: range(4, 6) }));
+    expect(d).toMatchObject({ action: 'rebase', loadKg: 65, target: range(4, 6), reasonCodes: ['session.progression.range_changed'] });
+    // A3/A5 pre-review #2: 12 reps @ RIR 2 is 14 effective reps, outside Epley's range: no estimate, the load stays (was 67.5).
+    const high = evaluateProgression(loaded([session(sets(3, 12, 2, 60), { prescribedLoadKg: 60 }, 10)], { target: range(4, 6) }));
+    expect(high).toMatchObject({ action: 'rebase', loadKg: 60, target: range(4, 6) });
   });
 });
 

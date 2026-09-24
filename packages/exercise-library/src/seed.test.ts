@@ -53,14 +53,17 @@ describe('M06 seed', () => {
       expect(e.bodyweightLoad?.value).toBeGreaterThan(0);
       expect(e.bodyweightLoad?.value).toBeLessThanOrEqual(1);
     }
-    // The four push-up values quoted in docs/specs/M02 from Ebben et al. (2011).
+    // The push-up values quoted in docs/specs/M02 from Ebben et al. (2011); the low incline (bench or chair seat) sits
+    // between Ebben's 30.5 cm and 61 cm values (A3/A5 pre-review #80: 0.41 was the 61 cm box).
     const byId = lib.byId;
     expect([byId.get('knee_push_up'), byId.get('push_up'), byId.get('decline_push_up'), byId.get('incline_push_up_low')].map((e) => [e?.bodyweightLoad?.value, e?.bodyweightLoad?.source])).toEqual([
       [0.49, BW_SOURCE.ebben],
       [0.64, BW_SOURCE.ebben],
       [0.74, BW_SOURCE.ebben],
-      [0.41, BW_SOURCE.ebben],
+      [0.48, BW_SOURCE.ebben_interpolated],
     ]);
+    // A1/A2 pre-review: a deep wall sit loads the knee heavily (a red or amber knee never gets it by default).
+    expect(byId.get('wall_sit')?.jointLoad.knee).toBe('high');
   });
 
   it('every similarity weight is validated:false with a source, and the weights sum to 1', () => {

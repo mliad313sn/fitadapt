@@ -1,13 +1,14 @@
 import { SCREENING_QUESTION_IDS, SafetyProfileSchema, SessionPlanSchema, type AssessmentResult, type CapacityModel } from '@fitadapt/shared';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { FIXTURE_LIBRARY, FULL_GYM, P1_HOME, profileFrom } from '../__fixtures__/library.js';
+import { SAFE_FACTS, FIXTURE_LIBRARY, FULL_GYM, P1_HOME, profileFrom } from '../__fixtures__/library.js';
 import { buildCapacityModel, loadForReps, roundDownToIncrement } from '../assessment/index.js';
 import { fixedClock } from '../clock.js';
 import { createEngineContext } from '../context.js';
 import { hasEquipment } from '../substitution.js';
 import { ENGINE_VERSION } from '../version.js';
 import { S5_MAX_INCREASE_FRACTION, firstSessionRir, generateSession, type GenerateSessionInput } from './first-session.js';
+import { s5Violations } from './history.js';
 
 const NOW = Date.parse('2026-09-24T08:00:00.000Z');
 const ctx = () => createEngineContext({ clock: fixedClock(NOW), seed: 7 });
@@ -45,7 +46,7 @@ const homeResult: AssessmentResult = {
 };
 const gymCapacity = buildCapacityModel(gymResult, FIXTURE_LIBRARY);
 const homeCapacity = buildCapacityModel(homeResult, FIXTURE_LIBRARY);
-const input = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({ capacity: gymCapacity, safetyProfile: cleared, equipment: FULL_GYM, minutesAvailable: 75, ...over });
+const input = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({ ...SAFE_FACTS, capacity: gymCapacity, safetyProfile: cleared, equipment: FULL_GYM, minutesAvailable: 75, ...over });
 const ok = (over: Partial<GenerateSessionInput> = {}) => {
   const r = generateSession(input(over), FIXTURE_LIBRARY, ctx());
   if (r.status !== 'ok') throw new Error(`expected a plan: ${r.reasonCodes.join()}`);
@@ -120,6 +121,29 @@ describe('generateSession uses the CapacityModel for the first session', () => {
     expect(ok({ recentLoads: [{ ...recent[0]!, prescribedAt: '2026-09-25T08:00:00.000Z' }] }).plan.exercises[0]!.sets[0]!.loadKg).toBe(110);
   });
 
+  it('SAF-4: a load capped at the S5 ceiling on the legacy step is at or below the ceiling (true round-down)', () => {
+    // 45.45 kg × 1.1 = 49.995 kg: rounding to hundredths first gave 50 kg (above the ceiling, refused by the server).
+    const recentLoads = [{ exerciseId: 'barbell_back_squat', loadKg: 45.45, prescribedAt: '2026-09-22T08:00:00.000Z' }];
+    const { plan } = ok({ recentLoads, loadIncrementKg: 0.5 });
+    expect(plan.exercises[0]!.sets[0]!.loadKg).toBe(49.5);
+    expect(plan.exercises[0]!.sets[0]!.reasonCodes).toContain('session.load.s5_capped');
+    expect(s5Violations(plan, [], recentLoads)).toEqual([]);
+  });
+
+  it('SAF-4 property: every legacy-step load is at or below the S5 ceiling, also for references just under a step boundary', () => {
+    fc.assert(
+      fc.property(fc.constantFrom(0.5, 1, 1.25, 2, 2.5), fc.integer({ min: 10, max: 200 }), fc.double({ min: -0.004, max: 0.004, noNaN: true }), (step, k, jitter) => {
+        const ref = Math.max(0.01, (k * step) / 1.1 + jitter);
+        const recentLoads = [{ exerciseId: 'barbell_back_squat', loadKg: ref, prescribedAt: '2026-09-22T08:00:00.000Z' }];
+        const r = generateSession(input({ recentLoads, loadIncrementKg: step }), FIXTURE_LIBRARY, ctx());
+        if (r.status !== 'ok') return;
+        expect(s5Violations(r.plan, [], recentLoads)).toEqual([]);
+        for (const e of r.plan.exercises) for (const set of e.sets) if (e.exerciseId === 'barbell_back_squat' && set.loadKg !== null) expect(set.loadKg).toBeLessThanOrEqual(ref * 1.1 + 1e-9);
+      }),
+      { numRuns: 500 },
+    );
+  });
+
   it('uses the tested load when there was no e1RM, and the equipment step given', () => {
     const noE1rm: CapacityModel = { ...gymCapacity, slots: gymCapacity.slots.map((s) => (s.slot === 'squat' ? { ...s, e1rmKg: null, loadKg: 90 } : s)) };
     const { plan } = ok({ capacity: noE1rm, loadIncrementKg: 1 });
@@ -166,7 +190,7 @@ describe('generateSession uses the CapacityModel for the first session', () => {
         fc.constantFrom(gymCapacity, homeCapacity),
         (yes, clearance, equipment, minutes, capacity) => {
           const profile = profileFrom(yes, { clearanceAttested: clearance });
-          const r = generateSession({ capacity, safetyProfile: profile, equipment, minutesAvailable: minutes }, FIXTURE_LIBRARY, ctx());
+          const r = generateSession({ ...SAFE_FACTS, capacity, safetyProfile: profile, equipment, minutesAvailable: minutes }, FIXTURE_LIBRARY, ctx());
           if (r.status !== 'ok') return;
           const cap = profile.unresolvedFlags.length > 0 ? Math.min(profile.maxRPE, 7) : profile.maxRPE;
           expect(10 - r.plan.targetRir).toBeLessThanOrEqual(cap);

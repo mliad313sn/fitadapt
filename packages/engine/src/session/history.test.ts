@@ -1,6 +1,6 @@
 import type { ExecutionLog, SessionPlan } from '@fitadapt/shared';
 import { describe, expect, it } from 'vitest';
-import { FULL_GYM, P1_HOME, profileFrom } from '../__fixtures__/library.js';
+import { SAFE_FACTS, FULL_GYM, P1_HOME, profileFrom } from '../__fixtures__/library.js';
 import { GYM_ID, GYM_LOADS, HOME_LOADS, SESSION_LIBRARY, programContext, slot } from '../__fixtures__/session.js';
 import { perform, record, atTop } from '../__fixtures__/simulate.js';
 import { fixedClock } from '../clock.js';
@@ -13,7 +13,7 @@ import type { GenerateSessionInput } from './types.js';
 
 const MON = Date.parse('2026-09-28T08:00:00.000Z');
 const GYM = [...FULL_GYM, 'cable_station'] as const;
-const input: GenerateSessionInput = { safetyProfile: profileFrom(), equipment: GYM, equipmentLoads: GYM_LOADS, equipmentProfileId: GYM_ID, minutesAvailable: 60, programSession: programContext(), experience: 'intermediate' };
+const input: GenerateSessionInput = { ...SAFE_FACTS, safetyProfile: profileFrom(), equipment: GYM, equipmentLoads: GYM_LOADS, equipmentProfileId: GYM_ID, minutesAvailable: 60, programSession: programContext(), experience: 'intermediate' };
 const make = (i: GenerateSessionInput, at = MON, seed = 11): SessionPlan => {
   const r = generateSession(i, SESSION_LIBRARY, createEngineContext({ clock: fixedClock(at), seed }));
   if (r.status !== 'ok') throw new Error(r.reasonCodes.join());
@@ -63,6 +63,21 @@ describe('history from the append-only records', () => {
     const forged: SessionPlan = { ...next, exercises: next.exercises.map((e, i) => (i === 0 ? { ...e, sets: e.sets.map((s) => ({ ...s, loadKg: 90 })) } : e)) };
     expect(s5Violations(forged, hist)).toContainEqual({ exerciseIndex: 0, exerciseId: next.exercises[0]!.exerciseId, loadKg: 90, ceilingKg: 55.00000000000001 });
     expect(s5Violations(forged, [], [{ exerciseId: next.exercises[0]!.exerciseId, loadKg: 80, prescribedAt: next.generatedAt }])).toHaveLength(3);
+  });
+
+  it('SAF-5: with the server time, a plan dated 8 days ahead (device clock moved forward) is checked at the earlier time', () => {
+    const plan = make(input);
+    const hist = buildSessionHistory([record(input, plan)], perform(plan, atTop(50)), []);
+    const id = plan.exercises[0]!.exerciseId;
+    const ahead = make({ ...input, history: hist }, MON + 8 * 86_400_000, 17);
+    const forged: SessionPlan = { ...ahead, exercises: ahead.exercises.map((e) => (e.exerciseId === id ? { ...e, sets: e.sets.map((x) => ({ ...x, loadKg: 90 })) } : e)) };
+    // At the device's time (8 days later), the real references are out of the window: nothing to check against.
+    expect(s5Violations(forged, hist)).toEqual([]);
+    // At the server's time (one day after the reference), the ceiling applies.
+    expect(s5Violations(forged, hist, [], MON + 86_400_000).map((v) => v.exerciseId)).toContain(id);
+    // A server time later than the plan's never loosens it.
+    expect(s5Violations(forged, hist, [], MON + 30 * 86_400_000)).toEqual([]);
+    expect(s5Violations({ ...forged, generatedAt: 'not a date' }, hist, [], MON + 86_400_000).length).toBeGreaterThan(0);
   });
 });
 

@@ -25,7 +25,7 @@ import {
   type SlotRole,
   type SlotTarget,
 } from '@fitadapt/shared';
-import { assessmentValue } from '../assessment/config.js';
+import { assessmentValue, rpeForRir } from '../assessment/config.js';
 import { loadForReps } from '../assessment/e1rm.js';
 import { sessionValue, type SessionConfigKey } from '../config/session.js';
 import { stamp, type EngineContext } from '../context.js';
@@ -35,6 +35,7 @@ import { ENGINE_VERSION } from '../version.js';
 import type { ProgramDay } from '../program/queries.js';
 import type { EffectiveSession } from '../program/reflow.js';
 import { SESSION_RULES_VERSION } from '../config/session.js';
+import { s5WindowReferences } from './bounds.js';
 import { achievableAtMost, implementFor, stepAbove } from './increments.js';
 import { ladderOf, tagsOf, type SessionLibrary } from './library.js';
 import { evaluateProgression } from './progression.js';
@@ -96,10 +97,10 @@ const isLoadedType = (t: string | undefined) => t === 'external' || t === 'machi
 
 /** Session reserve from the program's target RPE, raised until S1 (screeningGateCheck) accepts it; null when no reserve up to rir.max is allowed. */
 export function sessionRir(profile: SafetyProfile, targetRpe: number | null, extra: number): { rir: number; s1Capped: boolean } | null {
-  const fromRpe = targetRpe === null ? sessionValue('rir.default') : Math.ceil(assessmentValue('rpeAtZeroRir') - targetRpe - 1e-9);
+  const fromRpe = targetRpe === null ? sessionValue('rir.default') : Math.ceil(rpeForRir(0) - targetRpe - 1e-9);
   const start = Math.min(MAX_TARGET_RIR, Math.max(0, fromRpe) + extra);
   for (let rir = start; rir <= sessionValue('rir.max'); rir++) {
-    if (screeningGateCheck({ profile, request: { rpe: assessmentValue('rpeAtZeroRir') - rir, hiit: false, maximalTest: false } }) === null) return { rir, s1Capped: rir > start };
+    if (screeningGateCheck({ profile, request: { rpe: rpeForRir(rir), hiit: false, maximalTest: false } }) === null) return { rir, s1Capped: rir > start };
   }
   return null;
 }
@@ -177,6 +178,8 @@ export function loadReferencesFor(history: readonly SessionHistoryEntry[], recen
       if (e.prescribedLoadKg !== null) refs.push({ loadKg: e.prescribedLoadKg, at: h.prescribedAt });
       for (const p of e.performed) if (p.status === 'done' && p.loadKg !== null) refs.push({ loadKg: p.loadKg, at: h.startedAt });
     }
+    // SAF-6: exercises beyond a history entry's 20 (many swaps) keep their S5 references, folded.
+    for (const o of h.overflowLoads ?? []) if (o.exerciseId === exerciseId) refs.push({ loadKg: o.loadKg, at: o.at });
   }
   for (const r of recent) if (r.exerciseId === exerciseId) refs.push({ loadKg: r.loadKg, at: r.prescribedAt });
   return refs;
@@ -280,7 +283,8 @@ function prescribe(ctx: Ctx, cand: Candidate, slot: ProgramSlot, prev: HistoryEx
     targetRir: ctx.targetRir,
     sessions: progressionSessions(ctx, ex.id).slice(-sessionValue('history.maxSessions')),
     implement: impl,
-    loadReferences: refs,
+    // SAF-7: only what S5 reads at this time (same ceiling), so the progression input's cap is never reached.
+    loadReferences: s5WindowReferences(refs, ctx.nowMs),
     asOf: iso(ctx.nowMs),
     allowProgression: ctx.allowProgression,
   });
@@ -349,7 +353,7 @@ function prescribe(ctx: Ctx, cand: Candidate, slot: ProgramSlot, prev: HistoryEx
   if (finalTarget.kind === 'hold') params.seconds = finalTarget.seconds;
   // Holds have no reps to spare: the reserve is an effort level (RPE = 10 − RIR on the same scale).
   const effortReason = finalTarget.kind === 'hold' && ctx.rirReason !== 'session.rir.s1_capped' ? 'session.effort.hold' : ctx.rirReason;
-  if (effortReason === 'session.effort.hold') params.rpe = assessmentValue('rpeAtZeroRir') - ctx.targetRir;
+  if (effortReason === 'session.effort.hold') params.rpe = rpeForRir(ctx.targetRir);
   const setReasons = [cand.reasonCode, ...cand.note, ...loadReasons, rangeReason, effortReason, ...(tempo ? ['session.tempo.eccentric'] : [])];
   const planned: PlannedSet[] = Array.from({ length: sets }, (_, i) => ({
     index: i + 1,
@@ -413,7 +417,7 @@ function planSlot(ctx: Ctx, slot: ProgramSlot, sets: number, dry = false): Presc
         targetRir: ctx.targetRir,
         sessions: progressionSessions(ctx, prevEx.id).slice(-sessionValue('history.maxSessions')),
         implement: loading?.implement ?? null,
-        loadReferences: loadReferencesFor(ctx.input.history ?? [], ctx.input.recentLoads ?? [], prevEx.id),
+        loadReferences: s5WindowReferences(loadReferencesFor(ctx.input.history ?? [], ctx.input.recentLoads ?? [], prevEx.id), ctx.nowMs),
         asOf: iso(ctx.nowMs),
         allowProgression: ctx.allowProgression,
       });
@@ -580,7 +584,7 @@ export function programSession(input: GenerateSessionInput, library: SessionLibr
 
   // Conditioning goes to M03; S1 is re-checked (intervals only when HIIT is allowed).
   let conditioning: Conditioning | null = session.conditioning;
-  if (conditioning?.kind === 'intervals' && screeningGateCheck({ profile, request: { rpe: assessmentValue('rpeAtZeroRir') - c.targetRir, hiit: true, maximalTest: false } }) !== null) {
+  if (conditioning?.kind === 'intervals' && screeningGateCheck({ profile, request: { rpe: rpeForRir(c.targetRir), hiit: true, maximalTest: false } }) !== null) {
     conditioning = { ...conditioning, kind: 'steady' };
     planReasons.push('session.conditioning.intervals_not_allowed');
     events.push({ invariant: 'S1', reasonCode: 'safety.s1.hiit_not_allowed', action: 'capped', engineVersion: ENGINE_VERSION });

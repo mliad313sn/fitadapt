@@ -3,11 +3,14 @@ import {
   EquipmentLoadsSchema,
   EquipmentProfileSchema,
   ExecutionLogSchema,
+  GenerateSessionInputSchema,
   GenerateSessionResultSchema,
   PlannedSetSchema,
   ReasonParamsSchema,
   SessionPlanSchema,
   SetLogSchema,
+  StoredSessionInputSchema,
+  WorkoutSessionRecordSchema,
 } from './index.js';
 
 const set = { index: 1, target: { kind: 'reps', min: 6, max: 10 }, loadKg: 60, targetRir: 2, restSeconds: 90, tempo: null, reasonCodes: ['session.progression.load_increased'], reasonParams: { deltaKg: 2.5 } };
@@ -47,6 +50,22 @@ describe('M02 session contracts', () => {
     expect(SessionPlanSchema.safeParse({ ...plan, kind: 'first_session', exercises: [], conditioning: { kind: 'steady', placement: 'session', minutes: 30 } }).success).toBe(false);
     expect(SessionPlanSchema.safeParse({ ...plan, extra: true }).success).toBe(false);
     expect(GenerateSessionResultSchema.safeParse({ status: 'unavailable', reasonCodes: [] }).success).toBe(false);
+  });
+
+  it('SAF-3: the engine input requires every safety fact (fail closed); a stored record from before still parses', () => {
+    const profile = { screeningOutcome: 'cleared', unresolvedFlags: [], deficitNutritionAllowed: true, specialPopulation: 'none', automaticProgrammingAllowed: true, lowIntensityLibraryOnly: false, professionalGuidance: false, limitedJoints: [], reasonCodes: ['safety_profile.cleared'], rulesVersion: '0.1.0', maxRPE: 8, allowHIIT: true, allowMaxTests: false, impactCeiling: 'high', avoidTags: [], excludedExerciseIds: [] };
+    const facts = { jointFlags: {}, history: [], recentLoads: [], birthDate: null, localDate: null, intensityLock: { locked: false, since: null } };
+    const full = { safetyProfile: profile, equipment: [], minutesAvailable: 30, ...facts };
+    expect(GenerateSessionInputSchema.safeParse(full).success).toBe(true);
+    for (const key of Object.keys(facts)) {
+      const { [key as keyof typeof facts]: _omit, ...missing } = full;
+      expect(GenerateSessionInputSchema.safeParse(missing).success, key).toBe(false);
+      expect(StoredSessionInputSchema.safeParse(missing).success, key).toBe(true);
+    }
+    const legacy = { safetyProfile: profile, equipment: [], minutesAvailable: 30 };
+    const record = { schemaVersion: 1, input: legacy, plan, safetyEvents: [], startedAt: plan.generatedAt, jurisdiction: 'GB', firstWorkout: false };
+    expect(WorkoutSessionRecordSchema.safeParse(record).success).toBe(true);
+    expect(GenerateSessionInputSchema.safeParse(legacy).success).toBe(false);
   });
 
   it('equipment loads (in place, optional on the M01 equipment profile)', () => {

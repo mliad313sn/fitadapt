@@ -11,7 +11,7 @@ import { createTranslator, en, fatBurnClaims, fr, type MessageKey } from '@fitad
 import { impactRank, type CardioProtocol, type SessionHistoryEntry } from '@fitadapt/shared';
 import { describe, expect, it } from 'vitest';
 import { PERSONA_INPUTS } from './__fixtures__/personas.js';
-import { PERSONA_SESSIONS } from './__fixtures__/session-personas.js';
+import { SAFE_FACTS, PERSONA_SESSIONS } from './__fixtures__/session-personas.js';
 import { EQUIPMENT_PRESETS, generateSession, seedLibrary, STEADY_MODALITIES, VENUE_SWAPS } from './index.js';
 
 /**
@@ -33,6 +33,7 @@ function cardioFor(persona: keyof typeof PERSONA_SESSIONS, protocol: CardioProto
   const input = PERSONA_INPUTS[persona];
   const place = input.locations[0]!;
   const gen: GenerateSessionInput = {
+    ...SAFE_FACTS,
     safetyProfile: input.safetyProfile,
     equipment: place.equipment,
     equipmentProfileId: place.equipmentProfileId,

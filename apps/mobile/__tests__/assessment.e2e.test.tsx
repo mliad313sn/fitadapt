@@ -153,7 +153,7 @@ describe('P1 (home, 120 kg beginner, 3 × 40 min): guided home assessment offlin
     await screen.findByTestId('first-session-plan');
     expect(app.getPathname()).toBe('/first-workout');
     const session = generateSession(
-      { capacity: record!.capacity, safetyProfile: evaluateStoredProfile(), equipment: ['pull_up_bar', 'resistance_band', 'dumbbell'], minutesAvailable: 40 },
+      { jointFlags: {}, history: [], recentLoads: [], birthDate: null, localDate: null, intensityLock: { locked: false, since: null }, capacity: record!.capacity, safetyProfile: evaluateStoredProfile(), equipment: ['pull_up_bar', 'resistance_band', 'dumbbell'], minutesAvailable: 40 },
       createEngineContext({ clock: { now: () => Date.now() }, seed: 1 }),
     );
     if (session.status !== 'ok') throw new Error('expected a plan');
@@ -191,7 +191,7 @@ describe('P5 (advanced powerlifter, gym, 4 × 75 min): submaximal load tests →
     press('assessment-to-session');
     await screen.findByTestId('first-session-plan');
     const session = generateSession(
-      { capacity: record!.capacity, safetyProfile: evaluateStoredProfile(), equipment: ['barbell', 'squat_rack', 'flat_bench', 'lat_pulldown', 'dumbbell'], minutesAvailable: 75 },
+      { jointFlags: {}, history: [], recentLoads: [], birthDate: null, localDate: null, intensityLock: { locked: false, since: null }, capacity: record!.capacity, safetyProfile: evaluateStoredProfile(), equipment: ['barbell', 'squat_rack', 'flat_bench', 'lat_pulldown', 'dumbbell'], minutesAvailable: 75 },
       createEngineContext({ clock: { now: () => Date.now() }, seed: 1 }),
     );
     if (session.status !== 'ok') throw new Error('expected a plan');

@@ -26,7 +26,7 @@ const SPECS: Record<string, ExerciseSpec> = {
   // ---------------------------------------------------------------- horizontal push
   wall_push_up: { p: 'horizontal_push', m: ['chest', 'triceps'], s: ['front_delts'], j: 'llmllll', sk: 'entry', lt: 'bodyweight', bw: [0.2, 'estimate'], t: ['low_impact', 'supported'] },
   incline_push_up_high: { p: 'horizontal_push', m: ['chest', 'triceps'], s: ['front_delts', 'deep_core'], j: 'mlmllll', sk: 'entry', lt: 'bodyweight', bw: [0.3, 'estimate'], t: ['low_impact', 'supported'] },
-  incline_push_up_low: { p: 'horizontal_push', m: ['chest', 'triceps'], s: ['front_delts', 'deep_core'], eq: [BENCHLIKE], j: 'mmmllll', sk: 'beginner', lt: 'bodyweight', bw: [0.41, 'ebben'], t: ['low_impact'] },
+  incline_push_up_low: { p: 'horizontal_push', m: ['chest', 'triceps'], s: ['front_delts', 'deep_core'], eq: [BENCHLIKE], j: 'mmmllll', sk: 'beginner', lt: 'bodyweight', bw: [0.48, 'ebben_interpolated'], t: ['low_impact'] },
   knee_push_up: { p: 'horizontal_push', m: ['chest', 'triceps'], s: ['front_delts', 'deep_core'], j: 'mmmllml', sk: 'beginner', lt: 'bodyweight', bw: [0.49, 'ebben'], ci: ['floor_transfer'], t: ['low_impact'] },
   push_up: { p: 'horizontal_push', m: ['chest', 'triceps'], s: ['front_delts', 'deep_core'], j: 'mmhllll', sk: 'beginner', lt: 'bodyweight', bw: [0.64, 'ebben'], ci: ['floor_transfer', 'loaded_wrist_extension'] },
   decline_push_up: { p: 'horizontal_push', m: ['chest', 'front_delts'], s: ['triceps', 'deep_core'], eq: [STEP], j: 'hmhllll', sk: 'intermediate', lt: 'bodyweight', bw: [0.74, 'ebben'], ci: ['floor_transfer', 'loaded_wrist_extension', 'inversion'] },
@@ -97,7 +97,8 @@ const SPECS: Record<string, ExerciseSpec> = {
   goblet_squat: { p: 'squat', m: ['quads', 'glutes'], s: ['hip_adductors', 'deep_core', 'upper_back'], eq: [HAND_WEIGHT], j: 'lmlmmmm', sk: 'beginner', lt: 'external', t: ['low_impact'] },
   barbell_back_squat: { p: 'squat', m: ['quads', 'glutes'], s: ['hip_adductors', 'lower_back', 'deep_core'], eq: ['barbell', 'squat_rack'], j: 'mlmhhhm', sk: 'intermediate', lt: 'external', ci: ['breath_hold_bracing', 'deep_knee_flexion'] },
   leg_press: { p: 'squat', m: ['quads', 'glutes'], s: ['hip_adductors'], eq: ['leg_press'], j: 'lllmmhl', sk: 'entry', lt: 'machine', t: ['low_impact', 'supported'] },
-  wall_sit: { p: 'squat', m: ['quads'], s: ['glutes'], j: 'lllllml', sk: 'beginner', lt: 'bodyweight', bw: [0.5, 'estimate'], t: ['isometric', 'low_impact', 'supported'] },
+  // A1/A2 pre-review (joint loads): a deep wall sit loads the patellofemoral joint heavily → knee H (stricter; seat A2).
+  wall_sit: { p: 'squat', m: ['quads'], s: ['glutes'], j: 'lllllhl', sk: 'beginner', lt: 'bodyweight', bw: [0.5, 'estimate'], t: ['isometric', 'low_impact', 'supported'] },
   cossack_squat: { p: 'squat', m: ['hip_adductors', 'quads', 'glutes'], s: ['hamstrings'], j: 'lllmhhm', sk: 'intermediate', uni: true, lt: 'bodyweight', bw: [0.7, 'estimate'], ci: ['deep_knee_flexion'], t: ['mobility'] },
   assisted_pistol_squat: { p: 'squat', m: ['quads', 'glutes'], s: ['hip_abductors', 'deep_core'], j: 'lllmmhm', sk: 'intermediate', uni: true, lt: 'bodyweight', bw: [0.8, 'estimate'], ci: ['deep_knee_flexion'], t: ['supported'] },
   box_pistol_squat: { p: 'squat', m: ['quads', 'glutes'], s: ['hip_abductors', 'deep_core'], eq: [BENCHLIKE], j: 'lllmmhm', sk: 'advanced', uni: true, lt: 'bodyweight', bw: [0.85, 'estimate'], ci: ['high_balance_demand'], t: ['calisthenics_skill'] },

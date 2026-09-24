@@ -11,7 +11,7 @@ import {
 import { MilestoneForecastSchema, type ExecutionLog, type WorkoutSessionRecord } from '@fitadapt/shared';
 import { describe, expect, it } from 'vitest';
 import { PERSONA_INPUTS } from './__fixtures__/personas.js';
-import { PERSONA_SESSIONS } from './__fixtures__/session-personas.js';
+import { SAFE_FACTS, PERSONA_SESSIONS } from './__fixtures__/session-personas.js';
 import { buildCapacityModel, generateProgram, generateSession, ladderLookup, MILESTONES, MILESTONE_IDS, milestonesFor } from './index.js';
 
 /**
@@ -43,6 +43,7 @@ function simulateP2(days: number) {
     for (const session of day?.sessions ?? []) {
       const place = input.locations.find((l) => l.equipmentProfileId === session.equipmentProfileId)!;
       const genInput: GenerateSessionInput = {
+        ...SAFE_FACTS,
         safetyProfile: input.safetyProfile,
         equipment: place.equipment,
         equipmentLoads: p.loads[place.equipmentProfileId]!,

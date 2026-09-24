@@ -1,4 +1,4 @@
-import { createEngineContext } from '@fitadapt/engine';
+import { boundSessionInput, createEngineContext } from '@fitadapt/engine';
 import { generateSession } from '@fitadapt/exercise-library';
 import { formatMass, type MessageKey } from '@fitadapt/i18n';
 import { NOTICES, noticesToShow, renderNotice } from '@fitadapt/legal';
@@ -10,7 +10,9 @@ import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLibraryStore } from '../library/LibraryProvider';
 import { clock } from '../clock';
-import { useCapacity, useLegal, useProfile, useSafetyProfile } from '../profile/ProfileProvider';
+import { useCapacity, useIntensityLock, useJointFlags, useLegal, useProfile, useSafetyProfile, useSessionHistory } from '../profile/ProfileProvider';
+import { localIsoDate } from '../profile/selectors';
+import { todayInput } from '../workout/today';
 
 /**
  * The first-workout screen (reachable only through the L2 gate, see
@@ -38,11 +40,20 @@ export function FirstWorkoutScreen() {
 
   const active = equipment.find((p) => p.id === activeId) ?? equipment[0];
   const pending = noticesToShow('workout.start', impressions, NOTICES);
+  const profile = useProfile((s) => s.profile);
+  const history = useSessionHistory();
+  const jointFlags = useJointFlags();
+  const intensityLock = useIntensityLock();
   const session = useMemo(() => {
-    if (!capacity || !active) return null;
-    const now = clock.now().getTime();
-    return generateSession({ capacity, safetyProfile: safety, equipment: active.data.equipment, minutesAvailable: minutes }, createEngineContext({ clock: { now: () => now }, seed: 1 }));
-  }, [capacity, active, safety, minutes]);
+    if (!capacity || !active || !profile) return null;
+    const at = clock.now();
+    // SAF-3: the same facts as the workout screen (S3 lock, S2 joint flags, S5 history, S7 date of birth and local
+    // date), never a bare capacity model. No program: this screen previews the first session from the assessment.
+    const facts = todayInput({ profile, safetyProfile: safety, places: equipment, program: null, reflows: [], capacity, history, jointFlags, intensityLock, today: localIsoDate(at), placeId: active.id, minutes });
+    if (facts.status !== 'ready') return null;
+    const now = at.getTime();
+    return generateSession(boundSessionInput(facts.input, now), createEngineContext({ clock: { now: () => now }, seed: 1 }));
+  }, [capacity, active, safety, minutes, profile, equipment, history, jointFlags, intensityLock]);
   const pool = useMemo(() => (library && active ? library.pool(locale, active.data.equipment, safety) : []), [library, active, locale, safety]);
 
   // L3: record that the notice was shown (once per version until acknowledged).

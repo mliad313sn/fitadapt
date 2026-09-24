@@ -1,4 +1,6 @@
 {
+  "engineVersion": "0.5.0",
+  "rulesVersion": "0.4.0",
   "reflows": [
     "w01.s3 reported 2026-10-02: shifted to 2026-10-03",
     "w02.s3 reported 2026-10-09: shifted to 2026-10-10"
@@ -465,7 +467,7 @@
           "invariant": "S5",
           "reasonCode": "safety.s5.load_ceiling",
           "action": "capped",
-          "engineVersion": "0.4.0"
+          "engineVersion": "0.5.0"
         }
       ]
     },
@@ -589,7 +591,7 @@
           "invariant": "S5",
           "reasonCode": "safety.s5.load_ceiling",
           "action": "capped",
-          "engineVersion": "0.4.0"
+          "engineVersion": "0.5.0"
         }
       ]
     },

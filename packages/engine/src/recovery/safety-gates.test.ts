@@ -2,7 +2,7 @@ import { intensityLockStatus, jointFlagsFromPain, type PainReport, type SafetySt
 import { JOINTS, type Joint, type SessionPlan } from '@fitadapt/shared';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { FULL_GYM, profileFrom } from '../__fixtures__/library.js';
+import { SAFE_FACTS, FULL_GYM, profileFrom } from '../__fixtures__/library.js';
 import { GYM_CAPACITY, RECOVERY_LIBRARY } from '../__fixtures__/recovery.js';
 import { GYM_ID, GYM_LOADS, HOME_ID, HOME_LOADS, programContext, slot } from '../__fixtures__/session.js';
 import { fixedClock } from '../clock.js';
@@ -18,7 +18,7 @@ const DAY = 86_400_000;
 const at = (ms: number) => new Date(ms).toISOString();
 const A = '11111111-1111-4111-8111-111111111111';
 const B = '22222222-2222-4222-8222-222222222222';
-const gym = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({
+const gym = (over: Partial<GenerateSessionInput> = {}): GenerateSessionInput => ({ ...SAFE_FACTS,
   safetyProfile: profileFrom(),
   equipment: [...FULL_GYM, 'cable_station'],
   equipmentLoads: GYM_LOADS,

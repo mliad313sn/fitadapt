@@ -1,7 +1,7 @@
 import { FairScoreSchema, type ExecutionLog, type ScoredSet, type SessionPlan } from '@fitadapt/shared';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { P1_HOME, profileFrom } from '../__fixtures__/library.js';
+import { SAFE_FACTS, P1_HOME, profileFrom } from '../__fixtures__/library.js';
 import { HOME_ID, HOME_LOADS, SESSION_LIBRARY, programContext } from '../__fixtures__/session.js';
 import { fixedClock } from '../clock.js';
 import { createEngineContext } from '../context.js';
@@ -13,7 +13,7 @@ import { challengeComparable, expectedUnits, fairScore } from './score.js';
 const MON = Date.parse('2026-09-28T08:00:00.000Z');
 const HOME = [...P1_HOME];
 const at = (s: number) => new Date(MON + s * 1000).toISOString();
-const input = (bodyweightKg: number, minutes: number, id: string): GenerateSessionInput => ({
+const input = (bodyweightKg: number, minutes: number, id: string): GenerateSessionInput => ({ ...SAFE_FACTS,
   safetyProfile: profileFrom(),
   equipment: HOME,
   equipmentLoads: HOME_LOADS,

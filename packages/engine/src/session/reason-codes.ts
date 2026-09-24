@@ -35,6 +35,7 @@ export const M02_REASON_PARAMS: Readonly<Record<string, readonly string[]>> = Ob
   'session.unavailable.no_time': [],
   'session.unavailable.s7_age': [],
   'session.unavailable.s3_intensity_locked': [],
+  'session.unavailable.clock_mismatch': [],
   'session.unavailable.no_program': [],
   ...Object.fromEntries(MOVEMENT_PATTERNS.map((p) => [`session.slot_dropped.${p}`, []])),
   // Exercise choice

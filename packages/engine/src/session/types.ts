@@ -34,22 +34,25 @@ export interface GenerateSessionInput {
   readonly equipmentLoads?: EquipmentLoads | null;
   readonly equipmentProfileId?: string | null;
   readonly minutesAvailable: number;
-  readonly jointFlags?: JointFlags;
+  /** M05 pain traffic light (S2). Required (SAF-3): no flags is `{}`. */
+  readonly jointFlags: JointFlags;
   /** M07 capacity model: the first session, then starting rungs and e1RMs. */
   readonly capacity?: CapacityModel | null;
   /** M08 session of the day (programSessionContext); absent → the first session from the capacity model. */
   readonly programSession?: ProgramSessionContext | null;
-  /** Past sessions, oldest first (buildSessionHistory). */
-  readonly history?: readonly SessionHistoryEntry[];
-  /** Loads prescribed recently (S5; M07 input). */
-  readonly recentLoads?: readonly RecentLoad[];
+  /** Past sessions, oldest first (buildSessionHistory; boundSessionInput keeps the newest 60). Required (SAF-3): none is `[]`. */
+  readonly history: readonly SessionHistoryEntry[];
+  /** Loads prescribed recently (S5; M07 input). Required (SAF-3): none is `[]`. */
+  readonly recentLoads: readonly RecentLoad[];
   readonly loadIncrementKg?: number;
   readonly bodyweightKg?: number | null;
-  /** S7 re-check (M17 age gate) on the engine clock's date. */
-  readonly birthDate?: CalendarDateValue | null;
+  /** S7 re-check (M17 age gate). Required (SAF-3): null only when the account has no date of birth. */
+  readonly birthDate: CalendarDateValue | null;
+  /** SAF-12: the user's local calendar date (device time zone); null → the day before the clock's UTC date (fail closed). */
+  readonly localDate: CalendarDateValue | null;
   readonly experience?: ExperienceLevel | null;
-  /** S3 lock (packages/safety intensityLockStatus). */
-  readonly intensityLock?: IntensityLock;
+  /** S3 lock (packages/safety intensityLockStatus). Required (SAF-3): unlocked is `{ locked: false, since: null }`. */
+  readonly intensityLock: IntensityLock;
   readonly readiness?: 'normal' | 'reduced';
   /** M05 triggered deload (recovery deloadStatus) → volume −40–50 %, no progression. */
   readonly deload?: DeloadEvent | null;

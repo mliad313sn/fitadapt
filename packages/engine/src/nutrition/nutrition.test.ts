@@ -78,8 +78,8 @@ describe('Mifflin-St Jeor BMR and activity factor (reference values)', () => {
     expect(mifflinStJeorBmr({ weightKg: 25, heightCm: 100, ageYears: 200, sex: 'female' })).toBeNaN();
   });
 
-  it('activity factors 1.2 → 1.9 and the age on a date', () => {
-    expect(['sedentary', 'light', 'moderate', 'very_active', 'extra_active'].map((l) => activityFactor(l as never))).toEqual([1.2, 1.375, 1.55, 1.725, 1.9]);
+  it('activity factors 1.4 → 1.9 (A4/A6: sedentary at the EFSA low PAL, was 1.2; light kept above it, was 1.375) and the age on a date', () => {
+    expect(['sedentary', 'light', 'moderate', 'very_active', 'extra_active'].map((l) => activityFactor(l as never))).toEqual([1.4, 1.5, 1.55, 1.725, 1.9]);
     expect(ageOnIsoDate(P1_BIRTH, TODAY)).toBe(38);
     expect(ageOnIsoDate({ year: 2008, month: 9, day: 25 }, TODAY)).toBe(17);
   });
@@ -88,38 +88,40 @@ describe('Mifflin-St Jeor BMR and activity factor (reference values)', () => {
 describe('goal targets', () => {
   it('P1 fat loss at 0.5 %/week: expenditure − the deficit for 0.6 kg a week, above BMR, protein on a reference weight', () => {
     const { target, safetyEvents } = computeNutritionTarget(p1(), ctx());
-    const expenditure = 2127.5 * 1.375; // 2925.3
+    const expenditure = 2127.5 * 1.5; // 3191.25 (light, A4/A6: was 1.375)
     const deficit = (0.005 * 120 * density) / 7; // 660
     expect(target).toMatchObject({ mode: 'numeric', goal: 'fat_loss', deficitAllowed: true, engineVersion: ENGINE_VERSION, rulesVersion: NUTRITION_RULES_VERSION, computedOn: TODAY });
-    expect(target.energyModel).toMatchObject({ bmrKcal: 2127.5, activityFactor: 1.375, formulaExpenditureKcal: 2925, expenditureKcal: 2925, method: 'formula' });
+    expect(target.energyModel).toMatchObject({ bmrKcal: 2127.5, activityFactor: 1.5, formulaExpenditureKcal: 3191, expenditureKcal: 3191, method: 'formula' });
     expect(target.energy).toEqual({ targetKcal: Math.ceil((expenditure - deficit) / 10) * 10, floorKcal: 2128, deficitKcal: Math.floor(expenditure) - Math.ceil((expenditure - deficit) / 10) * 10, surplusKcal: 0 });
-    expect(target.energy!.targetKcal).toBe(2270);
+    expect(target.energy!.targetKcal).toBe(2540);
     expect(target.plannedLossPercentPerWeek).toBeLessThanOrEqual(0.5);
     expect(target.plannedLossPercentPerWeek).toBeGreaterThan(0.49);
     // 25 × 1.78² = 79.2 kg reference weight → 1.6–2.2 g/kg = 127–174 g, rounded to 5 g.
     expect(target.protein).toEqual({ minG: 125, maxG: 175 });
-    expect(target.reasonCodes).toEqual(expect.arrayContaining(['nutrition.energy.bmr_mifflin', 'nutrition.energy.activity_factor', 'nutrition.goal.fat_loss', 'nutrition.protein.reference_weight', 'nutrition.protein.range', 'nutrition.rounding.up']));
+    expect(target.reasonCodes).toEqual(expect.arrayContaining(['nutrition.energy.bmr_mifflin', 'nutrition.energy.activity_factor', 'nutrition.goal.fat_loss', 'nutrition.protein.reference_weight', 'nutrition.protein.range', 'nutrition.protein.kidney_notice', 'nutrition.rounding.up']));
     expect(safetyEvents).toEqual([]);
     expect(NutritionTargetSchema.safeParse(target).success).toBe(true);
   });
 
   it('asking 1 %/week of a sedentary P1 hits the BMR floor: the target is the BMR, never below', () => {
     const { target, safetyEvents } = computeNutritionTarget(p1({ activityLevel: 'sedentary', plannedLossPercentPerWeek: 1 }), ctx());
-    // 2127.5 × 1.2 = 2553 − 1320 = 1233 < BMR 2127.5 → 2128, rounded up to 2130.
+    // 2127.5 × 1.4 = 2978.5 − 1320 = 1658.5 < BMR 2127.5 → 2128, rounded up to 2130.
     expect(target.energy).toMatchObject({ targetKcal: 2130, floorKcal: 2128 });
     expect(target.reasonCodes).toContain('nutrition.s4.bmr_floor');
     expect(safetyEvents).toEqual([{ invariant: 'S4', reasonCode: 'safety.s4.bmr_floor', action: 'capped' }]);
-    expect(target.plannedLossPercentPerWeek).toBeLessThan(0.5);
+    // The loss the floor leaves: (floor(2978.5) − 2130) kcal/day ≈ 0.64 %/week (below the 1 % asked; 0.47 with the old 1.2 factor).
+    expect(target.plannedLossPercentPerWeek).toBeCloseTo((((Math.floor(2127.5 * 1.4) - 2130) * 7) / density / 120) * 100, 2);
+    expect(target.plannedLossPercentPerWeek).toBeLessThan(1);
   });
 
   it('P2 maintain: the target is the expenditure; muscle gain adds a small surplus (≤ 5 %, ≤ 300 kcal)', () => {
     const maintain = computeNutritionTarget(p2(), ctx()).target;
-    expect(maintain.energy).toMatchObject({ targetKcal: Math.ceil((1310.25 * 1.375) / 10) * 10, deficitKcal: 0 });
+    expect(maintain.energy).toMatchObject({ targetKcal: Math.ceil((1310.25 * 1.5) / 10) * 10, deficitKcal: 0 });
     expect(maintain.reasonCodes).toContain('nutrition.goal.maintain');
     expect(maintain.protein).toEqual({ minG: 95, maxG: 130 }); // 60 kg × 1.6 = 96, × 2.2 = 132
     const gain = computeNutritionTarget(p2({ goal: 'muscle_gain' }), ctx()).target;
     expect(gain.energy!.surplusKcal).toBeGreaterThan(0);
-    expect(gain.energy!.targetKcal).toBe(Math.ceil((1310.25 * 1.375 * 1.05) / 10) * 10);
+    expect(gain.energy!.targetKcal).toBe(Math.ceil((1310.25 * 1.5 * 1.05) / 10) * 10);
     const big = computeNutritionTarget(p1({ goal: 'muscle_gain', activityLevel: 'extra_active' }), ctx()).target;
     expect(big.energy!.surplusKcal).toBeLessThanOrEqual(300 + 10);
   });
@@ -145,6 +147,11 @@ describe('goal targets', () => {
   });
 
   it('asks for measurements when height or weight is missing, and says so when no estimate is possible', () => {
+    // SAF-5: a device date more than a day from the engine clock gives no numbers (never an S4 check at an unbounded date).
+    for (const today of ['2026-09-22', '2026-09-26', '2027-09-24']) {
+      expect(computeNutritionTarget(p1({ today }), ctx())).toMatchObject({ target: { mode: 'supportive', energy: null, deficitAllowed: false, reasonCodes: ['nutrition.unavailable.clock_mismatch'] }, safetyEvents: [] });
+    }
+    for (const today of ['2026-09-23', '2026-09-25']) expect(computeNutritionTarget(p1({ today }), ctx()).target.mode).toBe('numeric');
     expect(computeNutritionTarget(p1({ weightKg: null }), ctx()).target).toMatchObject({ mode: 'needs_measurements', energy: null, protein: null, reasonCodes: ['nutrition.needs_measurements'] });
     expect(computeNutritionTarget(p1({ heightCm: null }), ctx()).target.mode).toBe('needs_measurements');
     const ancient = computeNutritionTarget(p1({ weightKg: 25, heightCm: 100, birthDate: { year: 1826, month: 1, day: 1 }, sexForEstimate: 'female', safetyProfile: screened([], { year: 1826, month: 1, day: 1 }) }), ctx()).target;
@@ -233,7 +240,16 @@ describe('adaptive expenditure from the weight trend and logged intake', () => {
     expect(adaptiveObservation(new Map(), trend, TODAY)).toMatchObject({ loggedDays: 0, meanIntakeKcal: 0 });
   });
 
-  it('update: half-way from the previous estimate towards intake − Δmass × density, within ±25 % of the formula', () => {
+  it('A4/A6: only complete days count — days marked complete when known, never a day logged below the plausible minimum', () => {
+    const trend = trendLine('2026-09-01', 24, 100, -0.1);
+    const intake = new Map(Array.from({ length: 12 }, (_, i) => [addDays('2026-09-10', i), { energyKcal: i < 4 ? 600 : 2400, proteinG: 120 }]));
+    // Four days logged at 600 kcal (partly logged) are left out: the mean is not dragged down.
+    expect(adaptiveObservation(intake, trend, TODAY)).toMatchObject({ loggedDays: 8, meanIntakeKcal: 2400 });
+    const complete = new Set(['2026-09-16', '2026-09-17', '2026-09-18']);
+    expect(adaptiveObservation(intake, trend, TODAY, complete)).toMatchObject({ loggedDays: 3, meanIntakeKcal: 2400 });
+  });
+
+  it('update: half-way from the previous estimate towards intake − Δmass × density, within −10 % / +25 % of the formula, down at most 5 % per update', () => {
     const obs = { from: '2026-09-10', to: '2026-09-23', windowDays: 14, loggedDays: 12, meanIntakeKcal: 2400, trendChangeKg: -1.4 };
     // observed = 2400 + (1.4 / 14) × 7700 = 3170; prior (formula) 2900 → 2900 + 0.5 × 270 = 3035.
     expect(adaptiveExpenditure(2900, null, obs)).toEqual({ expenditureKcal: 3035, method: 'adaptive', reasonCodes: ['nutrition.energy.adaptive'] });
@@ -241,15 +257,22 @@ describe('adaptive expenditure from the weight trend and logged intake', () => {
     // Not enough logged days: keep the previous estimate (or the formula).
     expect(adaptiveExpenditure(2900, null, { ...obs, loggedDays: 9 })).toEqual({ expenditureKcal: 2900, method: 'formula', reasonCodes: ['nutrition.energy.adaptive_insufficient_data'] });
     expect(adaptiveExpenditure(2900, 3100, null)).toEqual({ expenditureKcal: 3100, method: 'adaptive', reasonCodes: ['nutrition.energy.adaptive_insufficient_data'] });
-    // Implausible logs cannot drag it outside the band.
-    expect(adaptiveExpenditure(2900, null, { ...obs, meanIntakeKcal: 200, trendChangeKg: 3 }).expenditureKcal).toBeCloseTo(2900 * 0.75, 6);
+    // Implausible logs cannot drag it outside the band; A4/A6: the band is −10 % below the formula (was −25 %) and one
+    // update lowers the estimate by at most 5 %, and says it went down.
+    expect(adaptiveExpenditure(2900, null, { ...obs, meanIntakeKcal: 200, trendChangeKg: 3 })).toEqual({ expenditureKcal: 2900 * 0.95, method: 'adaptive', reasonCodes: ['nutrition.energy.adaptive', 'nutrition.energy.adaptive_lowered'] });
+    expect(adaptiveExpenditure(2900, 2700, { ...obs, meanIntakeKcal: 200, trendChangeKg: 3 }).expenditureKcal).toBeCloseTo(2900 * 0.9, 6);
+    for (let prev = 2610; prev <= 3625; prev += 101) {
+      const next = adaptiveExpenditure(2900, prev, { ...obs, meanIntakeKcal: 0, trendChangeKg: 5 }).expenditureKcal;
+      expect(next).toBeGreaterThanOrEqual(Math.max(2900 * 0.9, Math.min(prev, 2900 * 1.25) * 0.95) - 1e-9);
+    }
     expect(adaptiveExpenditure(2900, 99_000, { ...obs, meanIntakeKcal: 9000 }).expenditureKcal).toBeCloseTo(2900 * 1.25, 6);
   });
 
   it('the target uses the adaptive expenditure and says so', () => {
     const adaptive = { from: '2026-09-10', to: '2026-09-23', windowDays: 14, loggedDays: 12, meanIntakeKcal: 2400, trendChangeKg: -1.4 };
     const { target } = computeNutritionTarget(p1({ adaptive, previousExpenditureKcal: 2925 }), ctx());
-    expect(target.energyModel).toMatchObject({ method: 'adaptive', formulaExpenditureKcal: 2925, expenditureKcal: Math.round(2925 + 0.5 * (3170 - 2925)) });
+    // Formula 2127.5 × 1.5 = 3191; the previous 2925 is inside the band (≥ 3191 × 0.9) → 2925 + 0.5 × (3170 − 2925).
+    expect(target.energyModel).toMatchObject({ method: 'adaptive', formulaExpenditureKcal: 3191, expenditureKcal: Math.round(2925 + 0.5 * (3170 - 2925)) });
     expect(target.reasonCodes).toContain('nutrition.energy.adaptive');
   });
 });

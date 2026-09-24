@@ -15,8 +15,8 @@ import { defineConfig } from '@fitadapt/shared';
 const ENG = 'M02 engineering default (conservative choice by the engineer); no external source';
 const SPEC = 'docs/specs/M02-adaptive-training-engine.md';
 
-/** 0.2.0 (M05): warm-up content, cool-down, triggered deloads, amber variant hints, mobility sessions. 0.3.0 (M03): cardio blocks, the HIIT training-history gate, cardio sessions. */
-export const SESSION_RULES_VERSION = '0.3.0';
+/** 0.2.0 (M05): warm-up content, cool-down, triggered deloads, amber variant hints, mobility sessions. 0.3.0 (M03): cardio blocks, the HIIT training-history gate, cardio sessions. 0.4.0 (FIX-A): required safety facts, bounded history with folded S5 references, true round-down, Epley on effective reps, first-exposure interval caps, effort-only zones with a medication affecting effort, the S7 re-check on the local date. */
+export const SESSION_RULES_VERSION = '0.4.0';
 
 export const SESSION_CONFIG = defineConfig({
   // ---- Rep ranges by slot intent (double progression works inside the range)

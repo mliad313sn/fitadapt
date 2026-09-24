@@ -96,4 +96,16 @@ describe('config values', () => {
     expect(unvalidatedKeys(cfg)).toEqual(['a', 'b']);
     expect(() => defineConfig({ x: { value: 1, source: '', validated: false } })).toThrow(/Invalid config value "x"/);
   });
+  it('SAF-9: defineConfig returns a deeply frozen record (a coefficient cannot be changed at runtime)', () => {
+    const cfg = defineConfig({ a: { value: 1, source: 'ADR', validated: false } });
+    expect(Object.isFrozen(cfg)).toBe(true);
+    expect(Object.isFrozen(cfg.a)).toBe(true);
+    expect(() => {
+      (cfg.a as { value: number }).value = 2;
+    }).toThrow(TypeError);
+    expect(() => {
+      (cfg as Record<string, unknown>).b = { value: 0, source: 'x', validated: false };
+    }).toThrow(TypeError);
+    expect(cfg.a.value).toBe(1);
+  });
 });

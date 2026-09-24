@@ -36,19 +36,29 @@ export interface LoadReference {
  * device clock back never escapes it — and the ceiling is 10 % above the
  * lowest of them (so the load cannot ratchet up by 10 % several times within
  * 7 days). Zero loads are no reference (nothing external was lifted).
- * Unparseable timestamps count as inside the window (fail closed).
+ * Unparseable timestamps count as inside the window (fail closed). A
+ * reference load that cannot be read (NaN, ±Infinity, negative) in the window
+ * caps the load at 0 (fail closed, SAF-8): it is never silently dropped.
  */
 export function s5LoadCeiling(references: readonly LoadReference[], nowMs: number): number | null {
   const since = nowMs - S5_WINDOW_DAYS * DAY_MS;
-  const inWindow = references.filter((r) => r.loadKg > 0 && !(Date.parse(r.at) < since));
-  if (inWindow.length === 0) return null;
-  return Math.min(...inWindow.map((r) => r.loadKg)) * (1 + S5_MAX_INCREASE_FRACTION);
+  const inWindow = references.filter((r) => !(Date.parse(r.at) < since));
+  if (inWindow.some((r) => !Number.isFinite(r.loadKg) || r.loadKg < 0)) return 0;
+  const loaded = inWindow.filter((r) => r.loadKg > 0);
+  if (loaded.length === 0) return null;
+  return Math.min(...loaded.map((r) => r.loadKg)) * (1 + S5_MAX_INCREASE_FRACTION);
 }
 
-/** S5 as a safety check (small tolerance for float rounding only). */
+/**
+ * S5 as a safety check (small tolerance for float rounding only). Fails
+ * closed (SAF-8): a load that is not a finite, non-negative number is always a
+ * violation, and the comparison is written so that NaN never passes.
+ */
 export const loadCeilingCheck: SafetyCheck<{ loadKg: number; references: readonly LoadReference[]; nowMs: number }> = ({ loadKg, references, nowMs }) => {
+  const violation = { invariant: 'S5', reasonCode: 'safety.s5.load_ceiling' } as const;
+  if (!Number.isFinite(loadKg) || loadKg < 0) return violation;
   const ceiling = s5LoadCeiling(references, nowMs);
-  if (ceiling !== null && loadKg > ceiling + 1e-9) return { invariant: 'S5', reasonCode: 'safety.s5.load_ceiling' };
+  if (ceiling !== null && !(loadKg <= ceiling + 1e-9)) return violation;
   return null;
 };
 

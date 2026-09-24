@@ -33,10 +33,15 @@ export function dailyIntake(logs: readonly StoredRecord<IntakeLog>[]): Map<IsoDa
 
 /**
  * The observation of the complete days before `today` (`adaptive.windowDays`):
- * mean intake over the days with a log, and the change of the M04 weight
+ * mean intake over the days that count, and the change of the M04 weight
  * trend across the window. Null without a trend at both ends.
+ *
+ * A4/A6 pre-review (M10-8/9): partly logged days make the observed
+ * expenditure look lower (people under-report), which pushes targets down.
+ * Only days the user marked complete count when `completeDays` is given, and
+ * a day with less than `adaptive.minPlausibleDayKcal` logged never counts.
  */
-export function adaptiveObservation(intake: ReadonlyMap<IsoDate, DayIntake>, trend: readonly TrendPoint[], today: IsoDate): AdaptiveObservation | null {
+export function adaptiveObservation(intake: ReadonlyMap<IsoDate, DayIntake>, trend: readonly TrendPoint[], today: IsoDate, completeDays?: ReadonlySet<IsoDate>): AdaptiveObservation | null {
   const windowDays = nutritionValue('adaptive.windowDays');
   const from = addDays(today, -windowDays);
   const to = addDays(today, -1);
@@ -46,8 +51,9 @@ export function adaptiveObservation(intake: ReadonlyMap<IsoDate, DayIntake>, tre
   let logged = 0;
   let total = 0;
   for (let d = 0; d < windowDays; d++) {
-    const day = intake.get(addDays(from, d));
-    if (day && day.energyKcal > 0) {
+    const date = addDays(from, d);
+    const day = intake.get(date);
+    if (day && day.energyKcal >= nutritionValue('adaptive.minPlausibleDayKcal') && (completeDays === undefined || completeDays.has(date))) {
       logged += 1;
       total += day.energyKcal;
     }
@@ -61,16 +67,24 @@ export interface ExpenditureEstimate {
   readonly reasonCodes: readonly string[];
 }
 
-/** The expenditure a target uses: the formula, or the weekly adaptive update when enough days were logged. */
+/**
+ * The expenditure a target uses: the formula, or the weekly adaptive update
+ * when enough days were logged. The band is asymmetric (A4/A6: at most
+ * `adaptive.maxDownwardFraction` below the formula, `maxDeviationFraction`
+ * above), one update lowers it by at most `maxDecreasePerUpdateFraction`, and
+ * a lowered estimate says so (`nutrition.energy.adaptive_lowered`).
+ */
 export function adaptiveExpenditure(formulaKcal: number, previousKcal: number | null, observation: AdaptiveObservation | null): ExpenditureEstimate {
-  const dev = nutritionValue('adaptive.maxDeviationFraction');
-  const clamp = (v: number) => Math.min(formulaKcal * (1 + dev), Math.max(formulaKcal * (1 - dev), v));
+  const up = nutritionValue('adaptive.maxDeviationFraction');
+  const down = nutritionValue('adaptive.maxDownwardFraction');
+  const clamp = (v: number) => Math.min(formulaKcal * (1 + up), Math.max(formulaKcal * (1 - down), v));
   const prior = previousKcal === null ? formulaKcal : clamp(previousKcal);
   if (!observation || observation.loggedDays < nutritionValue('adaptive.minLoggedDays') || observation.windowDays <= 0) {
     return { expenditureKcal: prior, method: previousKcal === null ? 'formula' : 'adaptive', reasonCodes: ['nutrition.energy.adaptive_insufficient_data'] };
   }
   const density = NUTRITION_SAFETY_CONFIG.energyDensityKcalPerKg.value;
   const observed = observation.meanIntakeKcal - (observation.trendChangeKg / observation.windowDays) * density;
-  const next = clamp(prior + nutritionValue('adaptive.blend') * (observed - prior));
-  return { expenditureKcal: next, method: 'adaptive', reasonCodes: ['nutrition.energy.adaptive'] };
+  const blended = clamp(prior + nutritionValue('adaptive.blend') * (observed - prior));
+  const next = Math.max(blended, prior * (1 - nutritionValue('adaptive.maxDecreasePerUpdateFraction')));
+  return { expenditureKcal: next, method: 'adaptive', reasonCodes: next < prior ? ['nutrition.energy.adaptive', 'nutrition.energy.adaptive_lowered'] : ['nutrition.energy.adaptive'] };
 }

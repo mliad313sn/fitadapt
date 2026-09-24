@@ -17,7 +17,7 @@ import { defineConfig } from '@fitadapt/shared';
 const ENG = 'M05 engineering default (conservative choice by the engineer); no external source';
 const SPEC = 'docs/specs/M05-recovery-mobility-pain-safety.md';
 
-export const RECOVERY_RULES_VERSION = '0.1.0';
+export const RECOVERY_RULES_VERSION = '0.2.0';
 
 export const RECOVERY_CONFIG = defineConfig({
   // ---- Warm-up (total from SESSION_CONFIG warmUp.minutes / minimumMinutes: 5–8 min)
@@ -66,7 +66,12 @@ export const RECOVERY_CONFIG = defineConfig({
   'deload.lowReadinessDays': { value: 3, unit: 'days', source: `${SPEC} (Scope: "low readiness three days")`, validated: false },
 
   // ---- Standalone mobility and balance sessions (P4, 55+)
-  'mobility.holdSeconds': { value: 20, unit: 's', source: ENG, validated: false },
+  /**
+   * Note (A1/A2 pre-review M05-32): ACSM 2011 (Garber et al., as cited there from search summaries, not checked) gives
+   * 10–30 s holds for most adults and 30–60 s for older adults (about 60 s in total per stretch). The value is unchanged:
+   * a longer hold changes the benefit more than the safety; seats A3, A2 and A1 decide (for 55+: 30 s × 2 suggested).
+   */
+  'mobility.holdSeconds': { value: 20, unit: 's', source: `${ENG}. Not aligned yet with ACSM 2011 for older adults (30–60 s), see docs/governance/ai-reviews/A1-A2-clinical-safety.md M05-32`, validated: false },
   'mobility.sets': { value: 2, unit: 'sets', source: ENG, validated: false },
   'mobility.restSeconds': { value: 30, unit: 's', source: ENG, validated: false },
   'mobility.targetRir': { value: 4, unit: 'reps', source: ENG, validated: false },

@@ -14,12 +14,12 @@ import type { progressEn } from './progress.en.js';
  */
 export const progressFr: Record<keyof typeof progressEn, string> = {
   // ---- Codes de raison (estimations, garde-fou)
-  'engine.reason.progress.forecast.linear_trend': 'Calculé à partir de la tendance de vos dernières séances.',
+  'engine.reason.progress.forecast.linear_trend': 'Une période possible si votre rythme récent se poursuivait. Les progrès ralentissent souvent avec le temps : c’est un repère approximatif.',
   'engine.reason.progress.forecast.estimate_only': 'C’est une estimation, pas une garantie.',
   'engine.reason.progress.forecast.achieved': 'Vous l’avez déjà réussi.',
   'engine.reason.progress.forecast.insufficient_data': 'Pas encore assez de séances récentes pour estimer une période.',
   'engine.reason.progress.forecast.no_trend': 'Vos dernières séances ne montrent pas encore de tendance régulière vers cet objectif.',
-  'engine.reason.progress.forecast.beyond_horizon': 'Au rythme actuel, c’est à plus d’un an : aucune période n’est affichée.',
+  'engine.reason.progress.forecast.beyond_horizon': 'C’est plus loin que ce que vos séances récentes permettent d’estimer : aucune période n’est affichée.',
   'engine.reason.progress.forecast.confidence.low': 'Confiance faible : peu de séances ou beaucoup de variations.',
   'engine.reason.progress.forecast.confidence.medium': 'Confiance moyenne.',
   'engine.reason.progress.forecast.confidence.high': 'Confiance plus élevée : une tendance régulière sur de nombreuses séances.',
@@ -41,7 +41,7 @@ export const progressFr: Record<keyof typeof progressEn, string> = {
   'progress.adherence.title': 'Séances',
   'progress.adherence.planned': '{completed} {planned, plural, one {séance prévue réalisée} other {séances prévues réalisées}} sur {planned} ces quatre dernières semaines',
   'progress.adherence.noPlan': 'Pas encore de programme. Les séances que vous notez comptent quand même ici.',
-  'progress.adherence.streak': '{days, plural, =0 {Votre série commence avec votre prochaine séance prévue.} one {# jour d’affilée selon le programme (les jours de repos comptent).} other {# jours d’affilée selon le programme (les jours de repos comptent).}}',
+  'progress.adherence.streak': '{days, plural, =0 {Votre série commence avec votre prochaine séance prévue.} one {# jour d’affilée selon le programme (les jours de repos et les pauses de sécurité comptent).} other {# jours d’affilée selon le programme (les jours de repos et les pauses de sécurité comptent).}}',
   'progress.adherence.longest': 'Plus longue : {days, plural, one {# jour} other {# jours}}',
   'progress.adherence.extra': '{count, plural, one {# séance en plus} other {# séances en plus}} des jours non prévus',
 
@@ -99,7 +99,7 @@ export const progressFr: Record<keyof typeof progressEn, string> = {
   'progress.forecast.achieved': 'Réussi. Beau travail.',
   'progress.forecast.insufficient_data': 'Pas encore assez de séances récentes pour estimer une période.',
   'progress.forecast.no_trend': 'Pas encore de période : vos dernières séances ne montrent pas de tendance régulière vers cet objectif.',
-  'progress.forecast.beyond_horizon': 'À plus d’un an au rythme actuel : aucune période n’est affichée.',
+  'progress.forecast.beyond_horizon': 'Plus loin que ce que vos séances récentes permettent d’estimer : aucune période n’est affichée.',
   'progress.forecast.how': 'Calculé sur la tendance de vos 12 dernières semaines. Le sommeil, le stress, les pauses et bien d’autres choses la modifient.',
 
   // ---- Corps

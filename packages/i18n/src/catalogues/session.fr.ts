@@ -36,6 +36,7 @@ export const sessionFr: Record<keyof typeof sessionEn, string> = {
   'engine.reason.session.unavailable.no_time': 'Il n’y a pas assez de temps aujourd’hui pour une séance avec son échauffement.',
   'engine.reason.session.unavailable.s7_age': 'Les séances ne sont pas disponibles sur ce compte.',
   'engine.reason.session.unavailable.s3_intensity_locked': 'Les séances sont en pause après les signes d’alerte que vous avez signalés, jusqu’à ce que vous confirmiez un avis médical.',
+  'engine.reason.session.unavailable.clock_mismatch': 'La date de cet appareil ne semble pas correcte : aucune séance n’est préparée. Vérifiez la date et l’heure dans les réglages, puis réessayez.',
   'engine.reason.session.unavailable.no_program': 'Créez d’abord votre plan d’entraînement, ou mesurez votre point de départ.',
   'engine.reason.session.slot_dropped.lunge': 'Aucune fente ne convient à votre lieu et à vos réponses aujourd’hui.',
   'engine.reason.session.slot_dropped.vertical_push': 'Aucune poussée au-dessus de la tête ne convient à votre lieu et à vos réponses aujourd’hui.',
