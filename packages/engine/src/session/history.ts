@@ -1,5 +1,6 @@
 import { s5LoadCeiling } from '@fitadapt/safety';
-import type { ExecutionLog, HistoryExercise, PerformedSet, PlannedExercise, SessionHistoryEntry, SessionPlan, SetLog, WorkoutSessionRecord } from '@fitadapt/shared';
+import { HISTORY_EXERCISES_MAX, type ExecutionLog, type HistoryExercise, type PerformedSet, type PlannedExercise, type SessionHistoryEntry, type SessionPlan, type SetLog, type WorkoutSessionRecord } from '@fitadapt/shared';
+import { entryLoads, foldLoads } from './bounds.js';
 import { loadReferencesFor } from './program-session.js';
 import type { RecentLoad } from './types.js';
 
@@ -49,7 +50,11 @@ export function buildSessionHistory(sessions: readonly WorkoutSessionRecord[], s
     const counts = (plan.kind === 'first_session' || plan.program?.microcycleKind === 'accumulation') && ended?.kind !== 'red_flag' && !triggeredDeload;
     // M03: a cardio block that was run counts as logged training (the HIIT gate reads it).
     const cardio = events.filter((e): e is Extract<ExecutionLog, { kind: 'cardio_done' }> => e.kind === 'cardio_done' && e.planId === plan.planId);
-    const entry = { planId: plan.planId, prescribedAt: plan.generatedAt, startedAt: record.startedAt, countsForProgression: counts, exercises: exercises.slice(0, 20) };
+    const kept = exercises.slice(0, HISTORY_EXERCISES_MAX);
+    const base: SessionHistoryEntry = { planId: plan.planId, prescribedAt: plan.generatedAt, startedAt: record.startedAt, countsForProgression: counts, exercises: kept };
+    // SAF-6: entries beyond the cap (many swaps) are not dropped silently: their S5 references are folded in.
+    const overflow = foldLoads(entryLoads({ ...base, exercises: exercises.slice(HISTORY_EXERCISES_MAX) }));
+    const entry: SessionHistoryEntry = overflow.length > 0 ? { ...base, overflowLoads: overflow } : base;
     if (cardio.length === 0) return entry;
     return { ...entry, cardioSeconds: Math.min(10_800, cardio.reduce((s, c) => s + c.moderateSeconds + c.vigorousSeconds, 0)) };
   });

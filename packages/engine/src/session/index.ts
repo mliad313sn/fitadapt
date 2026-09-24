@@ -6,6 +6,7 @@ export * from './timebox.js';
 export { firstSessionRir, S5_MAX_INCREASE_FRACTION, S5_WINDOW_DAYS } from './first-session.js';
 export { loadReferencesFor, programSessionContext, replacementsFor, sessionRir } from './program-session.js';
 export * from './generate.js';
+export { boundSessionInput, foldLoads, s5WindowReferences } from './bounds.js';
 export * from './history.js';
 export * from './execution.js';
 export * from './reason-codes.js';

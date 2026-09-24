@@ -160,6 +160,21 @@ export const HistoryExerciseSchema = z.strictObject({
 });
 export type HistoryExercise = z.infer<typeof HistoryExerciseSchema>;
 
+/**
+ * Boundary caps of the session input (SAF-1, SAF-6, SAF-7). The engine never
+ * needs more: progression reads the last `history.maxSessions` (24) sessions,
+ * the HIIT gate two weeks and S5 seven days. Callers keep the newest entries
+ * with the engine's `boundSessionInput`, which folds the loads of what it
+ * drops (S5 window) into `recentLoads`, so no S5 reference is lost.
+ */
+export const SESSION_HISTORY_MAX = 60;
+export const HISTORY_EXERCISES_MAX = 20;
+export const RECENT_LOADS_MAX = 500;
+
+/** A load folded out of a capped list (S5 reference: the lowest load of an exercise, at its latest time — never looser). */
+export const FoldedLoadSchema = z.strictObject({ exerciseId: SlugSchema, loadKg: z.number().min(0), at: IsoDateTimeSchema });
+export type FoldedLoad = z.infer<typeof FoldedLoadSchema>;
+
 /** A past session the user started (built by the engine from workout_sessions + set_logs + execution_logs). */
 export const SessionHistoryEntrySchema = z.strictObject({
   planId: UuidSchema,
@@ -168,9 +183,11 @@ export const SessionHistoryEntrySchema = z.strictObject({
   startedAt: IsoDateTimeSchema,
   /** Deload and transition weeks do not count toward progression decisions. */
   countsForProgression: z.boolean(),
-  exercises: z.array(HistoryExerciseSchema).max(20),
+  exercises: z.array(HistoryExerciseSchema).max(HISTORY_EXERCISES_MAX),
   /** M03: seconds of cardio run in this session (from its `cardio_done` log); absent when none was logged. */
   cardioSeconds: z.number().int().min(0).optional(),
+  /** SAF-6: S5 references of the exercises beyond the first 20 (many swaps), folded per exercise; absent when none. */
+  overflowLoads: z.array(FoldedLoadSchema).max(RECENT_LOADS_MAX).optional(),
 });
 export type SessionHistoryEntry = z.infer<typeof SessionHistoryEntrySchema>;
 
@@ -214,9 +231,9 @@ export const GenerateSessionInputSchema = z.strictObject({
   /** M08 session of the day; absent → the first session from the capacity model. */
   programSession: ProgramSessionContextSchema.nullable().optional(),
   /** Past sessions, oldest first. */
-  history: z.array(SessionHistoryEntrySchema).max(60).optional(),
+  history: z.array(SessionHistoryEntrySchema).max(SESSION_HISTORY_MAX).optional(),
   /** M07: loads prescribed recently (S5). */
-  recentLoads: z.array(RecentLoadSchema).max(500).optional(),
+  recentLoads: z.array(RecentLoadSchema).max(RECENT_LOADS_MAX).optional(),
   /** M07: rounding step when the place's loads are not known. */
   loadIncrementKg: z.number().positive().max(50).optional(),
   bodyweightKg: z.number().min(25).max(350).nullable().optional(),
@@ -278,7 +295,7 @@ export const ProgressionInputSchema = z.strictObject({
   /** Achievable loads on today's equipment (null: not known → the user chooses). */
   implement: LoadImplementSchema.nullable(),
   /** S5: loads prescribed or used for this exercise, with their time. */
-  loadReferences: z.array(z.strictObject({ loadKg: z.number().min(0), at: IsoDateTimeSchema })).max(500),
+  loadReferences: z.array(z.strictObject({ loadKg: z.number().min(0), at: IsoDateTimeSchema })).max(RECENT_LOADS_MAX),
   /** The engine clock (S5 window). */
   asOf: IsoDateTimeSchema,
   /** False in deload and transition weeks: no load, variant or hold increase (regressions still apply). Absent = true. */

@@ -1,4 +1,4 @@
-import { ENGINE_VERSION, aerobicMinutesLedger, cardioDone, createEngineContext, hiitGate, ledgerEntriesFrom, lowImpactDefault, mondayOf, type GenerateSessionInput } from '@fitadapt/engine';
+import { ENGINE_VERSION, aerobicMinutesLedger, boundSessionInput, cardioDone, createEngineContext, hiitGate, ledgerEntriesFrom, lowImpactDefault, mondayOf, type GenerateSessionInput } from '@fitadapt/engine';
 import { autoregulateRemainingSets, generateSession, painAdjustments, replacementsFor } from '@fitadapt/exercise-library';
 import { formatMass, kgToLb, lbToKg, type MessageKey } from '@fitadapt/i18n';
 import { useI18n } from '@fitadapt/i18n/react';
@@ -127,7 +127,8 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
     const at = nowMs();
     // M05: the triggered deload in force at the generation time (the server derives the same at the plan's time).
     const deload = facts.input.mode === 'mobility_balance' ? null : selectDeload(executionLogs, history, readinessChecks, at);
-    const input: GenerateSessionInput = deload ? { ...facts.input, deload } : facts.input;
+    // SAF-1: at most the newest 60 sessions (the boundary cap), with the S5 references of older ones folded in; this is also the input recorded with the plan.
+    const input: GenerateSessionInput = boundSessionInput(deload ? { ...facts.input, deload } : facts.input, at);
     return { input, deload, result: generateSession(input, createEngineContext({ clock: { now: () => at }, seed: seedFrom(at) })) };
   }, [factsKey, executionLogs, readinessChecks]);
   const physio = selectPhysio(executionLogs, clock.now());

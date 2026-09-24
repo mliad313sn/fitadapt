@@ -1,6 +1,7 @@
 import type { EquipmentId, EquipmentLoads, SessionPlan, SessionSafetyEventValue, SharedTimeline } from '@fitadapt/shared';
 import type { EngineContext } from '../context.js';
 import { createEngineContext } from '../context.js';
+import { boundSessionInput } from '../session/bounds.js';
 import { generateSession } from '../session/generate.js';
 import type { SessionLibrary } from '../session/library.js';
 import type { GenerateSessionInput } from '../session/types.js';
@@ -45,7 +46,8 @@ export const partnerSeed = (seed: number, slot: 'a' | 'b') => (slot === 'a' ? se
 export function generatePairSession(inputA: GenerateSessionInput, inputB: GenerateSessionInput, place: SharedPlace, library: SessionLibrary, ctx: EngineContext): PairSessionResult {
   const at = (input: GenerateSessionInput, minutes: number): GenerateSessionInput => ({ ...input, equipment: place.equipment, equipmentLoads: place.equipmentLoads, equipmentProfileId: place.equipmentProfileId, minutesAvailable: minutes });
   const run = (raw: GenerateSessionInput, slot: 'a' | 'b', minutes: number): PartnerResult => {
-    const input = at(raw, minutes);
+    // SAF-1: the input recorded with the plan is the bounded one (at most 60 sessions; dropped S5 references folded).
+    const input = boundSessionInput(at(raw, minutes), ctx.clock.now());
     const result = generateSession(input, library, createEngineContext({ clock: ctx.clock, seed: partnerSeed(ctx.seed, slot) }));
     return result.status === 'ok' ? { status: 'ok', plan: result.plan, safetyEvents: result.safetyEvents, input } : { status: 'unavailable', reasonCodes: result.reasonCodes };
   };

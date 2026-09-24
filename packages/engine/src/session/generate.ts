@@ -1,6 +1,7 @@
 import { evaluateAgeGate } from '@fitadapt/safety';
 import { GenerateSessionInputSchema, GenerateSessionResultSchema } from '@fitadapt/shared';
 import type { EngineContext } from '../context.js';
+import { boundSessionInput } from './bounds.js';
 import { firstSession, firstSessionRir } from './first-session.js';
 import type { SessionLibrary } from './library.js';
 import { programSession } from './program-session.js';
@@ -25,7 +26,8 @@ import type { GenerateSessionInput, GenerateSessionResult } from './types.js';
  * program session (with its M03 conditioning block), or the M07 first session.
  */
 export function generateSession(rawInput: GenerateSessionInput, library: SessionLibrary, ctx: EngineContext): GenerateSessionResult {
-  const input = GenerateSessionInputSchema.parse(rawInput) as GenerateSessionInput;
+  // SAF-1: a long-time user's history exceeds the boundary cap; keep the newest sessions, folding dropped S5 references.
+  const input = GenerateSessionInputSchema.parse(boundSessionInput(rawInput, ctx.clock.now())) as GenerateSessionInput;
   const profile = input.safetyProfile;
   const unavailable = (code: string): GenerateSessionResult => ({ status: 'unavailable', reasonCodes: [code] });
   if (profile.screeningOutcome === 'blocked') return unavailable('session.unavailable.blocked');

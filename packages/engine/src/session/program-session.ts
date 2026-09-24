@@ -35,6 +35,7 @@ import { ENGINE_VERSION } from '../version.js';
 import type { ProgramDay } from '../program/queries.js';
 import type { EffectiveSession } from '../program/reflow.js';
 import { SESSION_RULES_VERSION } from '../config/session.js';
+import { s5WindowReferences } from './bounds.js';
 import { achievableAtMost, implementFor, stepAbove } from './increments.js';
 import { ladderOf, tagsOf, type SessionLibrary } from './library.js';
 import { evaluateProgression } from './progression.js';
@@ -177,6 +178,8 @@ export function loadReferencesFor(history: readonly SessionHistoryEntry[], recen
       if (e.prescribedLoadKg !== null) refs.push({ loadKg: e.prescribedLoadKg, at: h.prescribedAt });
       for (const p of e.performed) if (p.status === 'done' && p.loadKg !== null) refs.push({ loadKg: p.loadKg, at: h.startedAt });
     }
+    // SAF-6: exercises beyond a history entry's 20 (many swaps) keep their S5 references, folded.
+    for (const o of h.overflowLoads ?? []) if (o.exerciseId === exerciseId) refs.push({ loadKg: o.loadKg, at: o.at });
   }
   for (const r of recent) if (r.exerciseId === exerciseId) refs.push({ loadKg: r.loadKg, at: r.prescribedAt });
   return refs;
@@ -280,7 +283,8 @@ function prescribe(ctx: Ctx, cand: Candidate, slot: ProgramSlot, prev: HistoryEx
     targetRir: ctx.targetRir,
     sessions: progressionSessions(ctx, ex.id).slice(-sessionValue('history.maxSessions')),
     implement: impl,
-    loadReferences: refs,
+    // SAF-7: only what S5 reads at this time (same ceiling), so the progression input's cap is never reached.
+    loadReferences: s5WindowReferences(refs, ctx.nowMs),
     asOf: iso(ctx.nowMs),
     allowProgression: ctx.allowProgression,
   });
@@ -413,7 +417,7 @@ function planSlot(ctx: Ctx, slot: ProgramSlot, sets: number, dry = false): Presc
         targetRir: ctx.targetRir,
         sessions: progressionSessions(ctx, prevEx.id).slice(-sessionValue('history.maxSessions')),
         implement: loading?.implement ?? null,
-        loadReferences: loadReferencesFor(ctx.input.history ?? [], ctx.input.recentLoads ?? [], prevEx.id),
+        loadReferences: s5WindowReferences(loadReferencesFor(ctx.input.history ?? [], ctx.input.recentLoads ?? [], prevEx.id), ctx.nowMs),
         asOf: iso(ctx.nowMs),
         allowProgression: ctx.allowProgression,
       });
