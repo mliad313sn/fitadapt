@@ -44,7 +44,9 @@ import { ApiError } from '../auth/errors.js';
 import type { DbExecutor } from '../db/client.js';
 import { syncChanges } from '../db/schema.js';
 import type { LegalService } from '../legal/service.js';
+import { clientTimeInRange } from '../lib/client-time.js';
 import type { PgServerTx } from '../sync/pg-store.js';
+import { screeningsAgreeOnBirthDate } from './screenings.js';
 import { orderedReflows } from './program-hooks.js';
 
 /**
@@ -108,13 +110,15 @@ async function latestState<T>(db: DbExecutor, userId: string, collection: string
   return p.success ? p.data : null;
 }
 
-async function checkInputs(db: DbExecutor, userId: string, record: WorkoutSessionRecord, latestProfile: SafetyProfile): Promise<string | null> {
+async function checkInputs(db: DbExecutor, userId: string, record: WorkoutSessionRecord, latestProfile: SafetyProfile, now: Date): Promise<string | null> {
   const { input, plan } = record;
   // S1/S7: the SafetyProfile of the latest stored screening, never a looser one.
   if (!isDeepStrictEqual(input.safetyProfile, latestProfile)) return 'session.safety_profile_mismatch';
   // S7 (M17 age gate): the date of birth of the stored profile.
   const profile = await latestState(db, userId, PROFILE_COLLECTIONS.profile, PROFILE_RECORD_ID, (d) => ProfileSchema.safeParse(d));
   if (profile && !isDeepStrictEqual(input.birthDate ?? null, profile.birthDate)) return 'session.profile_mismatch';
+  // API-5: the screening behind the SafetyProfile states the same date of birth as the profile.
+  if (profile && !(await screeningsAgreeOnBirthDate(db, userId, profile.birthDate))) return 'session.profile_mismatch';
   // M03: the impact default (BMI ≥ 35) of every session reads the stored height and weight, never other numbers.
   if (profile && ((input.heightCm ?? null) !== profile.biometrics.heightCm || (input.bodyweightKg ?? null) !== profile.biometrics.weightKg)) return 'session.biometrics_mismatch';
   // S3: the lock the stored execution logs imply.
@@ -162,15 +166,22 @@ async function checkInputs(db: DbExecutor, userId: string, record: WorkoutSessio
     if (!day || !session || !isDeepStrictEqual(programSessionContext(day, session), input.programSession)) return 'session.program_mismatch';
   }
   // S5 against every session the server stores (not only the history the device sent).
-  if (s5Violations(plan, history, input.recentLoads ?? []).length > 0) return 'safety.s5.load_above_ceiling';
+  // SAF-5: also at the server's time when the plan claims a later one (within the clock skew), so a clock moved
+  // forward never drops a reference out of the 7-day window.
+  const s5At = new Date(Math.min(Date.parse(plan.generatedAt), now.getTime())).toISOString();
+  if (s5Violations(plan, history, input.recentLoads ?? []).length > 0 || s5Violations({ ...plan, generatedAt: s5At }, history, input.recentLoads ?? []).length > 0) return 'safety.s5.load_above_ceiling';
   return null;
 }
 
-export async function validateWorkoutSession(db: DbExecutor, legal: LegalService, userId: string, data: unknown, latestProfile: SafetyProfile): Promise<string | null> {
+export async function validateWorkoutSession(db: DbExecutor, legal: LegalService, userId: string, data: unknown, latestProfile: SafetyProfile, now: Date): Promise<string | null> {
   const parsed = WorkoutSessionRecordSchema.safeParse(data);
   if (!parsed.success) return 'session.invalid';
   const record = parsed.data;
   if (record.plan.engineVersion !== ENGINE_VERSION || record.plan.rulesVersion !== SESSION_RULES_VERSION) return 'session.engine_version_unsupported';
+  // API-5 / SAF-5: the plan's clock drives the S5 window, the deload, the readiness day and the HIIT gate:
+  // it must be plausible against the server's clock (no moving it forward past a window, no backdating
+  // beyond the offline window).
+  if (!clientTimeInRange(record.plan.generatedAt, now) || !clientTimeInRange(record.startedAt, now)) return 'session.client_time_out_of_range';
   // L2: the first workout (and every later one) needs the current Terms, Privacy, health consent and exercise-risk acknowledgment.
   try {
     await legal.requireFirstWorkoutAcceptance(userId, record.jurisdiction, db);
@@ -178,7 +189,7 @@ export async function validateWorkoutSession(db: DbExecutor, legal: LegalService
     if (error instanceof ApiError) return error.code;
     throw error;
   }
-  const mismatch = await checkInputs(db, userId, record, latestProfile);
+  const mismatch = await checkInputs(db, userId, record, latestProfile, now);
   if (mismatch) return mismatch;
   let expected;
   try {

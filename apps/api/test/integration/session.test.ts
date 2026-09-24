@@ -37,6 +37,8 @@ import { bearer, createHarness, device, signIn, truncateAll, uniqueEmail, type H
 let h: Harness;
 beforeAll(async () => {
   h = await createHarness();
+  // API-5: synced session times must be plausible against the server's clock; the fixtures are dated around one week.
+  h.clock.set(MON + 7 * DAY);
 });
 afterAll(async () => h.close());
 beforeEach(async () => truncateAll(h));
@@ -221,6 +223,19 @@ describe('M02 started sessions: re-derived on the server, prescription logged in
     // Two days later the device "forgets" Monday: the plan starts again from the e1RM, far above 50 × 1.1.
     const forgetful = workout(sessionInput(r, {}, '2026-09-28'), MON + 2 * DAY, 9, false);
     expect(await push(r.s, [insert('workout_sessions', forgetful)])).toEqual(['safety.s5.load_above_ceiling']);
+  });
+
+  it('SAF-5 / API-5: a plan dated ahead of the server clock (a device clock moved forward past the S5 window) is refused', async () => {
+    const r = await ready();
+    const monday = workout(sessionInput(r));
+    const squat = monday.plan.exercises.findIndex((e) => e.slot === 'squat');
+    expect(await push(r.s, [insert('workout_sessions', monday), insert('set_logs', setLog(monday.plan.planId, squat, monday.plan.exercises[squat]!.exerciseId, 1, 50))])).toEqual(['applied', 'applied']);
+    // Eight days after the server's now, Monday's 50 kg is out of the 7-day window: without the bound, no ceiling.
+    const ahead = workout(sessionInput(r, {}, '2026-09-28'), h.clock.now().getTime() + 8 * DAY, 9, false);
+    expect(await push(r.s, [insert('workout_sessions', ahead)])).toEqual(['session.client_time_out_of_range']);
+    // Older than the offline window: refused too.
+    const stale = workout(sessionInput(r, {}, '2026-09-28'), h.clock.now().getTime() - 31 * DAY, 9, false);
+    expect(await push(r.s, [insert('workout_sessions', stale)])).toEqual(['session.client_time_out_of_range']);
   });
 
   it('S3: a red flag ends the session and locks intensity (logged in the sync transaction); sessions are refused until a review is attested', async () => {

@@ -21,6 +21,10 @@ export class TestClock {
   advance(seconds: number) {
     this.t += seconds * 1000;
   }
+  /** Pins the clock (fixtures dated around a fixed day: the server bounds synced record times by its clock, API-5). */
+  set(ms: number) {
+    this.t = ms;
+  }
 }
 
 export interface Harness {
