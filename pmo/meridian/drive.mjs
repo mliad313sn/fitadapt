@@ -40,6 +40,9 @@
  *   MERIDIAN_URL=http://localhost:4173 MERIDIAN_EMAIL=… MERIDIAN_PASSWORD=… \
  *   [MERIDIAN_KEY=…] [MERIDIAN_HOME=/path/to/Meridian] \
  *     node pmo/meridian/drive.mjs [--as-of 2026-09-24] [--in-progress M10[:2026-09-24]] [--dry-run]
+ *       [--allow-meridian-version-mismatch]
+ *
+ * MERIDIAN_URL must be https, or http on localhost only (PKG-14).
  *
  * MERIDIAN_HOME (default ../meridian next to this repository) is a checkout of
  * the SAME Meridian version: its shared/*.js is the engine the screens run, used
@@ -52,7 +55,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { PHASES, LADDER, DOCS as BOOK_DOCS, readGoals } from "./build-book.mjs";
-import { session, integration, BASE } from "./meridian-client.mjs";
+import { session, integration, BASE, meridianHomeProblem } from "./meridian-client.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, "..", "..");
@@ -232,6 +235,21 @@ const note = (s) => { log.push(s); if (!process.env.QUIET) console.log(s); };
 
 console.log(`FitAdapt ${BRANCH}@${HEAD.slice(0, 7)} (${REPO}) → Meridian ${BASE}${DRY ? " (dry run: nothing written)" : ""}`);
 const api = await session();
+
+/* PKG-14: MERIDIAN_HOME's engine is imported and run below; refuse a checkout of another
+   version than the server's before anything is written, unless explicitly accepted. */
+const meridianPkg = join(MERIDIAN_HOME, "package.json");
+// eslint-disable-next-line security/detect-non-literal-fs-filename -- the operator's own Meridian checkout (MERIDIAN_HOME), read-only
+const meridianVersion = existsSync(meridianPkg) ? JSON.parse(readFileSync(meridianPkg, "utf8")).version : null;
+const homeProblem = meridianHomeProblem(MERIDIAN_HOME, meridianVersion, api.health.version,
+  argv.includes("--allow-meridian-version-mismatch") || process.env.MERIDIAN_ALLOW_VERSION_MISMATCH === "1");
+if (homeProblem) {
+  console.error(homeProblem);
+  process.exit(2);
+}
+if (meridianVersion !== api.health.version) {
+  console.warn(`warning: ${MERIDIAN_HOME} is not Meridian ${api.health.version} (accepted); its engine may compute differently from the server's`);
+}
 const v1 = DRY ? null : await integration(api);
 let book = (await api.call("GET", "/api/bootstrap")).db;
 const byExt = (rows, ext) => rows.find((r) => r.externalId === ext && r.externalSource);
@@ -428,12 +446,6 @@ const M = pathToFileURL(join(MERIDIAN_HOME, "shared") + "/").href;
 const { Engine } = await import(M + "engine.js");
 const { programmeSchedule } = await import(M + "programme.js");
 const health = api.health;
-const meridianPkg = join(MERIDIAN_HOME, "package.json");
-// eslint-disable-next-line security/detect-non-literal-fs-filename -- the operator's own Meridian checkout (MERIDIAN_HOME), read-only
-const meridianVersion = existsSync(meridianPkg) ? JSON.parse(readFileSync(meridianPkg, "utf8")).version : null;
-if (meridianVersion !== health.version) {
-  console.warn(`warning: ${MERIDIAN_HOME} is not Meridian ${health.version}; its engine may compute differently from the server's`);
-}
 
 // The next weekly delivery review: the next Monday after the status date.
 const series = book.meetingSeries ?? (await api.call("GET", "/api/meetings/series")).series;

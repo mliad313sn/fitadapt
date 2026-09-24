@@ -150,6 +150,44 @@ describe('secret scanning (goal condition 4)', () => {
     }
   });
 
+  it('the Meridian scripts refuse plain http off localhost and a MERIDIAN_HOME of another version (PKG-14)', () => {
+    // Run in a child process: the scripts are plain ESM outside this package's type check.
+    const probe = `
+      const m = await import(${JSON.stringify(join(root, 'pmo/meridian/meridian-client.mjs'))});
+      const urls = ['http://localhost:4173', 'http://127.0.0.1:4173', 'http://[::1]:4173', 'https://meridian.example.test', 'http://meridian.example.test', 'http://10.0.0.5:4173', 'http://localhost.example.test', 'ftp://localhost', 'https://u:p@meridian.example.test', 'not a url'];
+      const out = { urls: urls.map((u) => [u, m.baseUrlProblem(u) === null]),
+        same: m.meridianHomeProblem('/m', '5.36.0', '5.36.0', false),
+        differs: typeof m.meridianHomeProblem('/m', '5.35.0', '5.36.0', false),
+        missing: typeof m.meridianHomeProblem('/m', null, '5.36.0', false),
+        allowed: m.meridianHomeProblem('/m', '5.35.0', '5.36.0', true) };
+      let refused = null;
+      try { await m.session({ email: 'a@example.test', password: 'x' }); } catch (e) { refused = e.message; }
+      out.refused = refused;
+      console.log(JSON.stringify(out));`;
+    const run = spawnSync(process.execPath, ['--input-type=module', '-e', probe], { encoding: 'utf8', env: { ...process.env, MERIDIAN_URL: 'http://meridian.example.test' } });
+    expect(run.stderr).toBe('');
+    const out = JSON.parse(run.stdout) as { urls: [string, boolean][]; same: null; differs: string; missing: string; allowed: null; refused: string };
+    expect(Object.fromEntries(out.urls)).toEqual({
+      'http://localhost:4173': true,
+      'http://127.0.0.1:4173': true,
+      'http://[::1]:4173': true,
+      'https://meridian.example.test': true,
+      'http://meridian.example.test': false,
+      'http://10.0.0.5:4173': false,
+      'http://localhost.example.test': false,
+      'ftp://localhost': false,
+      'https://u:p@meridian.example.test': false,
+      'not a url': false,
+    });
+    expect([out.same, out.differs, out.missing, out.allowed]).toEqual([null, 'string', 'string', null]);
+    // No request is made: the password never leaves for a plain-http remote host.
+    expect(out.refused).toMatch(/must use https/);
+    const drive = readFileSync(join(root, 'pmo/meridian/drive.mjs'), 'utf8');
+    // The version check runs before MERIDIAN_HOME's engine is imported.
+    expect(drive.indexOf('meridianHomeProblem(MERIDIAN_HOME')).toBeGreaterThan(0);
+    expect(drive.indexOf('meridianHomeProblem(MERIDIAN_HOME')).toBeLessThan(drive.indexOf('await import(M + "engine.js")'));
+  });
+
   it('the CI token is read-only and every action is pinned by commit SHA (PKG-13)', () => {
     const workflow = readFileSync(join(root, '.github/workflows/ci.yml'), 'utf8');
     expect(workflow).toMatch(/^permissions:\n {2}contents: read\n/m);
