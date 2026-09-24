@@ -5,7 +5,8 @@ import type { StoredEquipmentProfile } from '../profile/profile-store';
 /**
  * M02 on the device: the engine's input for today's session, from the
  * stored records only (profile, SafetyProfile selector, places, program and
- * reflows, capacity model, history, pain flags, S3 lock). The engine decides
+ * reflows, capacity model, history, pain flags, S3 lock, M05 readiness and
+ * session mode; the triggered deload is added at generation time). The engine decides
  * everything else; this only gathers facts. A place the user picks for today
  * (Anywhere Switcher) replaces the program's place; minutes the user picks
  * replace the profile's session length (time-boxing).
@@ -24,6 +25,10 @@ export interface TodayFacts {
   /** The place picked for today, if any. */
   readonly placeId: string | null;
   readonly minutes: number | null;
+  /** M05: today's readiness (a low check → 'reduced'; no check → no adjustment). */
+  readonly readiness?: 'normal' | 'reduced';
+  /** M05: a standalone mobility and balance session instead of today's training. */
+  readonly mode?: 'training' | 'mobility_balance';
 }
 
 export type TodayInput =
@@ -32,7 +37,8 @@ export type TodayInput =
   | { readonly status: 'no_place' };
 
 export function todayInput(f: TodayFacts): TodayInput {
-  const day = f.program ? programDay(f.program.program, f.reflows, f.today) : null;
+  const mobility = f.mode === 'mobility_balance';
+  const day = f.program && !mobility ? programDay(f.program.program, f.reflows, f.today) : null;
   const session = day?.sessions[0] ?? null;
   // A program exists for today's week but nothing is planned today: a rest day (no session is invented).
   if (day && !session) return { status: 'rest_day' };
@@ -52,6 +58,8 @@ export function todayInput(f: TodayFacts): TodayInput {
     birthDate: f.profile.birthDate,
     experience: f.profile.experience,
     intensityLock: f.intensityLock,
+    ...(f.readiness && !mobility ? { readiness: f.readiness } : {}),
+    ...(mobility ? { mode: 'mobility_balance' as const } : {}),
   };
   return { status: 'ready', input, placeId: place.id, fromProgram: session !== null };
 }

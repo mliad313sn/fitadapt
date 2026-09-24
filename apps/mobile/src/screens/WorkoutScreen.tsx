@@ -1,16 +1,17 @@
-import { createEngineContext, type GenerateSessionInput } from '@fitadapt/engine';
+import { ENGINE_VERSION, createEngineContext, type GenerateSessionInput } from '@fitadapt/engine';
 import { autoregulateRemainingSets, generateSession, painAdjustments, replacementsFor } from '@fitadapt/exercise-library';
 import { formatMass, kgToLb, lbToKg, type MessageKey } from '@fitadapt/i18n';
 import { useI18n } from '@fitadapt/i18n/react';
 import { NOTICES, notice, noticesToShow, renderNotice } from '@fitadapt/legal';
-import { JOINTS, RED_FLAG_SYMPTOMS, SESSION_MINUTES_OPTIONS, type Joint, type PerformedSet, type PlannedExercise, type PlannedSet, type RedFlagSymptom, type SessionPlan, type WorkoutSessionRecord } from '@fitadapt/shared';
+import { JOINTS, MEDICAL_REVIEW_STATEMENT_VERSION, RED_FLAG_SYMPTOMS, SESSION_MINUTES_OPTIONS, type Joint, type PerformedSet, type PlannedExercise, type PlannedSet, type RedFlagSymptom, type SessionPlan, type WorkoutSessionRecord } from '@fitadapt/shared';
 import { Button, Card, Chip, Sheet, Stepper, useTheme } from '@fitadapt/ui';
 import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { clock } from '../clock';
-import { useCapacity, useIntensityLock, useJointFlags, useLegal, useProfile, useProgram, useReflows, useSafetyProfile, useSessionHistory } from '../profile/ProfileProvider';
-import { localIsoDate } from '../profile/selectors';
+import { useCapacity, useIntensityLock, useJointFlags, useLegal, useProfile, useProgram, useReadinessChecks, useReflows, useSafetyProfile, useSessionHistory } from '../profile/ProfileProvider';
+import { localIsoDate, selectDeload, selectMorningCheck, selectPhysio, selectReadiness } from '../profile/selectors';
+import { MorningCheck, PainCheck, ReadinessCheckCard, SeekCare, WarmUpDetails } from '../workout/RecoveryCards';
 import { useRestRemaining } from '../workout/rest-timer';
 import { seedFrom, todayInput } from '../workout/today';
 
@@ -59,6 +60,9 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
   const saveWorkout = useProfile((s) => s.saveWorkout);
   const logSetRecord = useProfile((s) => s.logSet);
   const logExecution = useProfile((s) => s.logExecution);
+  const logReadiness = useProfile((s) => s.logReadiness);
+  const executionLogs = useProfile((s) => s.executionLogs);
+  const readinessChecks = useReadinessChecks();
   const safetyProfile = useSafetyProfile();
   const program = useProgram();
   const reflows = useReflows();
@@ -84,6 +88,14 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
   const [painJoint, setPainJoint] = useState<Joint | null>(null);
   const [painScore, setPainScore] = useState<number | null>(null);
   const [needReps, setNeedReps] = useState(false);
+  // M05: session type, the optional checks, the two-step review confirmation and a red flag at the check-in.
+  const [mode, setMode] = useState<'training' | 'mobility_balance'>('training');
+  const [readinessSkipped, setReadinessSkipped] = useState(false);
+  const [readinessNote, setReadinessNote] = useState<string | null>(null);
+  const [morningSkipped, setMorningSkipped] = useState(false);
+  const [painChecked, setPainChecked] = useState(false);
+  const [attesting, setAttesting] = useState(false);
+  const [checkInFlag, setCheckInFlag] = useState(false);
 
   const text = { color: theme.colors.text, fontSize: theme.fontSize.body } as const;
   const muted = { color: theme.colors.textMuted, fontSize: theme.fontSize.label } as const;
@@ -94,14 +106,20 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
 
   // ---- Today's session (preview): the engine, on the device.
   const today = localIsoDate(clock.now());
-  const facts = profile ? todayInput({ profile, safetyProfile, places, program, reflows, capacity, history, jointFlags, intensityLock, today, placeId, minutes }) : null;
+  const readiness = selectReadiness(readinessChecks, today);
+  const facts = profile ? todayInput({ profile, safetyProfile, places, program, reflows, capacity, history, jointFlags, intensityLock, today, placeId, minutes, readiness, mode }) : null;
   // The facts object is rebuilt each render; its content is what matters.
   const factsKey = JSON.stringify(facts);
   const preview = useMemo(() => {
     if (!facts || facts.status !== 'ready') return null;
     const at = nowMs();
-    return { input: facts.input, result: generateSession(facts.input, createEngineContext({ clock: { now: () => at }, seed: seedFrom(at) })) };
-  }, [factsKey]);
+    // M05: the triggered deload in force at the generation time (the server derives the same at the plan's time).
+    const deload = facts.input.mode === 'mobility_balance' ? null : selectDeload(executionLogs, history, readinessChecks, at);
+    const input: GenerateSessionInput = deload ? { ...facts.input, deload } : facts.input;
+    return { input, deload, result: generateSession(input, createEngineContext({ clock: { now: () => at }, seed: seedFrom(at) })) };
+  }, [factsKey, executionLogs, readinessChecks]);
+  const physio = selectPhysio(executionLogs, clock.now());
+  const morningJoints = selectMorningCheck(executionLogs, clock.now());
   const pendingNotices = noticesToShow('workout.start', impressions, NOTICES);
 
   // L3: record that the first-workout notice was shown (once per version until acknowledged).
@@ -213,7 +231,7 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
 
   const savePain = () => {
     if (!run || painJoint === null || painScore === null) return;
-    logExecution({ kind: 'pain', planId: run.plan.planId, joint: painJoint, score: painScore, at: clock.now().toISOString() });
+    logExecution({ kind: 'pain', planId: run.plan.planId, joint: painJoint, score: painScore, at: clock.now().toISOString(), phase: 'during' });
     // S2 now: a red joint (≥ 6) swaps or skips the rest of the session's exercises that load it.
     const changes = painAdjustments(run.record.input as GenerateSessionInput, run.plan, run.exercise, painJoint, painScore, nowMs());
     let next = run;
@@ -253,9 +271,21 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
     end(run, 'red_flag', 'red_flag');
   };
 
+  /** S3 red flag at the check-in (no session): intensity locks, the seek-care guidance is shown (L3, L11 on the device). */
+  const checkInRedFlag = (symptom: RedFlagSymptom) => {
+    logExecution({ kind: 'red_flag', planId: null, symptom, at: clock.now().toISOString() });
+    const engineVersion = preview?.result.status === 'ok' ? preview.result.plan.engineVersion : ENGINE_VERSION;
+    logSafetyEvent({ invariant: 'S3', reasonCode: `safety.s3.${symptom}`, action: 'session_ended', engineVersion });
+    logSafetyEvent({ invariant: 'S3', reasonCode: 'safety.s3.intensity_locked', action: 'intensity_locked', engineVersion });
+    recordNotice(notice('seek_care'), 'shown', locale);
+    setCheckInFlag(true);
+  };
+
+  /** M05: the person confirms the medical-review statement (self-attestation, versioned); a week of deload follows. */
   const attestReview = () => {
-    logExecution({ kind: 'medical_review_attested', at: clock.now().toISOString() });
-    logSafetyAttested({ invariant: 'S3', reasonCode: 'safety.s3.medical_review_attested', engineVersion: preview?.result.status === 'ok' ? preview.result.plan.engineVersion : (run?.plan.engineVersion ?? '0.0.0') });
+    setAttesting(false);
+    logExecution({ kind: 'medical_review_attested', at: clock.now().toISOString(), statementVersion: MEDICAL_REVIEW_STATEMENT_VERSION });
+    logSafetyAttested({ invariant: 'S3', reasonCode: 'safety.s3.medical_review_attested', engineVersion: preview?.result.status === 'ok' ? preview.result.plan.engineVersion : (run?.plan.engineVersion ?? ENGINE_VERSION) });
   };
 
   // ---- Controls visible in every execution state (L4)
@@ -275,28 +305,46 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
   };
 
   // ---------------------------------------------------------------- render
+  if (checkInFlag && !run) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <ScrollView contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg }} testID="workout-checkin-red_flag">
+          <Text accessibilityRole="header" style={{ ...title, fontSize: theme.fontSize.headline }}>
+            {t('recovery.redFlag.checkin.stopTitle')}
+          </Text>
+          <SeekCare />
+          <Button label={t('workout.back')} variant="secondary" onPress={() => setCheckInFlag(false)} testID="workout-checkin-back" />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   if (run && (run.phase === 'done' || run.phase === 'ended' || run.phase === 'red_flag')) {
-    const seekCare = renderNotice(notice('seek_care'), locale, jurisdiction);
-    const acknowledged = impressions.some((i) => i.noticeId === 'seek_care' && i.kind === 'acknowledged');
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
         <ScrollView contentContainerStyle={{ padding: theme.spacing.xl, gap: theme.spacing.lg }} testID={`workout-${run.phase}`}>
           <Text accessibilityRole="header" style={{ ...title, fontSize: theme.fontSize.headline }}>
             {run.phase === 'done' ? t('workout.done.title') : run.phase === 'ended' ? t('workout.ended.title') : t('workout.redFlag.title')}
           </Text>
-          {run.phase === 'red_flag' ? (
-            <Card title={seekCare.title} testID="notice-seek_care">
-              <Text style={{ color: theme.colors.danger, fontSize: theme.fontSize.label }}>{seekCare.draftBanner}</Text>
-              <Text style={text}>{seekCare.body}</Text>
-              {seekCare.emergency ? <Text style={{ ...text, fontWeight: theme.fontWeight.bold }}>{seekCare.emergency}</Text> : null}
-              <Text style={text}>{t('workout.redFlag.body')}</Text>
-              {!acknowledged ? <Button label={t('legal.action.acknowledge')} hint={t('legal.action.acknowledgeHint')} onPress={() => recordNotice(notice('seek_care'), 'acknowledged', locale)} testID="notice-seek_care-ack" /> : null}
-            </Card>
-          ) : null}
+          {run.phase === 'red_flag' ? <SeekCare after={t('workout.redFlag.body')} /> : null}
           <Text style={text} testID="workout-summary">
             {t('workout.done.summary', { done: run.logged })}
           </Text>
           <Text style={muted}>{t('workout.done.saved')}</Text>
+          {run.phase !== 'red_flag' && !painChecked ? (
+            <PainCheck
+              onSave={(joint, score) => {
+                logExecution({ kind: 'pain', planId: run.plan.planId, joint, score, at: clock.now().toISOString(), phase: 'after_session' });
+                setMessage(t('recovery.pain.after.saved'));
+              }}
+              onDone={() => setPainChecked(true)}
+            />
+          ) : null}
+          {message && run.phase !== 'red_flag' ? (
+            <Text accessibilityLiveRegion="polite" style={text} testID="workout-message">
+              {message}
+            </Text>
+          ) : null}
           <Button label={t('workout.back')} variant="secondary" onPress={onExit} testID="workout-back" />
         </ScrollView>
       </SafeAreaView>
@@ -425,9 +473,55 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
         {intensityLock.locked ? (
           <Card title={t('workout.locked.title')} testID="workout-locked">
             <Text style={text}>{t('workout.locked.body')}</Text>
-            <Button label={t('workout.locked.attest')} hint={t('workout.locked.attestHint')} onPress={attestReview} testID="workout-attest" />
+            {attesting ? (
+              <View style={{ gap: theme.spacing.sm }} testID="workout-attest-statement">
+                <Text style={{ ...text, fontWeight: theme.fontWeight.bold }}>{t('recovery.s3.attest.title')}</Text>
+                <Text style={text}>{t('recovery.s3.attest.statement')}</Text>
+                <Button label={t('recovery.s3.attest.confirm')} hint={t('recovery.s3.attest.confirmHint')} onPress={attestReview} testID="workout-attest-confirm" />
+                <Button label={t('recovery.s3.attest.cancel')} hint={t('recovery.s3.attest.cancelHint')} variant="secondary" onPress={() => setAttesting(false)} testID="workout-attest-cancel" />
+                <Text style={muted}>{t('recovery.s3.attest.note')}</Text>
+              </View>
+            ) : (
+              <Button label={t('workout.locked.attest')} hint={t('workout.locked.attestHint')} onPress={() => setAttesting(true)} testID="workout-attest" />
+            )}
           </Card>
         ) : null}
+        {!intensityLock.locked && morningJoints.length > 0 && !morningSkipped ? (
+          <MorningCheck
+            joints={morningJoints}
+            onSave={(answers) => {
+              const at = clock.now().toISOString();
+              for (const a of answers) logExecution({ kind: 'pain', planId: null, joint: a.joint, score: a.score, at, phase: 'next_morning', settled: a.settled });
+              setMorningSkipped(true);
+            }}
+            onSkip={() => setMorningSkipped(true)}
+          />
+        ) : null}
+        {physio.map((p) => (
+          <Card key={p.joint} title={t('recovery.physio.title')} testID={`recovery-physio-${p.joint}`}>
+            <Text style={text}>{t(`recovery.physio.body.${p.joint}` as MessageKey)}</Text>
+          </Card>
+        ))}
+        {!intensityLock.locked && mode === 'training' && readiness === undefined && !readinessSkipped ? (
+          <ReadinessCheckCard
+            onSave={(answers) => {
+              const saved = logReadiness({ schemaVersion: 1, date: today, at: clock.now().toISOString(), ...answers, wearable: null });
+              setReadinessNote(selectReadiness([saved], today) === 'reduced' ? t('recovery.readiness.done.reduced') : t('recovery.readiness.done.normal'));
+            }}
+            onSkip={() => setReadinessSkipped(true)}
+            onRedFlag={checkInRedFlag}
+          />
+        ) : null}
+        {readinessNote ? (
+          <Text accessibilityLiveRegion="polite" style={text} testID="recovery-readiness-note">
+            {readinessNote} {t('recovery.readiness.noWearable')}
+          </Text>
+        ) : null}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+          {(['training', 'mobility_balance'] as const).map((m) => (
+            <Chip key={m} label={t(m === 'training' ? 'recovery.mode.training' : 'recovery.mode.mobility')} hint={t('recovery.mode.hint')} selected={mode === m} onPress={() => setMode(m)} testID={`workout-mode-${m}`} />
+          ))}
+        </View>
         {pendingNotices.map((n) => {
           const rendered = renderNotice(n, locale, jurisdiction);
           return (
@@ -472,7 +566,13 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
             <Text style={text} testID="workout-minutes">
               {t('workout.minutes', { minutes: Math.round(result.plan.estimatedMinutes) })}
             </Text>
-            <Text style={muted}>{t('workout.warmUp', { minutes: result.plan.warmUp.minutes })}</Text>
+            {preview?.deload ? (
+              <Card title={t('recovery.deload.title')} testID="recovery-deload">
+                <Text style={text}>{reason(`session.deload.triggered.${preview.deload.trigger}`)}</Text>
+                <Text style={muted}>{preview.deload.until ? t('recovery.deload.until', { date: new Date(preview.deload.until).toLocaleDateString(locale) }) : t('recovery.deload.untilReview')}</Text>
+              </Card>
+            ) : null}
+            {result.plan.warmUp.content ? <WarmUpDetails plan={result.plan} name={exerciseName} mass={mass} /> : <Text style={muted}>{t('workout.warmUp', { minutes: result.plan.warmUp.minutes })}</Text>}
             <Text style={muted}>{t('workout.reserve', { rir: result.plan.targetRir })}</Text>
             {result.plan.conditioning ? <Text style={muted}>{t(result.plan.conditioning.placement === 'finisher' ? 'workout.conditioning.finisher' : 'workout.conditioning.session', { minutes: result.plan.conditioning.minutes })}</Text> : null}
             {result.plan.reasonCodes.map((code) => (
@@ -494,6 +594,15 @@ export function WorkoutScreen({ onExit, onOpenCalendar, onOpenAssessment }: Work
                   : null}
               </Card>
             ))}
+            {result.plan.coolDown ? (
+              <Card title={t('recovery.cooldown.title', { minutes: result.plan.coolDown.minutes })} testID="recovery-cooldown">
+                {result.plan.coolDown.drills.map((d) => (
+                  <Text key={d.exerciseId} style={muted}>
+                    {t('recovery.warmup.drill', { exercise: exerciseName(d.exerciseId), seconds: d.seconds })}
+                  </Text>
+                ))}
+              </Card>
+            ) : null}
             {pendingNotices.length > 0 ? <Text style={text}>{t('workout.noticeFirst')}</Text> : null}
             <Button label={t('workout.start')} hint={t('workout.startHint')} disabled={pendingNotices.length > 0} onPress={start} testID="workout-start" />
           </View>

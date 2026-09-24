@@ -10,6 +10,8 @@ import {
   PROGRAM_COLLECTIONS,
   ProfileSchema,
   ProgramRecordSchema,
+  RECOVERY_COLLECTIONS,
+  ReadinessCheckSchema,
   ReflowRecordSchema,
   SESSION_COLLECTIONS,
   ScreeningRecordSchema,
@@ -35,6 +37,7 @@ import {
   type ExecutionLog,
   type SetLog,
   type WorkoutSessionRecord,
+  type ReadinessCheck,
 } from '@fitadapt/shared';
 import type { SyncClient } from '@fitadapt/sync';
 import type { z } from 'zod';
@@ -112,6 +115,11 @@ export interface StoredExecutionLog {
   readonly data: ExecutionLog;
 }
 
+export interface StoredReadinessCheck {
+  readonly id: string;
+  readonly data: ReadinessCheck;
+}
+
 export interface ProfileStoreDeps {
   sync: SyncClient;
   kv: KeyValueStore;
@@ -133,6 +141,8 @@ export interface ProfileState {
   workouts: StoredWorkout[];
   setLogs: StoredSetLog[];
   executionLogs: StoredExecutionLog[];
+  /** M05 readiness checks (append-only; the latest of a day counts). */
+  readinessChecks: StoredReadinessCheck[];
   draft: OnboardingDraft;
   newConditionReportedAt: string | null;
   /** Re-reads the synced records (after a pull). */
@@ -158,6 +168,8 @@ export interface ProfileState {
   logSet(log: SetLog): SetLog;
   /** M02: appends an execution event (swap, skip, pain flag, end, S3 red flag, attested review). */
   logExecution(event: ExecutionLog): ExecutionLog;
+  /** M05: stores the optional readiness check (append-only, works offline). */
+  logReadiness(check: ReadinessCheck): ReadinessCheck;
   reportNewCondition(): void;
   /** Health consent withdrawn or account wiped: forget health data held on the device. */
   forgetHealthData(): void;
@@ -225,6 +237,11 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
       .list(SESSION_COLLECTIONS.executionLogs)
       .map((r) => ({ id: r.id, data: parsed(ExecutionLogSchema, r.data) }))
       .filter((r): r is StoredExecutionLog => r.data !== null)
+      .sort((a, b) => a.data.at.localeCompare(b.data.at) || a.id.localeCompare(b.id)),
+    readinessChecks: sync
+      .list(RECOVERY_COLLECTIONS.readinessChecks)
+      .map((r) => ({ id: r.id, data: parsed(ReadinessCheckSchema, r.data) }))
+      .filter((r): r is StoredReadinessCheck => r.data !== null)
       .sort((a, b) => a.data.at.localeCompare(b.data.at) || a.id.localeCompare(b.id)),
   });
   const writeProfile = (profile: Profile) => {
@@ -347,6 +364,12 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
       logExecution(event) {
         const data = ExecutionLogSchema.parse(event);
         sync.insert(SESSION_COLLECTIONS.executionLogs, data);
+        written();
+        return data;
+      },
+      logReadiness(check) {
+        const data = ReadinessCheckSchema.parse(check);
+        sync.insert(RECOVERY_COLLECTIONS.readinessChecks, data);
         written();
         return data;
       },

@@ -1,0 +1,74 @@
+# M05 goal condition 4 on a device: chest pain reported mid-session ends the
+# session, shows the seek-care guidance with the jurisdiction's emergency
+# number, and locks intensity — also after the app is restarted — until the
+# medical review is attested (S3). NOT EXECUTED in this environment (no device
+# or emulator); the same journey runs in jest-expo through the real root
+# layout, router and on-device database with every fetch failing, for GB
+# (999), FR (112) and SN (generic guidance): __tests__/red-flag.e2e.test.tsx.
+# Needs a training day of the plan. The emergency line is asserted by id only
+# (its number depends on the device region: packages/legal jurisdictions).
+# Airplane mode is Android-only in Maestro; on iOS disable the network by hand.
+# Run with: maestro test apps/mobile/e2e/red-flag-stop.yaml
+appId: dev.companion.app
+---
+- clearState
+- launchApp
+- tapOn: { id: "age-gate-day" }
+- inputText: "14"
+- tapOn: { id: "age-gate-month" }
+- inputText: "3"
+- tapOn: { id: "age-gate-year" }
+- inputText: "1988"
+- tapOn: { id: "age-gate-continue" }
+- assertVisible: { id: "home-screen" }
+- runFlow:
+    file: onboarding-steps.yaml
+    env:
+      SKIP_MEASUREMENTS: "true"
+- tapOn: { id: "first-workout-home" }
+- tapOn: { id: "open-calendar" }
+- tapOn: { id: "calendar-create" }
+- scrollUntilVisible: { element: { id: "calendar-back" } }
+- tapOn: { id: "calendar-back" }
+- setAirplaneMode: enabled
+# Today's session: skip the optional readiness check, acknowledge the first-workout notice, start.
+- tapOn: { id: "open-workout" }
+- assertVisible: { id: "workout-preview" }
+- tapOn: { id: "recovery-readiness-skip" }
+- tapOn: { id: "notice-first_workout-ack" }
+- scrollUntilVisible: { element: { id: "workout-start" } }
+- tapOn: { id: "workout-start" }
+- tapOn: { id: "workout-reps-.*", index: 2 }
+- tapOn: { id: "workout-rir-2" }
+- tapOn: { id: "workout-skip" }
+# Mid-session: chest pain.
+- tapOn: { id: "workout-stop" }
+- tapOn: { id: "workout-stop-symptom-chest_pain_pressure" }
+# The session has ended; seek-care guidance with the emergency line.
+- assertVisible: { id: "workout-red_flag" }
+- assertVisible: { id: "notice-seek_care" }
+- assertVisible: { id: "notice-seek_care-emergency" }
+- assertNotVisible: { id: "workout-stop" }
+- tapOn: { id: "notice-seek_care-ack" }
+- tapOn: { id: "workout-back" }
+# Restart the app: intensity is still locked; no session can start (not even mobility).
+- stopApp
+- launchApp: { stopApp: false }
+- tapOn: { id: "open-workout" }
+- assertVisible: { id: "workout-locked" }
+- assertNotVisible: { id: "workout-start" }
+- tapOn: { id: "workout-mode-mobility_balance" }
+- assertNotVisible: { id: "workout-start" }
+- tapOn: { id: "workout-mode-training" }
+# Attest the medical review in two steps; "Not yet" keeps the lock.
+- tapOn: { id: "workout-attest" }
+- assertVisible: { id: "workout-attest-statement" }
+- tapOn: { id: "workout-attest-cancel" }
+- assertVisible: { id: "workout-locked" }
+- tapOn: { id: "workout-attest" }
+- tapOn: { id: "workout-attest-confirm" }
+- assertNotVisible: { id: "workout-locked" }
+# Sessions are back, lighter for a week.
+- assertVisible: { id: "recovery-deload" }
+- scrollUntilVisible: { element: { id: "workout-start" } }
+- setAirplaneMode: disabled

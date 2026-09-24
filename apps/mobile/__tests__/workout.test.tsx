@@ -320,6 +320,9 @@ describe('today’s session on the device (offline)', () => {
     expect(screen.getByText(t('engine.reason.session.unavailable.s3_intensity_locked'))).toBeTruthy();
     expect(screen.queryByTestId('workout-start')).toBeNull();
     press('workout-attest');
+    // M05: the review is confirmed in two steps (the statement, then "I confirm").
+    expect(screen.getByTestId('workout-attest-statement')).toBeTruthy();
+    press('workout-attest-confirm');
     expect(d.legal.getState().events.at(-1)).toMatchObject({ type: 'safety.attested', payload: { invariant: 'S3' } });
     expect(screen.queryByTestId('workout-locked')).toBeNull();
     expect(screen.getByTestId('workout-start')).toBeTruthy();

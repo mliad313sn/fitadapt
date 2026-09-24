@@ -1,8 +1,8 @@
 import { featureOn } from '../privacy/consents';
-import { intensityLockStatus, jointFlagsFromPain, notScreenedSafetyProfile, rescreenStatus, evaluateScreening, type RescreenStatus } from '@fitadapt/safety';
-import { buildSessionHistory, fixedClock, reassessmentDateFor, reassessmentStatus, type ReassessmentStatus } from '@fitadapt/engine';
-import type { CapacityModel, ConsentRecord, IntensityLock, IsoDate, JointFlags, ProgramRecord, ReflowRecord, SafetyProfile, SessionHistoryEntry } from '@fitadapt/shared';
-import type { StoredAssessment, StoredExecutionLog, StoredProgram, StoredReflow, StoredScreening, StoredSetLog, StoredWorkout } from './profile-store';
+import { intensityLockStatus, jointFlagsFromPain, notScreenedSafetyProfile, physioRecommendations, rescreenStatus, evaluateScreening, type PhysioRecommendation, type RescreenStatus } from '@fitadapt/safety';
+import { buildSessionHistory, deloadStatus, fixedClock, painReportsFrom, readinessLevelOn, reassessmentDateFor, reassessmentStatus, safetyStopsFrom, type ReassessmentStatus } from '@fitadapt/engine';
+import type { CapacityModel, ConsentRecord, DeloadEvent, IntensityLock, IsoDate, Joint, JointFlags, ProgramRecord, ReadinessCheck, ReflowRecord, SafetyProfile, SessionHistoryEntry } from '@fitadapt/shared';
+import type { StoredAssessment, StoredExecutionLog, StoredProgram, StoredReadinessCheck, StoredReflow, StoredScreening, StoredSetLog, StoredWorkout } from './profile-store';
 
 /**
  * The user's SafetyProfile (S1, S4, S7) as every module must read it.
@@ -86,9 +86,50 @@ export function selectHistory(workouts: readonly StoredWorkout[], setLogs: reado
   );
 }
 
-/** M02 (S2): joint flags from the pain flags logged during sessions (packages/safety; M05 builds the full model). */
+/** S2: joint flags from the M05 pain-monitoring model over every pain report (during, after the session, next morning). */
 export function selectJointFlags(executionLogs: readonly StoredExecutionLog[]): JointFlags {
-  return jointFlagsFromPain(executionLogs.flatMap((e) => (e.data.kind === 'pain' ? [{ joint: e.data.joint, score: e.data.score, at: e.data.at }] : [])));
+  return jointFlagsFromPain(painReportsFrom(executionLogs.map((e) => e.data)));
+}
+
+/** M05: amber or red on the same joint for more than two weeks → suggest a physiotherapist. */
+export function selectPhysio(executionLogs: readonly StoredExecutionLog[], now: Date): PhysioRecommendation[] {
+  return physioRecommendations(painReportsFrom(executionLogs.map((e) => e.data)), now.getTime());
+}
+
+/** M05: the readiness checks (health data: none without the health consent). */
+export function selectReadinessChecks(checks: readonly StoredReadinessCheck[], consents: readonly ConsentRecord[]): ReadinessCheck[] {
+  return featureOn('health.screening', consents) ? checks.map((c) => c.data) : [];
+}
+
+/** M05: generateSession's readiness for today ('reduced' only after a low check today; no check → no adjustment). */
+export function selectReadiness(checks: readonly ReadinessCheck[], today: IsoDate): 'normal' | 'reduced' | undefined {
+  return readinessLevelOn(checks, today);
+}
+
+/** M05: the triggered deload in force at `atMs` (the same derivation as the server's, at the plan's generation time). */
+export function selectDeload(executionLogs: readonly StoredExecutionLog[], history: readonly SessionHistoryEntry[], checks: readonly ReadinessCheck[], atMs: number): DeloadEvent | null {
+  const logs = executionLogs.map((e) => e.data);
+  return deloadStatus({ asOfMs: atMs, painReports: painReportsFrom(logs), safetyStops: safetyStopsFrom(logs), history, readinessChecks: checks });
+}
+
+/**
+ * M05 next-morning check: joints rated above 0 in (or after) a session on an
+ * earlier day, within the last two days, with no next-morning answer since.
+ */
+export function selectMorningCheck(executionLogs: readonly StoredExecutionLog[], now: Date): Joint[] {
+  const today = localIsoDate(now);
+  const due = new Map<Joint, boolean>();
+  for (const { data: e } of executionLogs) {
+    if (e.kind !== 'pain') continue;
+    if (e.phase === 'next_morning') {
+      due.set(e.joint, false);
+      continue;
+    }
+    const at = new Date(e.at);
+    const recent = now.getTime() - at.getTime() <= 2 * 86_400_000;
+    due.set(e.joint, e.score > 0 && recent && localIsoDate(at) < today);
+  }
+  return [...due].filter(([, d]) => d).map(([j]) => j);
 }
 
 /** M02 (S3): intensity stays locked after a red-flag stop until a medical review is attested (packages/safety). */
