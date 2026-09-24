@@ -104,8 +104,8 @@ export interface JointPainState {
  * - A report of ≥ 6/10, or a next-morning check that says it has not
  *   settled, makes the joint red (S2).
  * - A red joint stays red for the next session: only a later report below 6
- *   made in ANOTHER session (not one that rated it red, not a next-morning
- *   check) can bring it back to amber or green. Fail closed: the clearing
+ *   made in a LATER session (one with no report of this joint up to the red
+ *   rating; never a next-morning check) can bring it back to amber or green. Fail closed: the clearing
  *   report must be recorded later and not be dated before the red one (a
  *   device clock moved back cannot clear it), and an unreadable time never
  *   clears.
@@ -114,11 +114,15 @@ export interface JointPainState {
 export function painTrafficLight(reports: readonly PainReport[]): Partial<Record<Joint, JointPainState>> {
   const out: Partial<Record<Joint, JointPainState>> = {};
   const red: Partial<Record<Joint, { at: number; sessions: Set<string | null> }>> = {};
+  /** Every session a report of the joint came from so far (in record order). */
+  const seen: Partial<Record<Joint, Set<string | null>>> = {};
   for (const r of reports) {
     const prev = out[r.joint];
     const t = Date.parse(r.at);
     const light = classifyPainReport(r);
     const session = r.sessionId ?? null;
+    const known = (seen[r.joint] ??= new Set());
+    known.add(session);
     let flag: PainLight;
     let redReason: JointPainState['redReason'] = prev?.redReason ?? null;
     if (light === 'red') {
@@ -126,10 +130,11 @@ export function painTrafficLight(reports: readonly PainReport[]): Partial<Record
       redReason = r.score >= S2_RED_PAIN_SCORE ? 'score' : 'not_settled';
       // An unreadable time can never be "before" a clearing report.
       const streak = red[r.joint];
-      red[r.joint] = { at: Number.isNaN(t) ? Number.POSITIVE_INFINITY : Math.max(t, streak?.at ?? Number.NEGATIVE_INFINITY), sessions: new Set([...(streak?.sessions ?? []), session]) };
+      // Only a session not seen before this red rating (a later one) can clear it.
+      red[r.joint] = { at: Number.isNaN(t) ? Number.POSITIVE_INFINITY : Math.max(t, streak?.at ?? Number.NEGATIVE_INFINITY), sessions: new Set(known) };
     } else if (prev?.flag === 'red') {
       const setBy = red[r.joint]!;
-      // Another session than every one that rated it red (reports outside a session only clear reds set outside one).
+      // A session not seen for this joint up to the red rating (reports outside a session only clear reds set outside one).
       const otherSession = session === null ? [...setBy.sessions].every((x) => x === null) : !setBy.sessions.has(session);
       const clears = r.phase !== 'next_morning' && !Number.isNaN(t) && t >= setBy.at && otherSession;
       flag = clears ? light : 'red';

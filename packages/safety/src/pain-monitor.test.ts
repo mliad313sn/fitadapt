@@ -64,6 +64,8 @@ describe('M05 pain traffic light (goal condition 2)', () => {
     expect(jointFlagsFromPain([{ ...red, at: 'garbage' }, { joint: 'knee', score: 1, at: at(NOW + DAY), phase: 'during', sessionId: B }])).toEqual({ knee: 'red' });
     // A report outside any session cannot clear a red that a session set.
     expect(jointFlagsFromPain([red, { joint: 'knee', score: 1, at: at(NOW + DAY), phase: 'during', sessionId: null }])).toEqual({ knee: 'red' });
+    // An older session (seen before the red rating) cannot clear it either.
+    expect(jointFlagsFromPain([{ joint: 'knee', score: 6, at: at(NOW), sessionId: B }, { joint: 'knee', score: 0, at: at(NOW), sessionId: A }, { joint: 'knee', score: 6, at: at(NOW), sessionId: A }, { joint: 'knee', score: 0, at: at(NOW), sessionId: B }])).toEqual({ knee: 'red' });
     // Two sessions rated it red: a later report from either one does not clear it; a third session does.
     const both = [red, { joint: 'knee' as const, score: 8, at: at(NOW + DAY), sessionId: B }];
     expect(jointFlagsFromPain([...both, { joint: 'knee', score: 1, at: at(NOW + 2 * DAY), sessionId: A }])).toEqual({ knee: 'red' });
@@ -149,17 +151,18 @@ describe('S2 cannot be escaped (adversarial fast-check)', () => {
           const lastRed = mine[lastRedIdx]!;
           const redAt = Date.parse(lastRed.at);
           const redSession = lastRed.sessionId ?? null;
+          const earlier = new Set(mine.slice(0, lastRedIdx + 1).map((r) => r.sessionId ?? null));
           // Necessary conditions for a report to clear the latest red rating (the model asks for more).
           const clearer = after.find((c) => {
             const cs = c.sessionId ?? null;
-            return c.phase !== 'next_morning' && classifyPainReport(c) !== 'red' && !Number.isNaN(redAt) && !Number.isNaN(Date.parse(c.at)) && Date.parse(c.at) >= redAt && (cs === null ? redSession === null : cs !== redSession);
+            return c.phase !== 'next_morning' && classifyPainReport(c) !== 'red' && !Number.isNaN(redAt) && !Number.isNaN(Date.parse(c.at)) && Date.parse(c.at) >= redAt && (cs === null ? redSession === null : !earlier.has(cs));
           });
           // No report after the latest red one could possibly clear it → still red (S2 holds for the next session).
           if (!clearer) expect(flags[joint]).toBe('red');
           // Next-morning checks alone never clear a red joint.
           if (after.every((c) => c.phase === 'next_morning')) expect(flags[joint]).toBe('red');
-          // Reports from sessions that rated it red, or dated before the latest red, never clear it.
-          const redSessions = new Set(mine.slice(0, lastRedIdx + 1).filter((r) => classifyPainReport(r) === 'red').map((r) => r.sessionId ?? null));
+          // Reports from sessions that rated it red (or reported it at all before the latest red), or dated before the latest red, never clear it.
+          const redSessions = new Set(mine.slice(0, lastRedIdx + 1).map((r) => r.sessionId ?? null));
           if (after.every((c) => (c.sessionId ?? null) !== null && redSessions.has(c.sessionId ?? null))) expect(flags[joint]).toBe('red');
           if (after.every((c) => Number.isNaN(Date.parse(c.at)) || Date.parse(c.at) < Date.parse(mine[lastRedIdx]!.at))) expect(flags[joint]).toBe('red');
         }
