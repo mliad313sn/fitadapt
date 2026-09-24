@@ -103,4 +103,5 @@ export const MESOCYCLE_MAX_WEEKS = 6 as const;
 export const REFLOW_MAX_EXTRA_SESSIONS_PER_WEEK = 1 as const;
 
 /** Version of the program rules and templates; bump when generation or reflow changes. */
-export const PROGRAM_RULES_VERSION = '0.1.0';
+/** 0.2.0 (M05): a deload week is the accumulation week before it with 40–50 % of its sets removed. */
+export const PROGRAM_RULES_VERSION = '0.2.0';

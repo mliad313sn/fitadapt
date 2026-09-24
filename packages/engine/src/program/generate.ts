@@ -41,7 +41,7 @@ import {
   type SlotTemplate,
   type WeekTemplate,
 } from './templates.js';
-import { allocateSets, volumeRange, weeklyTarget, type AllocationSlot } from './volume.js';
+import { allocateSets, deloadAllocation, volumeOf, volumeRange, weeklyTarget, type AllocationSlot } from './volume.js';
 
 /** The part of the M06 graph the program needs: which movement patterns a place and a SafetyProfile allow. */
 export interface ProgramLibrary {
@@ -222,6 +222,7 @@ export function generateProgram(rawInput: ProgramInput, library: ProgramLibrary,
     return available.get(key)!;
   };
 
+  let previousWeek: { kind: MicrocycleKind; sets: readonly (readonly number[])[] } | null = null;
   const microcycles: Microcycle[] = weeks.map((plan, w) => {
     const week = w + 1;
     const weekStart = addDays(start, w * 7);
@@ -265,7 +266,17 @@ export function generateProgram(rawInput: ProgramInput, library: ProgramLibrary,
       targets[g] = weeklyTarget(age, goal, plan.kind === 'accumulation' ? plan.weekInMesocycle : 1, factor);
       caps[g] = Math.ceil(range.max * factor);
     }
-    const allocation = allocateSets(drafts.map((d) => ({ slots: d.slots, capacity: d.capacity })), targets, caps);
+    let allocation = allocateSets(drafts.map((d) => ({ slots: d.slots, capacity: d.capacity })), targets, caps);
+    // M05: a deload week is the accumulation week before it with 40–50 % of its sets removed (same sessions and slots).
+    const before = w > 0 ? previousWeek : null;
+    let fromPrevious = false;
+    if (plan.kind === 'deload' && before && before.kind === 'accumulation' && before.sets.length === drafts.length && before.sets.every((row, n) => row.length === drafts[n]!.slots.length)) {
+      const shaped = drafts.map((d) => ({ slots: d.slots, capacity: d.capacity }));
+      const sets = deloadAllocation(shaped, before.sets, 1 - factor);
+      allocation = { sets, volume: volumeOf(shaped, sets, targets) };
+      fromPrevious = true;
+    }
+    previousWeek = { kind: plan.kind, sets: allocation.sets };
 
     const sessions: ScheduledSession[] = [];
     drafts.forEach((d, n) => {
@@ -300,7 +311,8 @@ export function generateProgram(rawInput: ProgramInput, library: ProgramLibrary,
     });
 
     const volume = allocation.volume.map((v) => ({ ...v, min: range.min, max: range.max }));
-    if (volume.some((v) => v.planned < v.target - 0.5)) weekReasons.push('program.volume.time_limited');
+    // (A deload week made from the week before is below its target on purpose, not for lack of time.)
+    if (!fromPrevious && volume.some((v) => v.planned < v.target - 0.5)) weekReasons.push('program.volume.time_limited');
     const aerobicMinutes = sessions.reduce((sum, s) => sum + (s.conditioning?.minutes ?? 0), 0);
     return {
       week,

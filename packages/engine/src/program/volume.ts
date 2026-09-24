@@ -126,3 +126,76 @@ export function allocateSets(sessions: readonly AllocationSession[], targets: Re
 
   return { sets, volume: PROGRAM_MUSCLE_GROUPS.map((muscle) => ({ muscle, min: 0, max: 0, target: targets[muscle], planned: planned[muscle], direct: direct[muscle] })) };
 }
+
+/** Planned (fractional) and direct weekly sets per group for a given allocation. */
+export function volumeOf(sessions: readonly AllocationSession[], sets: readonly (readonly number[])[], targets: Readonly<Record<ProgramMuscleGroup, number>>): VolumeTarget[] {
+  const planned = Object.fromEntries(PROGRAM_MUSCLE_GROUPS.map((g) => [g, 0])) as Record<ProgramMuscleGroup, number>;
+  const direct = Object.fromEntries(PROGRAM_MUSCLE_GROUPS.map((g) => [g, 0])) as Record<ProgramMuscleGroup, number>;
+  sessions.forEach((s, i) =>
+    s.slots.forEach((slot, j) => {
+      if (!slot.counted) return;
+      const n = sets[i]![j]!;
+      const group = primaryGroup(slot.pattern);
+      if (!group || n === 0) return;
+      direct[group] += n;
+      for (const [g, c] of contributions(slot.pattern)) planned[g] = round2(planned[g] + c * n);
+    }),
+  );
+  return PROGRAM_MUSCLE_GROUPS.map((muscle) => ({ muscle, min: 0, max: 0, target: targets[muscle], planned: planned[muscle], direct: direct[muscle] }));
+}
+
+const ROLE_RANK = { accessory: 0, secondary: 1, primary: 2 } as const;
+
+/**
+ * M05 scheduled deload (volume −40–50 %): the deload week keeps the sessions
+ * and slots of the accumulation week before it with `reduction` of its sets
+ * removed: first each muscle group down to at most `reduction` of its own
+ * direct sets (rounded up, so no group is above half its accumulation
+ * volume), then over the whole week down to `reduction` of all its sets
+ * (at least half kept, rounded up). Sets go one at a time from the slot with
+ * the most sets (accessories, then secondaries, then primaries; later
+ * sessions first), keeping ≥ 1 set per slot while possible.
+ */
+export function deloadAllocation(sessions: readonly AllocationSession[], previous: readonly (readonly number[])[], reduction: number): number[][] {
+  const sets = previous.map((row) => [...row]);
+  const total = sets.flat().reduce((a, b) => a + b, 0);
+  const keep = Math.max(1, Math.ceil(total * (1 - reduction)));
+  let current = total;
+  const pick = (minSets: number, allowPrimary: boolean, only: (i: number, j: number) => boolean): [number, number] | null => {
+    let best: [number, number] | null = null;
+    for (let i = 0; i < sets.length; i++) {
+      for (let j = 0; j < sets[i]!.length; j++) {
+        const n = sets[i]![j]!;
+        const role = sessions[i]!.slots[j]!.role;
+        if (n < minSets || (!allowPrimary && role === 'primary') || !only(i, j)) continue;
+        if (!best) {
+          best = [i, j];
+          continue;
+        }
+        const b = sets[best[0]]![best[1]]!;
+        const br = ROLE_RANK[sessions[best[0]]!.slots[best[1]]!.role];
+        if (n > b || (n === b && (ROLE_RANK[role] < br || (ROLE_RANK[role] === br && (i > best[0] || (i === best[0] && j > best[1])))))) best = [i, j];
+      }
+    }
+    return best;
+  };
+  const take = (at: [number, number]) => {
+    sets[at[0]]![at[1]]! -= 1;
+    current -= 1;
+  };
+  // 1. Each group at most (1 − reduction) of its own direct sets.
+  for (const g of PROGRAM_MUSCLE_GROUPS) {
+    const inGroup = (i: number, j: number) => sessions[i]!.slots[j]!.counted && primaryGroup(sessions[i]!.slots[j]!.pattern) === g;
+    const directOf = () => sets.reduce((sum, row, i) => sum + row.reduce((a, n, j) => a + (inGroup(i, j) ? n : 0), 0), 0);
+    const limit = Math.ceil(directOf() * (1 - reduction));
+    while (directOf() > limit) take((pick(2, true, inGroup) ?? pick(1, true, inGroup))!);
+  }
+  // 2. The whole week down to (1 − reduction) of its sets.
+  const any = () => true;
+  while (current > keep) {
+    const at = pick(2, true, any) ?? pick(1, false, any);
+    if (!at) break;
+    take(at);
+  }
+  return sets;
+}
