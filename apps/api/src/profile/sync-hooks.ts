@@ -146,7 +146,7 @@ export function profileSyncValidator(deps: ProfileSyncDeps): MutationValidator {
       case SESSION_COLLECTIONS.workoutSessions:
         return (await consentRequired(userId, m)) ?? validateWorkoutSession(deps.db, deps.legal, userId, m.data, await latestSafetyProfile(deps.db, userId));
       case SESSION_COLLECTIONS.executionLogs:
-        return (await consentRequired(userId, m)) ?? validateExecutionLog(m.data);
+        return (await consentRequired(userId, m)) ?? (await validateExecutionLog(deps.db, userId, m.data));
       case RECOVERY_COLLECTIONS.readinessChecks:
         return (await consentRequired(userId, m)) ?? (ReadinessCheckSchema.safeParse(m.data).success ? null : 'readiness_check.invalid');
       default:

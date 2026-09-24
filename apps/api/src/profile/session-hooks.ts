@@ -3,6 +3,7 @@ import {
   ENGINE_VERSION,
   SESSION_RULES_VERSION,
   buildSessionHistory,
+  consistentTraining,
   createEngineContext,
   defaultEquipmentLoads,
   deloadStatus,
@@ -114,6 +115,8 @@ async function checkInputs(db: Database, userId: string, record: WorkoutSessionR
   // S7 (M17 age gate): the date of birth of the stored profile.
   const profile = await latestState(db, userId, PROFILE_COLLECTIONS.profile, PROFILE_RECORD_ID, (d) => ProfileSchema.safeParse(d));
   if (profile && !isDeepStrictEqual(input.birthDate ?? null, profile.birthDate)) return 'session.profile_mismatch';
+  // M03: a cardio block's impact default (BMI ≥ 35) reads the stored height and weight, never other numbers.
+  if (plan.cardio && profile && ((input.heightCm ?? null) !== profile.biometrics.heightCm || (input.bodyweightKg ?? null) !== profile.biometrics.weightKg)) return 'session.biometrics_mismatch';
   // S3: the lock the stored execution logs imply.
   const { sessions, setLogs, events } = await storedExecution(db, userId);
   const lock = intensityLockStatus(events);
@@ -129,6 +132,8 @@ async function checkInputs(db: Database, userId: string, record: WorkoutSessionR
   // M05: a triggered deload the stored records imply must be applied; a low readiness check that day must be too.
   const readiness = parsedRows(await rows(db, userId, RECOVERY_COLLECTIONS.readinessChecks), (d) => ReadinessCheckSchema.safeParse(d)).map((r) => r.data);
   const history = buildSessionHistory(sessions, setLogs, events);
+  // M03: HIIT needs ≥ 2 weeks of consistent training in the records the server stores (not only in the history the device sent).
+  if (plan.cardio?.hiit && !consistentTraining(history, Date.parse(plan.generatedAt))) return 'session.hiit_not_allowed';
   const deload = deloadStatus({ asOfMs: Date.parse(plan.generatedAt), painReports: painReportsFrom(events), safetyStops: safetyStopsFrom(events), history, readinessChecks: readiness });
   if (deload && !isDeepStrictEqual(input.deload ?? null, deload)) return 'session.deload_mismatch';
   const day = input.programSession?.session.date ?? plan.generatedAt.slice(0, 10);
@@ -187,14 +192,25 @@ export async function validateWorkoutSession(db: Database, legal: LegalService, 
   return null;
 }
 
-export function validateExecutionLog(data: unknown): string | null {
-  return ExecutionLogSchema.safeParse(data).success ? null : 'execution_log.invalid';
+export async function validateExecutionLog(db: Database, userId: string, data: unknown): Promise<string | null> {
+  const parsed = ExecutionLogSchema.safeParse(data);
+  if (!parsed.success) return 'execution_log.invalid';
+  const log = parsed.data;
+  if (log.kind !== 'cardio_done') return null;
+  // M03: a cardio log belongs to a stored session with a cardio block, and never counts more than that block planned (the weekly ledger).
+  const sessions = parsedRows(await rows(db, userId, SESSION_COLLECTIONS.workoutSessions), (d) => WorkoutSessionRecordSchema.safeParse(d)).map((r) => r.data);
+  const block = sessions.find((r) => r.plan.planId === log.planId)?.plan.cardio;
+  if (!block || block.protocol !== log.protocol) return 'execution_log.cardio_unknown_block';
+  const work = block.timeline.filter((s) => ['work', 'emom_minute', 'amrap', 'steady'].includes(s.kind)).length;
+  if (log.moderateSeconds > block.planned.moderateSeconds || log.vigorousSeconds > block.planned.vigorousSeconds || log.totalWork !== work || log.completedWork > work) return 'execution_log.cardio_mismatch';
+  return null;
 }
 
 /** Every reason code a plan carries, once (plan, exercises, sets). */
 export function planReasonCodes(record: WorkoutSessionRecord): string[] {
   const { plan } = record;
-  return [...new Set([...plan.reasonCodes, ...plan.exercises.flatMap((e) => [...e.reasonCodes, ...e.sets.flatMap((s) => s.reasonCodes)])])];
+  const cardio = plan.cardio ? [...plan.cardio.reasonCodes, ...plan.cardio.zones.reasonCodes] : [];
+  return [...new Set([...plan.reasonCodes, ...plan.exercises.flatMap((e) => [...e.reasonCodes, ...e.sets.flatMap((s) => s.reasonCodes)]), ...cardio])];
 }
 
 /** In the sync transaction: the prescription and its safety events commit with the record, or neither does. */
