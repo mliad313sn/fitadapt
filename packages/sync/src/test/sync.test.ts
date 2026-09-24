@@ -332,6 +332,10 @@ describe('M01 collections and server-side validation', () => {
     expect(SYNC_COLLECTIONS.body_metrics).toEqual({ appendOnly: true });
     expect(SYNC_COLLECTIONS.measurements).toEqual({ appendOnly: true });
     expect(Object.keys(SYNC_COLLECTIONS).some((c) => c.includes('photo'))).toBe(false);
+    // M10: nutrition plans, intake logs and habit ticks are append-only too.
+    expect(SYNC_COLLECTIONS.nutrition_plans).toEqual({ appendOnly: true });
+    expect(SYNC_COLLECTIONS.intake_logs).toEqual({ appendOnly: true });
+    expect(SYNC_COLLECTIONS.habit_checks).toEqual({ appendOnly: true });
   });
 
   it('rejects a mutation the validator refuses, finally, and reports applied ones to the listener', async () => {

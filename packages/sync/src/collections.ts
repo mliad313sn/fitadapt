@@ -35,6 +35,12 @@ export const SYNC_COLLECTIONS: CollectionRegistry = Object.freeze({
   body_metrics: Object.freeze({ appendOnly: true }),
   /** M04 circumferences: append-only, corrections as for body metrics. Progress photos are never synced (ADR-020). */
   measurements: Object.freeze({ appendOnly: true }),
+  /** M10 nutrition plans (the engine's input and target): append-only; the latest counts. */
+  nutrition_plans: Object.freeze({ appendOnly: true }),
+  /** M10 intake logs (hand portions or a seed food, with the engine's estimate): append-only; corrections are new entries. */
+  intake_logs: Object.freeze({ appendOnly: true }),
+  /** M10 habit ticks (protein at each meal, vegetables, hydration): append-only; the latest of a day counts. */
+  habit_checks: Object.freeze({ appendOnly: true }),
 });
 
 export function policyFor(registry: CollectionRegistry, collection: string): CollectionPolicy | undefined {
