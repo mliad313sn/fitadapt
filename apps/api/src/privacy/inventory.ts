@@ -45,7 +45,7 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = Object.freeze([
     erase: 'retained_pseudonymous',
     personalData: 'none: keyed subject reference, action, data type, version, time (L11)',
   },
-  { table: 'legal_acceptances', export: { section: 'legal.acceptances' }, erase: 'cascade_from_users', personalData: 'which legal texts were accepted, when, in which locale and jurisdiction (M20)' },
+  { table: 'legal_acceptances', export: { section: 'legal.acceptances' }, erase: 'cascade_from_users', personalData: 'which legal texts were accepted, when (device time and server receipt), in which locale and jurisdiction, and how assent was given (evidence, FIX-B) (M20)' },
   { table: 'notice_impressions', export: { section: 'legal.notices' }, erase: 'cascade_from_users', personalData: 'which point-of-risk notices were shown or acknowledged (M20)' },
   {
     table: 'defensibility_events',

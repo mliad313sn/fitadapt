@@ -296,7 +296,7 @@ export class PrivacyService {
         dataRequests: requestRows.map(toDataRequest),
         auditTrail: auditRows.map((a) => ({ id: a.id, action: a.action, dataType: a.dataType, version: a.version, occurredAt: iso(a.occurredAt) })),
         legal: {
-          acceptances: acceptanceRows.map((a) => ({ id: a.id, documentId: a.documentId, version: a.version, locale: a.locale, jurisdiction: a.jurisdiction, source: a.source, contentHash: a.contentHash, acceptedAt: iso(a.acceptedAt) })),
+          acceptances: acceptanceRows.map((a) => ({ id: a.id, documentId: a.documentId, version: a.version, locale: a.locale, jurisdiction: a.jurisdiction, source: a.source, contentHash: a.contentHash, acceptedAt: iso(a.acceptedAt), serverReceivedAt: iso(a.receivedAt), ...(a.evidence ? { evidence: a.evidence } : {}) })),
           notices: noticeRows.map((n) => ({ id: n.id, noticeId: n.noticeId, version: n.version, kind: n.kind, locale: n.locale, jurisdiction: n.jurisdiction, contentHash: n.contentHash, occurredAt: iso(n.occurredAt) })),
         },
         pair: {

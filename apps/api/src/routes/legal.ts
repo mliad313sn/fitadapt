@@ -1,4 +1,4 @@
-import { DOCUMENT_VARIANTS, NOTICE_IDS } from '@fitadapt/legal';
+import { AcceptanceEvidenceSchema, DOCUMENT_VARIANTS, NOTICE_IDS } from '@fitadapt/legal';
 import { ErrorResponseSchema, JurisdictionSchema, LocaleSchema } from '@fitadapt/shared';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
@@ -92,6 +92,8 @@ export const legalRoutes =
             contentHash: hash,
             id: z.uuid().optional(),
             acceptedAt: z.iso.datetime({ offset: true }).optional(),
+            /** FIX-B: how assent was given; stored with the acceptance and its defensibility entry. */
+            evidence: AcceptanceEvidenceSchema.optional(),
           }),
           response: { 201: z.object({ acceptance: AcceptanceStateSchema }), 404: ErrorResponseSchema, 409: ErrorResponseSchema, ...errors },
         },

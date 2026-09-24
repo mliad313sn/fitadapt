@@ -164,7 +164,11 @@ export const DataExportSchema = z.object({
   /** M20: acceptances of legal texts and point-of-risk notices shown (L2, L3). */
   legal: z.object({
     acceptances: z.array(
-      z.object({ id: UuidSchema, documentId: z.string(), version: z.number().int().positive(), locale: LocaleSchema, jurisdiction: z.string(), source: z.enum(['mobile', 'web', 'api']), contentHash: z.string(), acceptedAt: IsoDateTimeSchema }),
+      z.object({ id: UuidSchema, documentId: z.string(), version: z.number().int().positive(), locale: LocaleSchema, jurisdiction: z.string(), source: z.enum(['mobile', 'web', 'api']), contentHash: z.string(), acceptedAt: IsoDateTimeSchema,
+        /** FIX-B: when the server received it, and how assent was given (absent before FIX-B). */
+        serverReceivedAt: IsoDateTimeSchema.optional(),
+        evidence: z.record(z.string(), z.unknown()).optional(),
+      }),
     ),
     notices: z.array(
       z.object({ id: UuidSchema, noticeId: z.string(), version: z.number().int().positive(), kind: z.enum(['shown', 'acknowledged']), locale: LocaleSchema, jurisdiction: z.string(), contentHash: z.string(), occurredAt: IsoDateTimeSchema }),

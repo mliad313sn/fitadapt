@@ -1,3 +1,4 @@
+import type { AcceptanceEvidence } from '@fitadapt/legal';
 import { bigint, bigserial, customType, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
@@ -200,6 +201,12 @@ export const legalAcceptances = pgTable(
     acceptedAt: timestamp('accepted_at', { withTimezone: true }).notNull(),
     /** M01: when the server received it (acceptedAt is the device time for acceptances given offline). */
     receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * FIX-B (B pre-review §1.5 item 2): how assent was given (screen and flow version, assent method, text
+     * opened, app build, jurisdiction source, statements ticked), validated by checkAcceptance. Null for
+     * acceptances recorded before it. `receivedAt` is the record's `serverReceivedAt` (receiveAcceptance).
+     */
+    evidence: jsonb('evidence').$type<AcceptanceEvidence>(),
   },
   (t) => [index('legal_acceptances_user_idx').on(t.userId, t.documentId, t.acceptedAt)],
 );

@@ -86,6 +86,41 @@ describe('legal documents and acceptance (L2)', () => {
     expect((await h.app.inject({ method: 'GET', url: '/v1/legal/status?jurisdiction=FR' })).statusCode).toBe(401);
   });
 
+  it('FIX-B × FIX-C: stores the acceptance evidence and the server receipt time (receiveAcceptance), logs it, exports it; refuses bad evidence', async () => {
+    const { tokens, user } = await signIn(h, uniqueEmail());
+    const t = tokens.accessToken;
+    const d = await doc('terms');
+    const serverNow = h.clock.now().toISOString();
+    const deviceTime = new Date(h.clock.now().getTime() - 3_600_000).toISOString();
+    const evidence = { presentation: 'onboarding.legal@2', assentMethod: 'button_after_open', textOpened: true, appBuild: '1.0.0+42', jurisdictionSource: 'user_confirmed' };
+    const id = randomUUID();
+    // serverReceivedAt sent by a client is not part of the body: the server's own time is stored.
+    const body = { id, documentId: 'terms', version: d.version, locale: 'fr', jurisdiction: 'FR', source: 'mobile', contentHash: d.contentHash, acceptedAt: deviceTime, evidence, serverReceivedAt: '2000-01-01T00:00:00.000Z' };
+    expect((await h.app.inject({ method: 'POST', url: '/v1/legal/acceptances', headers: bearer(t), payload: body })).statusCode).toBe(201);
+    const [row] = (await h.database.db.execute(sql`SELECT evidence, received_at, accepted_at FROM legal_acceptances WHERE id = ${id}`)).rows as { evidence: unknown; received_at: Date | string; accepted_at: Date | string }[];
+    expect(row!.evidence).toEqual(evidence);
+    expect(new Date(row!.accepted_at).toISOString()).toBe(deviceTime);
+    expect(new Date(row!.received_at).toISOString()).toBe(serverNow);
+    const chain = await h.app.services.legal.log.chain(subjectOf(user.id));
+    expect(chain.find((e) => e.type === 'acceptance.recorded')!.payload).toMatchObject(evidence);
+    const exported = (await h.app.inject({ method: 'GET', url: '/v1/privacy/export', headers: bearer(t) })).json() as { legal: { acceptances: { id: string; evidence?: unknown; serverReceivedAt?: string; acceptedAt: string }[] } };
+    const e = exported.legal.acceptances.find((a) => a.id === id)!;
+    expect(e).toMatchObject({ evidence, acceptedAt: deviceTime });
+    expect(e.serverReceivedAt).toBe(serverNow);
+    // Evidence inconsistent with the document (terms need the button after the text was opened) is refused.
+    for (const bad of [{ ...evidence, assentMethod: 'statements_ticked' }, { ...evidence, textOpened: false }]) {
+      const r = await h.app.inject({ method: 'POST', url: '/v1/legal/acceptances', headers: bearer(t), payload: { ...body, id: randomUUID(), evidence: bad } });
+      expect(r.statusCode).toBe(409);
+      expect(r.json()).toEqual({ error: { code: 'legal.evidence_invalid' } });
+    }
+    expect((await h.app.inject({ method: 'POST', url: '/v1/legal/acceptances', headers: bearer(t), payload: { ...body, id: randomUUID(), evidence: { ...evidence, appBuild: 'not a build!' } } })).statusCode).toBe(400);
+    // Without evidence (records made before FIX-B) the acceptance is still recorded, with a server receipt time.
+    expect((await accept(t, 'privacy')).statusCode).toBe(201);
+    const [plain] = (await h.database.db.execute(sql`SELECT evidence, received_at FROM legal_acceptances WHERE user_id = ${user.id} AND document_id = 'privacy'`)).rows as { evidence: unknown; received_at: unknown }[];
+    expect(plain).toMatchObject({ evidence: null });
+    expect(plain!.received_at).not.toBeNull();
+  });
+
   it('requires re-acceptance once a material change is in force, after the advance notice period', async () => {
     const h2 = await createHarness({ legalRegistry: registryWithMaterialChange(new Date()) });
     try {

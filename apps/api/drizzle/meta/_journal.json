@@ -85,6 +85,13 @@
       "when": 1790240469849,
       "tag": "0011_fix_s3_lock_survives_withdrawal",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790245397741,
+      "tag": "0012_fix_acceptance_evidence",
+      "breakpoints": true
     }
   ]
 }

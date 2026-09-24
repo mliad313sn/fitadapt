@@ -1,0 +1,1 @@
+ALTER TABLE "legal_acceptances" ADD COLUMN "evidence" jsonb;

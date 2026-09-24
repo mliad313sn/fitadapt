@@ -6,11 +6,13 @@ import {
   acceptanceState,
   buildLegalHoldExport,
   checkAcceptance,
+  receiveAcceptance,
   firstWorkoutGate,
   renderDocument,
   renderNotice,
   sha256Hex,
   versionInForce,
+  type AcceptanceEvidence,
   type AcceptanceRecord,
   type DefensibilityPayload,
   type DocumentAcceptanceState,
@@ -65,6 +67,8 @@ export interface AcceptanceInput {
   id?: string;
   /** M01: when the user accepted on the device (acceptances given offline are uploaded later). */
   acceptedAt?: string;
+  /** FIX-B: how assent was given (validated by checkAcceptance, stored with the acceptance). */
+  evidence?: AcceptanceEvidence;
 }
 
 export interface NoticeInput {
@@ -124,6 +128,8 @@ export class LegalService {
       source: r.source,
       contentHash: r.contentHash,
       acceptedAt: r.acceptedAt.toISOString(),
+      ...(r.evidence ? { evidence: r.evidence } : {}),
+      serverReceivedAt: r.receivedAt.toISOString(),
     }));
   }
 
@@ -156,13 +162,18 @@ export class LegalService {
     const now = this.deps.now();
     // M01: an acceptance given offline keeps its device time and is checked against the texts in force then.
     const acceptedAt = clientTime(input.acceptedAt, now, 'legal.client_time_out_of_range');
-    const { id, acceptedAt: _deviceTime, ...fields } = input;
-    const check = checkAcceptance({ ...fields, documentId: input.documentId as LegalDocumentId }, { jurisdiction: input.jurisdiction, now: acceptedAt, registry: this.registry });
+    const { id, acceptedAt: _deviceTime, evidence, ...fields } = input;
+    const check = checkAcceptance({ ...fields, documentId: input.documentId as LegalDocumentId, ...(evidence ? { evidence } : {}) }, { jurisdiction: input.jurisdiction, now: acceptedAt, registry: this.registry });
     if (!check.ok) throw check.code === 'legal.unknown_document' ? legalErrors.unknownDocument() : legalErrors.notAcceptable(check.code);
+    // FIX-B: the server stamps its own receipt time beside the device time (never a client-sent one).
+    const received = receiveAcceptance(
+      { id: id ?? randomUUID(), ...fields, documentId: input.documentId as LegalDocumentId, acceptedAt: acceptedAt.toISOString(), ...(evidence ? { evidence } : {}) },
+      now,
+    );
     await this.deps.db.transaction(async (tx) => {
       const inserted = await tx
         .insert(legalAcceptances)
-        .values({ id: id ?? randomUUID(), userId, ...fields, acceptedAt, receivedAt: now })
+        .values({ id: received.id, userId, ...fields, acceptedAt, receivedAt: new Date(received.serverReceivedAt!), evidence: received.evidence ?? null })
         .onConflictDoNothing({ target: legalAcceptances.id })
         .returning({ id: legalAcceptances.id });
       if (inserted.length === 0) return; // already recorded (retried upload)
@@ -170,7 +181,7 @@ export class LegalService {
         type: 'acceptance.recorded',
         chain: this.subjectRef(userId),
         occurredAt: acceptedAt.toISOString(),
-        payload: { documentId: input.documentId, version: input.version, locale: input.locale, jurisdiction: input.jurisdiction, contentHash: input.contentHash, source: input.source },
+        payload: { documentId: input.documentId, version: input.version, locale: input.locale, jurisdiction: input.jurisdiction, contentHash: input.contentHash, source: input.source, ...(evidence ?? {}) },
       });
     });
     return acceptanceState(await this.acceptances(userId), input.documentId as LegalDocumentId, { jurisdiction: input.jurisdiction, now, registry: this.registry });
