@@ -101,6 +101,8 @@ export const libraryLabelsFr: Record<keyof typeof libraryLabelsEn, string> = {
   'library.equipment.stationary_bike': 'Vélo d’appartement',
   'library.equipment.rowing_machine': 'Rameur',
   'library.equipment.treadmill': 'Tapis de course',
+  'library.equipment.elliptical': 'Vélo elliptique',
+  'library.equipment.stair_climber': 'Simulateur d’escalier',
 
   'library.joint.shoulder': 'Épaule',
   'library.joint.elbow': 'Coude',

@@ -205,6 +205,25 @@ describe('claims linter (L1)', () => {
     expect(hits(text, 'fr')).toContain(rule);
   });
 
+  it.each([
+    ['Stay in the fat-burning zone', 'en', 'en.burn_fat'],
+    ['Reach maximum lipolysis', 'en', 'en.lipolysis'],
+    ['A lipolytic workout', 'en', 'en.lipolysis'],
+    ['Your fat loss zone', 'en', 'en.fat_zone'],
+    ['Pour une lipolyse maximale', 'fr', 'fr.lipolyse'],
+    ['La zone de combustion des graisses', 'fr', 'fr.bruler_graisses'],
+    ['La zone brûle-graisse', 'fr', 'fr.bruler_graisses'],
+    ['Restez dans la zone de perte de graisse', 'fr', 'fr.zone_graisses'],
+    ['La zone d’oxydation des graisses', 'fr', 'fr.zone_graisses'],
+  ] as const)('M03 (C9): flags "%s" (%s)', (text, locale, rule) => {
+    expect(hits(text, locale)).toContain(rule);
+  });
+
+  it('M03 (C9): honest effort wording is not flagged', () => {
+    expect(hits('Moderate effort: you can still talk in short sentences. Vigorous minutes count double.', 'en')).toEqual([]);
+    expect(hits('Effort modéré : vous pouvez encore parler en phrases courtes.', 'fr')).toEqual([]);
+  });
+
   it('does not flag honest copy, data-processing wording or other languages by locale', () => {
     expect(hits('Every recommendation explains itself. Sessions work offline.', 'en')).toEqual([]);
     expect(hits('Nous traitons vos données de compte pour fournir le service.', 'fr')).toEqual([]);

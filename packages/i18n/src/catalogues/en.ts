@@ -3,6 +3,7 @@ import { programEn } from './program.en.js';
 import { sessionEn } from './session.en.js';
 import { recoveryEn } from './recovery.en.js';
 import { recoveryMedicalEn } from './recovery-medical.en.js';
+import { cardioEn } from './cardio.en.js';
 import { legalEn } from './legal.en.js';
 import { libraryEn } from './library.en.js';
 import { onboardingEn } from './onboarding.en.js';
@@ -140,6 +141,9 @@ export const en = {
 
   // M05 health-related wording: REQUIRES PHYSICIAN REVIEW (seats A1, A2; counsel for the review statement).
   ...recoveryMedicalEn,
+
+  // M03 cardio and conditioning: reason codes, spoken interval cues and screens (effort-named zones only, C9).
+  ...cardioEn,
 } as const;
 
 export type MessageKey = keyof typeof en;

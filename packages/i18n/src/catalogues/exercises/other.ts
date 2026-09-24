@@ -158,4 +158,29 @@ export const otherExercises = {
     en: { name: 'Rowing machine', cues: ['Push with the legs first, then lean back slightly and pull the handle to the ribs.', 'Return in reverse order: arms, body, then legs.'], mistakes: ['Pulling with the arms before the legs have pushed.'] },
     fr: { name: 'Rameur', cues: ['Poussez d’abord avec les jambes, puis basculez légèrement en arrière et tirez la poignée vers les côtes.', 'Revenez dans l’ordre inverse : bras, buste, puis jambes.'], mistakes: ['Tirer avec les bras avant que les jambes aient poussé.'] },
   },
+  // M03 steady-state modalities and venue-swap partners (seed content, not expert-validated).
+  treadmill_incline_walk: {
+    en: { name: 'Incline walk (treadmill)', cues: ['Set a gentle incline and a walking pace you can keep while talking.', 'Walk tall and let the arms swing; hold the rails only for balance.'], mistakes: ['Leaning on the handrails to carry your weight.'] },
+    fr: { name: 'Marche inclinée (tapis)', cues: ['Réglez une pente douce et un rythme de marche qui vous laisse parler.', 'Marchez grand, bras libres ; tenez les barres seulement pour l’équilibre.'], mistakes: ['S’appuyer sur les barres pour porter son poids.'] },
+  },
+  elliptical_steady: {
+    en: { name: 'Elliptical trainer', cues: ['Keep the whole foot on the pedal and the knees soft.', 'Push and pull the handles in rhythm with the legs at a steady effort.'], mistakes: ['Locking the knees at the end of each stride.'] },
+    fr: { name: 'Vélo elliptique', cues: ['Gardez tout le pied sur la pédale et les genoux souples.', 'Poussez et tirez les poignées au rythme des jambes, à un effort régulier.'], mistakes: ['Verrouiller les genoux en fin de foulée.'] },
+  },
+  stair_climber_steady: {
+    en: { name: 'Stair climber', cues: ['Step through the whole foot at a pace you can keep.', 'Stand tall and use the rails only for balance.'], mistakes: ['Leaning forward on the rails and taking tiny steps.'] },
+    fr: { name: 'Simulateur d’escalier', cues: ['Posez tout le pied à chaque marche, à un rythme tenable.', 'Restez droit et tenez les barres seulement pour l’équilibre.'], mistakes: ['Se pencher sur les barres en faisant de tout petits pas.'] },
+  },
+  brisk_walk: {
+    en: { name: 'Brisk walk', cues: ['Walk faster than usual, arms swinging, at a pace where you can still talk.', 'Choose a safe, even route.'], mistakes: ['Looking down at the ground the whole time.'] },
+    fr: { name: 'Marche rapide', cues: ['Marchez plus vite que d’habitude, bras qui balancent, à un rythme qui vous laisse parler.', 'Choisissez un parcours sûr et régulier.'], mistakes: ['Regarder le sol tout le temps.'] },
+  },
+  easy_run: {
+    en: { name: 'Easy run', cues: ['Run at a relaxed pace with short, quiet steps.', 'Slow down or walk whenever you need to.'], mistakes: ['Starting too fast in the first minutes.'] },
+    fr: { name: 'Course facile', cues: ['Courez à une allure détendue, à petites foulées souples.', 'Ralentissez ou marchez dès que vous en avez besoin.'], mistakes: ['Partir trop vite dans les premières minutes.'] },
+  },
+  shadow_boxing: {
+    en: { name: 'Shadow boxing', cues: ['Stand with soft knees, one foot slightly forward, fists near the chin.', 'Punch into the air with relaxed arms and keep moving the feet.'], mistakes: ['Locking the elbows at the end of each punch.'] },
+    fr: { name: 'Boxe dans le vide', cues: ['Debout, genoux souples, un pied légèrement devant, poings près du menton.', 'Frappez dans le vide, bras relâchés, en bougeant les pieds.'], mistakes: ['Verrouiller les coudes en fin de coup.'] },
+  },
 } as const satisfies Record<string, ExerciseText>;

@@ -45,6 +45,9 @@ export const CLAIM_DENYLIST: readonly DenyRule[] = Object.freeze([
   },
   { id: 'en.burn_fat', locale: 'en', category: 'fat_loss', description: 'burn fat (fast) / fat-burning', pattern: /(?<!\p{L})(?:burn(?:s|ing)?\s{1,3}fat|burn(?:s|ing)?\s{1,3}belly\sfat|fat[\s-]burn(?:ing|er|ers)?)(?!\p{L})/giu },
   { id: 'en.melt_fat', locale: 'en', category: 'fat_loss', description: 'melt (away) fat', pattern: /(?<!\p{L})melt(?:s|ing)?\s{1,3}(?:away\sthe\s|away\s|the\s)?(?:fat|pounds|kilos)(?!\p{L})/giu },
+  // M03 (C9): no lipolysis claim and no "fat-loss zone" — fat loss depends on energy balance, not on a heart-rate zone.
+  { id: 'en.lipolysis', locale: 'en', category: 'fat_loss', description: 'lipolysis / lipolytic (e.g. "maximum lipolysis")', pattern: /(?<!\p{L})lipoly(?:sis|ses|tic)(?!\p{L})/giu },
+  { id: 'en.fat_zone', locale: 'en', category: 'fat_loss', description: 'fat-loss / fat-melting zone', pattern: /(?<!\p{L})fat[\s-]{1,3}(?:loss|melting|oxidation|oxidising|oxidizing)\s{1,3}zones?(?!\p{L})/giu },
 
   { id: 'fr.diagnostic', locale: 'fr', category: 'medical', description: 'diagnostic / diagnostiquer', pattern: /(?<!\p{L})diagnosti(?:c|cs|que|quer|quons|quez|qué|quée|qués)(?!\p{L})/giu },
   {
@@ -78,6 +81,15 @@ export const CLAIM_DENYLIST: readonly DenyRule[] = Object.freeze([
     category: 'fat_loss',
     description: 'brûler les graisses (vite) / brûle-graisse / zone de combustion des graisses',
     pattern: /(?<!\p{L})(?:brûl(?:e|er|ez|ent)\s{1,3}(?:les\s|la\s|vos\s|du\s)?(?:graisses?|gras)|brûle-graisses?|zone\s{1,3}de\s{1,3}(?:combustion|brûlage)\s{1,3}des\s{1,3}graisses)(?!\p{L})/giu,
+  },
+  // M03 (C9): pas d'allégation de lipolyse ni de « zone de perte de graisse ».
+  { id: 'fr.lipolyse', locale: 'fr', category: 'fat_loss', description: 'lipolyse / lipolytique (ex. « lipolyse maximale »)', pattern: /(?<!\p{L})lipoly(?:se|ses|tique|tiques)(?!\p{L})/giu },
+  {
+    id: 'fr.zone_graisses',
+    locale: 'fr',
+    category: 'fat_loss',
+    description: 'zone de perte / de fonte / d’oxydation des graisses',
+    pattern: /(?<!\p{L})zones?\s{1,3}(?:de|d’|d')\s{0,3}(?:perte|fonte|oxydation)\s{1,3}(?:des|de|du)\s{1,3}(?:graisses?|gras)(?!\p{L})/giu,
   },
   { id: 'fr.fondre', locale: 'fr', category: 'fat_loss', description: 'faire fondre les graisses / kilos', pattern: /(?<!\p{L})fond(?:re|ez)\s{1,3}(?:les\s|la\s|vos\s)?(?:graisses?|gras|kilos)(?!\p{L})/giu },
   { id: 'fr.maigrir_vite', locale: 'fr', category: 'results', description: 'maigrir vite / rapidement', pattern: /(?<!\p{L})maigri(?:r|ssez)\s{1,3}(?:vite|rapidement)(?!\p{L})/giu },

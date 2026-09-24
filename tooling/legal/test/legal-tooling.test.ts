@@ -34,6 +34,25 @@ describe('pnpm legal:claims (L1, L7)', () => {
     ]);
   });
 
+  it('M03 (C9): fails on the "fat-burning zone", "maximum lipolysis" and their French equivalents (EN and FR fixtures)', () => {
+    const r = runClaimsLint(root, { catalogues, extraFiles: [fixture('fat-burning-zone.en.txt'), fixture('fat-burning-zone.fr.txt')] });
+    const found = r.findings.filter((f) => f.source.includes('fat-burning-zone'));
+    expect(found.map((f) => `${f.source.split('/').pop()}:${f.ruleId}`).sort()).toEqual([
+      'fat-burning-zone.en.txt:en.burn_fat',
+      'fat-burning-zone.en.txt:en.fat_zone',
+      'fat-burning-zone.en.txt:en.lipolysis',
+      'fat-burning-zone.fr.txt:fr.bruler_graisses',
+      'fat-burning-zone.fr.txt:fr.bruler_graisses',
+      'fat-burning-zone.fr.txt:fr.lipolyse',
+      'fat-burning-zone.fr.txt:fr.zone_graisses',
+    ]);
+    // The repository's own catalogues (including the M03 cardio copy) stay clean.
+    expect(runClaimsLint(root, { catalogues }).findings).toEqual([]);
+    // A catalogue message carrying one of them fails, in either language.
+    const tainted = runClaimsLint(root, { catalogues: { en: { ...en, 'cardio.zone.moderate': 'Moderate: the fat-burning zone' }, fr: { ...fr, 'cardio.zone.moderate': 'Modéré : lipolyse maximale' } } });
+    expect(tainted.findings.map((f) => [f.key, f.ruleId])).toEqual([['cardio.zone.moderate', 'en.burn_fat'], ['cardio.zone.moderate', 'fr.lipolyse']]);
+  });
+
   it('passes a fixture whose phrase is an entry of the substantiation file, and fails it without that entry', () => {
     expect(runClaimsLint(root, { catalogues, extraFiles: [fixture('substantiated-disclaimer.en.txt')] }).findings).toEqual([]);
     const without = substantiation.split('\n').filter((l) => !l.startsWith('| SUB-D1 ')).join('\n');

@@ -123,6 +123,8 @@ export const libraryLabelsEn = {
   'library.equipment.stationary_bike': 'Stationary bike',
   'library.equipment.rowing_machine': 'Rowing machine',
   'library.equipment.treadmill': 'Treadmill',
+  'library.equipment.elliptical': 'Elliptical trainer',
+  'library.equipment.stair_climber': 'Stair climber',
 
   'library.joint.shoulder': 'Shoulder',
   'library.joint.elbow': 'Elbow',
