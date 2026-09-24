@@ -53,4 +53,16 @@ export const DATA_INVENTORY: readonly InventoryEntry[] = Object.freeze([
     erase: 'retained_pseudonymous',
     personalData: 'none directly: keyed subject reference, document/notice ids, versions, hashes, safety reason codes, engine versions (pseudonymous, ADR-009)',
   },
+  {
+    table: 'photo_backup_keys',
+    export: { excluded: 'end-to-end-encrypted: the photo key wrapped by a key derived from the recovery code, which only the user holds; the service cannot read it (ADR-020). The user exports photos from the device' },
+    erase: 'cascade_from_users',
+    personalData: 'ciphertext only (wrapped key, KDF parameters, salt)',
+  },
+  {
+    table: 'photo_backups',
+    export: { excluded: 'end-to-end-encrypted progress photos the service cannot open (ADR-020); the in-app M04 export on the device includes them on request' },
+    erase: 'cascade_from_users',
+    personalData: 'ciphertext only (photo id, size, time stored); also erased when the photos consent is withdrawn or the backup is turned off',
+  },
 ]);

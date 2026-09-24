@@ -29,10 +29,12 @@ import { analyticsRoutes } from './routes/analytics.js';
 import { authRoutes } from './routes/auth.js';
 import { LegalService } from './legal/service.js';
 import { legalRoutes } from './routes/legal.js';
+import { photoRoutes } from './routes/photos.js';
 import { privacyRoutes } from './routes/privacy.js';
 import { syncRoutes } from './routes/sync.js';
 import { healthWithdrawalHandler, profileSyncListener, profileSyncValidator } from './profile/sync-hooks.js';
 import { PgServerStore } from './sync/pg-store.js';
+import { PhotoBackupService, photosWithdrawalHandler } from './photos/service.js';
 
 export interface AppDeps {
   db: Database;
@@ -129,7 +131,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     now,
     policies: deps.consentPolicies,
     // M01: withdrawing health consent erases the synced health collections (profile, screenings).
-    withdrawalHandlers: { ...deps.withdrawalHandlers, health: [healthWithdrawalHandler(), ...(deps.withdrawalHandlers?.health ?? [])] },
+    // M04: withdrawing the photos consent erases the encrypted photo backup.
+    withdrawalHandlers: {
+      ...deps.withdrawalHandlers,
+      health: [healthWithdrawalHandler(), ...(deps.withdrawalHandlers?.health ?? [])],
+      photos: [photosWithdrawalHandler(), ...(deps.withdrawalHandlers?.photos ?? [])],
+    },
     // L2/L11: every consent decision also goes to the defensibility log, in the same transaction.
     onConsentRecorded: (tx, userId, record, at) => legal.logConsent(tx, userId, record, at),
   });
@@ -146,6 +153,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   await app.register(syncRoutes(auth, sync));
   await app.register(privacyRoutes(auth, privacy));
   await app.register(legalRoutes(auth, legal));
+  await app.register(photoRoutes(auth, new PhotoBackupService({ db: deps.db, privacy, now })));
   await app.register(analyticsRoutes(auth, privacy, deps.analyticsSink ?? new NoopAnalyticsSink()));
   return app;
 }

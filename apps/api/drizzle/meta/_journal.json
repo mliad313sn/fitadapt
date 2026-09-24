@@ -43,6 +43,13 @@
       "when": 1790189668236,
       "tag": "0005_m01_client_timestamps",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790219558408,
+      "tag": "0006_m04_photo_backup",
+      "breakpoints": true
     }
   ]
 }

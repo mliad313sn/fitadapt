@@ -5,9 +5,12 @@ import { evaluateAgeGate, evaluateScreening, notScreenedSafetyProfile, type Cale
 import {
   ASSESSMENT_COLLECTION,
   AssessmentRecordSchema,
+  BodyMetricSchema,
   EquipmentProfileSchema,
+  MeasurementSchema,
   PROFILE_COLLECTIONS,
   PROGRAM_COLLECTIONS,
+  PROGRESS_COLLECTIONS,
   ProfileSchema,
   RECOVERY_COLLECTIONS,
   ReadinessCheckSchema,
@@ -29,7 +32,8 @@ import { onSessionApplied, validateExecutionLog, validateWorkoutSession } from '
 /**
  * Collections holding health data (screening answers, biometrics, M07
  * assessment results, M08 programs, which embed the SafetyProfile, and their
- * reflows, M02 started sessions and execution logs, M05 readiness checks): need the health consent
+ * reflows, M02 started sessions and execution logs, M05 readiness checks, M04 body weight, body-fat
+ * estimates and circumferences): need the health consent
  * (L9, ADR-004) and are erased when it is withdrawn. M00 set logs
  * (reps, load, reserve) stay outside, as before (open question, B1).
  */
@@ -44,6 +48,9 @@ export const HEALTH_COLLECTIONS: readonly string[] = [
   SESSION_COLLECTIONS.executionLogs,
   // M05: readiness checks (sleep, soreness, stress, energy, wearable readings).
   RECOVERY_COLLECTIONS.readinessChecks,
+  // M04: body weight, body-fat estimates and circumferences (progress photos are never synced, ADR-020).
+  PROGRESS_COLLECTIONS.bodyMetrics,
+  PROGRESS_COLLECTIONS.measurements,
 ];
 
 /**
@@ -149,6 +156,10 @@ export function profileSyncValidator(deps: ProfileSyncDeps): MutationValidator {
         return (await consentRequired(userId, m)) ?? (await validateExecutionLog(deps.db, userId, m.data));
       case RECOVERY_COLLECTIONS.readinessChecks:
         return (await consentRequired(userId, m)) ?? (ReadinessCheckSchema.safeParse(m.data).success ? null : 'readiness_check.invalid');
+      case PROGRESS_COLLECTIONS.bodyMetrics:
+        return (await consentRequired(userId, m)) ?? (BodyMetricSchema.safeParse(m.data).success ? null : 'body_metric.invalid');
+      case PROGRESS_COLLECTIONS.measurements:
+        return (await consentRequired(userId, m)) ?? (MeasurementSchema.safeParse(m.data).success ? null : 'measurement.invalid');
       default:
         return null;
     }

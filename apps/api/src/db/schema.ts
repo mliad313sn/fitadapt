@@ -1,4 +1,4 @@
-import { bigint, bigserial, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { bigint, bigserial, customType, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
 
@@ -246,4 +246,35 @@ export const defensibilityEvents = pgTable(
     recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('defensibility_events_chain_idx').on(t.chain, t.chainSeq), index('defensibility_events_type_idx').on(t.type)],
+);
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
+
+/**
+ * M04 end-to-end-encrypted progress-photo backup (ADR-020). Only ciphertext:
+ * the photo key wrapped by a key derived from the user's recovery code (never
+ * sent), and each photo's AES-256-GCM envelope exactly as stored on the
+ * device. The service cannot open either. Deleted when the photos consent is
+ * withdrawn, when the backup is turned off, and with the user.
+ */
+export const photoBackupKeys = pgTable('photo_backup_keys', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  data: jsonb('data').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const photoBackups = pgTable(
+  'photo_backups',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    photoId: uuid('photo_id').notNull(),
+    envelope: bytea('envelope').notNull(),
+    byteLength: integer('byte_length').notNull(),
+    storedAt: timestamp('stored_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.photoId] })],
 );
