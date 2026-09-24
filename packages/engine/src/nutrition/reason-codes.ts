@@ -37,6 +37,8 @@ export const M10_REASON_PARAMS: Readonly<Record<string, readonly string[]>> = Ob
     'nutrition.supportive.not_screened',
     'nutrition.supportive.special_population',
     'nutrition.needs_measurements',
+    // SAF-5: the device date is more than a day from the engine clock
+    'nutrition.unavailable.clock_mismatch',
     // Portions
     'nutrition.portion.hand_estimate',
     'nutrition.portion.food_estimate',

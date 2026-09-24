@@ -32,6 +32,7 @@ export const nutritionEn = {
   'engine.reason.nutrition.supportive.not_screened': 'Calorie targets need a completed health check first, so the app shows simple habits.',
   'engine.reason.nutrition.supportive.special_population': 'During pregnancy or after a recent birth the app does not set calorie targets. A health professional can advise you.',
   'engine.reason.nutrition.needs_measurements': 'Add your height and current weight to see energy and protein estimates.',
+  'engine.reason.nutrition.unavailable.clock_mismatch': 'The date on this device does not look right, so no numbers are shown for now. Check the date and time settings.',
   'engine.reason.nutrition.portion.hand_estimate': 'A hand portion is a rough estimate.',
   'engine.reason.nutrition.portion.food_estimate': 'Food values are estimates, not yet checked by a dietitian.',
 

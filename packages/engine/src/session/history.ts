@@ -71,9 +71,16 @@ export interface S5Violation {
  * Every set of a plan whose load is above the S5 ceiling given the history
  * (and M07 recent loads) at the plan's generation time. Empty for every plan
  * the engine makes; the server runs it over its own stored records.
+ *
+ * SAF-5: `generatedAt` is the device's clock. With `asOfMs` (the server's
+ * time), the window is evaluated at the EARLIER of the two, so a device clock
+ * moved forward cannot push real references out of the 7-day window (a clock
+ * moved back is already covered: references dated later always count). An
+ * unreadable `generatedAt` is evaluated at `asOfMs` (or fails closed on all).
  */
-export function s5Violations(plan: SessionPlan, history: readonly SessionHistoryEntry[], recentLoads: readonly RecentLoad[] = []): S5Violation[] {
-  const now = Date.parse(plan.generatedAt);
+export function s5Violations(plan: SessionPlan, history: readonly SessionHistoryEntry[], recentLoads: readonly RecentLoad[] = [], asOfMs?: number): S5Violation[] {
+  const generated = Date.parse(plan.generatedAt);
+  const now = asOfMs === undefined ? generated : Number.isFinite(generated) ? Math.min(generated, asOfMs) : asOfMs;
   const out: S5Violation[] = [];
   plan.exercises.forEach((ex, i) => {
     const ceiling = s5LoadCeiling(loadReferencesFor(history, recentLoads, ex.exerciseId), now);

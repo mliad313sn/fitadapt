@@ -145,6 +145,11 @@ describe('goal targets', () => {
   });
 
   it('asks for measurements when height or weight is missing, and says so when no estimate is possible', () => {
+    // SAF-5: a device date more than a day from the engine clock gives no numbers (never an S4 check at an unbounded date).
+    for (const today of ['2026-09-22', '2026-09-26', '2027-09-24']) {
+      expect(computeNutritionTarget(p1({ today }), ctx())).toMatchObject({ target: { mode: 'supportive', energy: null, deficitAllowed: false, reasonCodes: ['nutrition.unavailable.clock_mismatch'] }, safetyEvents: [] });
+    }
+    for (const today of ['2026-09-23', '2026-09-25']) expect(computeNutritionTarget(p1({ today }), ctx()).target.mode).toBe('numeric');
     expect(computeNutritionTarget(p1({ weightKg: null }), ctx()).target).toMatchObject({ mode: 'needs_measurements', energy: null, protein: null, reasonCodes: ['nutrition.needs_measurements'] });
     expect(computeNutritionTarget(p1({ heightCm: null }), ctx()).target.mode).toBe('needs_measurements');
     const ancient = computeNutritionTarget(p1({ weightKg: 25, heightCm: 100, birthDate: { year: 1826, month: 1, day: 1 }, sexForEstimate: 'female', safetyProfile: screened([], { year: 1826, month: 1, day: 1 }) }), ctx()).target;

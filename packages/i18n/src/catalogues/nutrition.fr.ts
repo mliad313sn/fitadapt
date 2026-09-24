@@ -26,6 +26,7 @@ export const nutritionFr: Record<keyof typeof nutritionEn, string> = {
   'engine.reason.nutrition.supportive.not_screened': 'Les cibles de calories demandent d’abord un questionnaire de santé complet : l’appli propose des habitudes simples.',
   'engine.reason.nutrition.supportive.special_population': 'Pendant une grossesse ou après une naissance récente, l’appli ne fixe pas de cible de calories. Un professionnel de santé peut vous conseiller.',
   'engine.reason.nutrition.needs_measurements': 'Ajoutez votre taille et votre poids actuel pour voir les estimations d’énergie et de protéines.',
+  'engine.reason.nutrition.unavailable.clock_mismatch': 'La date de cet appareil ne semble pas correcte : aucun chiffre n’est affiché pour l’instant. Vérifiez la date et l’heure dans les réglages.',
   'engine.reason.nutrition.portion.hand_estimate': 'Une portion à la main est une estimation approximative.',
   'engine.reason.nutrition.portion.food_estimate': 'Les valeurs des aliments sont des estimations, pas encore vérifiées par un diététicien.',
 

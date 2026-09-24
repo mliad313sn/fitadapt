@@ -70,6 +70,7 @@ const S4_REASON: Record<string, string> = {
 };
 
 const unique = <T>(list: readonly T[]) => [...new Set(list)];
+const isoDateOf = (ms: number): IsoDate => new Date(ms).toISOString().slice(0, 10);
 const roundTo = (v: number, step: number) => Math.round(v / step) * step;
 
 export function computeNutritionTarget(rawInput: NutritionInput, ctx: EngineContext): NutritionResult {
@@ -87,6 +88,9 @@ export function computeNutritionTarget(rawInput: NutritionInput, ctx: EngineCont
     safetyEvents,
   });
 
+  // SAF-5: `today` comes from the device; it must be within a day of the injected clock's date (any time zone),
+  // or no number is given (the S4 age check and the guardrail windows would run at a date nothing bounds).
+  if (Math.abs(daysBetween(isoDateOf(ctx.clock.now()), input.today)) > 1) return noNumbers('supportive', ['nutrition.unavailable.clock_mismatch'], false);
   const today = calendarOf(input.today);
   const features = deficitFeatures(input.safetyProfile, input.birthDate, today);
   // S4: deficit features disabled → the supportive mode, whatever the goal (no calorie number for these users).
