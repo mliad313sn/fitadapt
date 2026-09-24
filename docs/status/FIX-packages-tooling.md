@@ -43,7 +43,7 @@
 ## Open items
 
 - **FIX-C (apps/api):** turn on `enforceCollectionSchemas` in `app.ts` (and update fixtures that push free-form `set_logs`/`preferences`), replace `default: return null` in `sync-hooks.ts`, and set Fastify `bodyLimit` for `/v1/sync/push` to match `pushBatchMaxBytes`.
-- **`preferences` has no shared schema** (generic record schema in the policy).
+- ~~**`preferences` has no shared schema** (generic record schema in the policy).~~ Done at integration: the policy uses FIX-C's strict `PreferencesRecordSchema`, and the API runs `SyncServer({ enforceCollectionSchemas: true })` (malformed records are refused as `<collection>.invalid`).
 - **FIX-D / M01 + A1:** when a new screening or assessment is rejected, the device falls back to the previous accepted one; if the rejected one was stricter, require a re-screen (ADR-025, Consequences).
 - **M19:** a runtime application role that does not own the tables, and external anchoring of chain heads (daily digest in write-once storage). With both, a table owner rewriting events and heads consistently is also covered (ADR-024, Consequences).
 - The scrubber still misses a single first name inside a message ("sent to Jeanne") and all-capitals names with a word under 4 letters (ADR-007 note).
