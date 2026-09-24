@@ -1,3 +1,4 @@
+import { NUTRITION_SAFETY_CONFIG, PAIN_CONFIG } from '@fitadapt/safety';
 import { ConfigValueSchema, ReasonCodeSchema, unvalidatedKeys } from '@fitadapt/shared';
 import { describe, expect, it } from 'vitest';
 import { M02_REASON_CODES, M02_REASON_PARAMS, reasonParamsFor } from '../session/reason-codes.js';
@@ -19,6 +20,22 @@ describe('engine coefficients live in config with source and validated (goal con
     expect(count).toBeGreaterThan(150);
     // M04 adds the analytics config (read-only: trend, rate, guardrail, forecasts); M09 the pair planner and Fair Challenge Score; M10 nutrition.
     expect(Object.keys(ENGINE_CONFIGS).sort()).toEqual(['analytics', 'assessment', 'cardio', 'firstSession', 'increments', 'nutrition', 'pair', 'program', 'recovery', 'session', 'substitution']);
+  });
+
+  it('SAF-9: every engine config, every value and the S4 energy density are frozen (no runtime change)', () => {
+    for (const [name, config] of Object.entries(ENGINE_CONFIGS)) {
+      expect(Object.isFrozen(config), name).toBe(true);
+      for (const [key, value] of Object.entries(config)) expect(Object.isFrozen(value), `${name}.${key}`).toBe(true);
+    }
+    expect(Object.isFrozen(NUTRITION_SAFETY_CONFIG)).toBe(true);
+    expect(Object.isFrozen(NUTRITION_SAFETY_CONFIG.energyDensityKcalPerKg)).toBe(true);
+    expect(() => {
+      (NUTRITION_SAFETY_CONFIG.energyDensityKcalPerKg as { value: number }).value = 1;
+    }).toThrow(TypeError);
+    expect(() => {
+      (PAIN_CONFIG.amberPainScore as { value: number }).value = 9;
+    }).toThrow(TypeError);
+    expect(NUTRITION_SAFETY_CONFIG.energyDensityKcalPerKg.value).toBe(7700);
   });
 
   it('M02 values that come from the spec cite it; the rest say they are engineering defaults', () => {
