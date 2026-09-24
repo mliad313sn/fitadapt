@@ -28,6 +28,7 @@ import { SqliteKeyValueStore, wipeLocalDatabase } from '../src/storage/app-state
 import { apiBaseUrl, createDeviceSyncClient } from '../src/sync/device';
 import { openExpoDatabase } from '../src/sync/expo-db';
 import { createGuardrailInbox } from '../src/nutrition/guardrail-port';
+import { createNutritionStore } from '../src/nutrition/nutrition-store';
 import { httpPhotoBackupApi } from '../src/progress/photo-backup';
 import { expoPhotoFiles, PhotoVault } from '../src/progress/photo-vault';
 import { createProgressStore } from '../src/progress/progress-store';
@@ -71,6 +72,8 @@ function GatedStack() {
         <Stack.Screen name="workout" />
         {/* M09: Fair Pair on one phone; the owner's L2 gate here, the partner's own gate inside the screen. */}
         <Stack.Screen name="pair" />
+        {/* M10: nutrition behind the same L2 gate (screening done, Terms, Privacy and health consent accepted); deficit set-up shows its own L3 notice. */}
+        <Stack.Screen name="nutrition" />
       </Stack.Protected>
       <Stack.Protected guard={!passed}>
         <Stack.Screen name="age-gate" />
@@ -117,8 +120,10 @@ function AppRoot({ db }: { db: SyncSqliteDatabase }) {
     const consents = createConsentStore({ kv, newId: randomUUID, jurisdiction });
     const legal = createLegalStore({ kv, newId: randomUUID, now: clock.now, jurisdiction });
     const profile = createProfileStore({ sync: syncClient, kv, now: clock.now });
-    // M04: body data (sync records in the encrypted database), the M10 guardrail inbox and the encrypted photo vault.
-    const nutrition = createGuardrailInbox(kv);
+    // M10: nutrition plans, intake logs and habits (sync records in the encrypted database); it handles every M04 hand-off as it arrives.
+    const nutritionStore = createNutritionStore({ sync: syncClient, kv, now: clock.now, newSeed: () => new DataView(getRandomBytes(4).buffer).getUint32(0) >>> 1 });
+    // M04: body data (sync records in the encrypted database), the guardrail inbox M10 handles, and the encrypted photo vault.
+    const nutrition = createGuardrailInbox(kv, (event) => nutritionStore.getState().receiveGuardrail(event));
     const progress = createProgressStore({ sync: syncClient, kv, now: clock.now, nutrition });
     // M09: a partner on this phone keeps their own ledgers and logs under their own namespace.
     const pair = createPairStore({ kv, newId: randomUUID, now: clock.now, jurisdiction });
@@ -130,6 +135,7 @@ function AppRoot({ db }: { db: SyncSqliteDatabase }) {
       await runAccountSync({ api: accountApi, ledger, consents: consents.getState().records, acceptances: legal.getState().acceptances, notices: legal.getState().notices, sync: syncClient });
       profile.getState().reload();
       progress.getState().reload();
+      nutritionStore.getState().reload();
     };
     const session = createSessionStore({
       api: createAuthApi(post),
@@ -148,6 +154,7 @@ function AppRoot({ db }: { db: SyncSqliteDatabase }) {
       profile,
       accountSync,
       pair,
+      nutritionStore,
       privacyClient: createHttpPrivacyClient({ baseUrl: apiBaseUrl(apiUrl), getAccessToken }),
       progress: { progress, nutrition, vault, randomBytes: getRandomBytes },
       photoBackupApi: httpPhotoBackupApi({ baseUrl: apiBaseUrl(apiUrl), getAccessToken }),
@@ -160,6 +167,7 @@ function AppRoot({ db }: { db: SyncSqliteDatabase }) {
           wipeLocalDatabase(db);
           legal.getState().clear();
           profile.getState().reload();
+          nutritionStore.getState().reload();
           void session.getState().forget();
         },
       },
@@ -182,6 +190,7 @@ function AppRoot({ db }: { db: SyncSqliteDatabase }) {
       progress={progress}
       runSync={app.accountSync}
       pair={app.pair}
+      nutrition={app.nutritionStore}
     >
       <StatusBar style="auto" />
       <GatedStack />

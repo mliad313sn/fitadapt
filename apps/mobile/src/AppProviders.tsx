@@ -23,6 +23,8 @@ import { createGuardrailInbox } from './nutrition/guardrail-port';
 import { createProgressStore } from './progress/progress-store';
 import { ProgressProvider, type ProgressProviderProps } from './progress/ProgressProvider';
 import { PairProvider } from './pair/PairProvider';
+import { createNutritionStore, type NutritionStore } from './nutrition/nutrition-store';
+import { NutritionProvider } from './nutrition/NutritionProvider';
 import type { PairStore } from './pair/pair-store';
 
 export interface AppProvidersProps {
@@ -41,6 +43,8 @@ export interface AppProvidersProps {
   progress?: Omit<ProgressProviderProps, 'children'>;
   /** M09 Fair Pair: guests' own ledgers and logs on this phone; defaults to an empty in-memory store. */
   pair?: PairStore;
+  /** M10 nutrition: plans, intake logs, habits; defaults to an in-memory store that receives the default progress hand-offs. */
+  nutrition?: NutritionStore;
   /** Replaces the plain sync on reconnect (M01: upload the device ledgers first). */
   runSync?: () => Promise<unknown>;
   children?: ReactNode;
@@ -79,23 +83,31 @@ function useDefaultM01(syncClient: SyncClient, profile?: ProfileStore, legal?: L
   }, [syncClient, profile, legal]);
 }
 
-function useDefaultProgress(syncClient: SyncClient, provided?: Omit<ProgressProviderProps, 'children'>): Omit<ProgressProviderProps, 'children'> {
+let seedCounter = 0;
+
+function useDefaultNutrition(syncClient: SyncClient, provided?: NutritionStore): NutritionStore {
+  return useMemo(() => provided ?? createNutritionStore({ sync: syncClient, kv: new MemoryKeyValueStore(), now: clock.now, newSeed: () => ++seedCounter }), [syncClient, provided]);
+}
+
+function useDefaultProgress(syncClient: SyncClient, nutritionStore: NutritionStore, provided?: Omit<ProgressProviderProps, 'children'>): Omit<ProgressProviderProps, 'children'> {
   return useMemo(() => {
     if (provided) return provided;
     const kv = new MemoryKeyValueStore();
-    const nutrition = createGuardrailInbox(kv);
+    const nutrition = createGuardrailInbox(kv, (event) => nutritionStore.getState().receiveGuardrail(event));
     return { progress: createProgressStore({ sync: syncClient, kv, now: clock.now, nutrition }), nutrition, vault: null, randomBytes: getRandomBytes };
-  }, [syncClient, provided]);
+  }, [syncClient, provided, nutritionStore]);
 }
 
-export function AppProviders({ syncClient, initialLocale, initialUnitSystem = 'metric', privacy, library, profile, legal, session, progress, pair, runSync, children }: AppProvidersProps) {
+export function AppProviders({ syncClient, initialLocale, initialUnitSystem = 'metric', privacy, library, profile, legal, session, progress, pair, nutrition, runSync, children }: AppProvidersProps) {
   const privacyProps = useDefaultPrivacy(privacy);
   const m01 = useDefaultM01(syncClient, profile, legal);
-  const progressProps = useDefaultProgress(syncClient, progress);
+  const nutritionStore = useDefaultNutrition(syncClient, nutrition);
+  const progressProps = useDefaultProgress(syncClient, nutritionStore, progress);
   const onSynced = useCallback(() => {
     m01.profile.getState().reload();
     progressProps.progress.getState().reload();
-  }, [m01, progressProps]);
+    nutritionStore.getState().reload();
+  }, [m01, progressProps, nutritionStore]);
   return (
     <SafeAreaProvider>
       <I18nProvider initialLocale={initialLocale} initialUnitSystem={initialUnitSystem}>
@@ -104,9 +116,11 @@ export function AppProviders({ syncClient, initialLocale, initialUnitSystem = 'm
             <LibraryProvider store={library ?? null}>
               <ProfileProvider profile={m01.profile} legal={m01.legal} session={session}>
                 <ProgressProvider {...progressProps}>
-                  <PairProvider store={pair}>
-                    <ThemedApp>{children}</ThemedApp>
-                  </PairProvider>
+                  <NutritionProvider store={nutritionStore}>
+                    <PairProvider store={pair}>
+                      <ThemedApp>{children}</ThemedApp>
+                    </PairProvider>
+                  </NutritionProvider>
                 </ProgressProvider>
               </ProfileProvider>
             </LibraryProvider>

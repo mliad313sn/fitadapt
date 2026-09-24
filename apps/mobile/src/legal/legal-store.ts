@@ -92,6 +92,8 @@ export interface LegalStoreState {
   logSafetyAttested(payload: DefensibilityPayload<'safety.attested'>): void;
   /** M09 Fair Pair: this person's own pair events (joined, timeline, challenge, left, partner left). */
   logPairEvent<T extends PairEventType>(type: T, payload: DefensibilityPayload<T>): void;
+  /** M10: a nutrition target the engine prescribed (versions, mode, reason codes; no value). */
+  logNutritionTarget(payload: DefensibilityPayload<'nutrition.target_set'>): void;
   clear(): void;
 }
 
@@ -190,6 +192,9 @@ export function createLegalStore({ kv, newId, now, jurisdiction }: LegalStoreDep
     },
     logPairEvent(type, payload) {
       set({ events: append(get().events, { type, occurredAt: now().toISOString(), payload } as Omit<DefensibilityEventInput, 'chain'>) });
+    },
+    logNutritionTarget(payload) {
+      set({ events: append(get().events, { type: 'nutrition.target_set', occurredAt: now().toISOString(), payload }) });
     },
     clear() {
       for (const key of [ACCEPTANCES_KEY, NOTICES_KEY, LOG_KEY]) kv.remove(key);

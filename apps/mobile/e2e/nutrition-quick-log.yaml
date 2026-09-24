@@ -1,0 +1,62 @@
+# M10 goal condition 4 on a device: the hand-portion quick log takes at most
+# three taps from Home (Nutrition, the portion, how many), and food search
+# works offline on the bundled seed. Also walks the deficit set-up, which
+# shows the L3 nutrition-deficit notice first (goal condition 7).
+# NOT EXECUTED in this environment (no device or emulator); the same journey
+# runs in jest-expo through the real root layout, router and on-device
+# database with the network down (__tests__/nutrition.e2e.test.tsx), and the
+# notice order in __tests__/nutrition.test.tsx.
+# Airplane mode is Android-only in Maestro; on iOS disable the network by hand.
+# Run with: maestro test apps/mobile/e2e/nutrition-quick-log.yaml
+appId: dev.companion.app
+---
+- clearState
+- launchApp
+- tapOn: { id: "age-gate-day" }
+- inputText: "14"
+- tapOn: { id: "age-gate-month" }
+- inputText: "3"
+- tapOn: { id: "age-gate-year" }
+- inputText: "1988"
+- tapOn: { id: "age-gate-continue" }
+- assertVisible: { id: "home-screen" }
+- runFlow:
+    file: onboarding-steps.yaml
+    env:
+      SKIP_MEASUREMENTS: "true"
+- tapOn: { id: "first-workout-home" }
+- setAirplaneMode: enabled
+# Set-up: fat loss with numbers shows the L3 notice before any pace can be chosen.
+- scrollUntilVisible: { element: { id: "open-nutrition" } }
+- tapOn: { id: "open-nutrition" }
+- tapOn: { id: "nutrition-goal-fat_loss" }
+- assertVisible: { id: "notice-nutrition_deficit" }
+- assertNotVisible: { id: "nutrition-pace" }
+- scrollUntilVisible: { element: { id: "notice-nutrition_deficit-ack" } }
+- tapOn: { id: "notice-nutrition_deficit-ack" }
+- scrollUntilVisible: { element: { id: "nutrition-height" } }
+- tapOn: { id: "nutrition-height" }
+- inputText: "170"
+- tapOn: { id: "nutrition-weight" }
+- inputText: "80"
+- scrollUntilVisible: { element: { id: "nutrition-pace-0.5" } }
+- tapOn: { id: "nutrition-pace-0.5" }
+- scrollUntilVisible: { element: { id: "nutrition-setup-save" } }
+- tapOn: { id: "nutrition-setup-save" }
+- assertVisible: { id: "nutrition-target-energy" }
+- scrollUntilVisible: { element: { id: "nutrition-back" } }
+- tapOn: { id: "nutrition-back" }
+# The quick log: three taps from Home.
+- scrollUntilVisible: { element: { id: "open-nutrition" } }
+- tapOn: { id: "open-nutrition" }                 # tap 1
+- scrollUntilVisible: { element: { id: "quick-protein_palm" } }
+- tapOn: { id: "quick-protein_palm" }             # tap 2
+- tapOn: { id: "quick-count-1" }                  # tap 3
+- assertVisible: { id: "quick-logged" }
+# Food search, offline, by a dish's local name.
+- scrollUntilVisible: { element: { id: "nutrition-search" } }
+- tapOn: { id: "nutrition-search" }
+- inputText: "ceebu jen"
+- tapOn: { id: "food-thieboudienne" }
+- tapOn: { id: "food-thieboudienne-portion-plate" }
+- setAirplaneMode: disabled

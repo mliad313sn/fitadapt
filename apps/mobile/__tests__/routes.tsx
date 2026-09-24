@@ -21,6 +21,7 @@ import Workout from '../app/workout';
 import Pair from '../app/pair';
 import Progress from '../app/progress';
 import Photos from '../app/photos';
+import Nutrition from '../app/nutrition';
 
 /** M01 routes declared by the root layout (the map every router test passes to renderRouter), plus the M07 assessment the M08 calendar and the M02 workout behind the same gate. */
 export const m01Routes = {
@@ -31,6 +32,7 @@ export const m01Routes = {
   pair: Pair,
   progress: Progress,
   photos: Photos,
+  nutrition: Nutrition,
   equipment: Equipment,
   'first-workout': FirstWorkout,
   'onboarding/goals': Goals,
