@@ -10,6 +10,7 @@ import { photoBackups, syncChanges, syncMutations } from '../../src/db/schema.js
 import { PairService } from '../../src/pair/service.js';
 import { PEPPER, bearer, createHarness, device, signIn, truncateAll, uniqueEmail, type Harness } from './harness.js';
 import { integrationEnv } from './env.js';
+import type * as PhotosConfig from '../../src/config/photos.config.js';
 
 /**
  * Regression tests for the API security review (docs/status/FIX-api-security.md):
@@ -23,10 +24,10 @@ import { integrationEnv } from './env.js';
  */
 const photoOverrides = vi.hoisted(() => new Map<string, number>());
 vi.mock('../../src/config/photos.config.js', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../../src/config/photos.config.js')>();
+  const original = await importOriginal<typeof PhotosConfig>();
   return {
     ...original,
-    photosValue: (key: import('../../src/config/photos.config.js').PhotosConfigKey) => photoOverrides.get(key) ?? original.photosValue(key),
+    photosValue: (key: PhotosConfig.PhotosConfigKey) => photoOverrides.get(key) ?? original.photosValue(key),
   };
 });
 
