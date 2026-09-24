@@ -8,12 +8,17 @@
 |---|---|---|
 | `acceptance.recorded` | Terms, Privacy Policy, exercise-risk acknowledgment, subscription terms, community guidelines accepted | document id, version, locale, jurisdiction, SHA-256 of the exact text shown, source |
 | `consent.recorded` | Any M17 consent grant or withdrawal (health-data consent included) | data type, decision, version, locale, jurisdiction |
-| `notice.shown` / `notice.acknowledged` | Point-of-risk notice displayed / confirmed (L3) and AI disclosure (L5); M03: the intensity notice (`first_hiit`) is recorded as shown, and Start stays disabled until it is acknowledged, before the first high-intensity session | notice id, version, locale, jurisdiction, SHA-256 of the text shown |
+| `notice.shown` / `notice.acknowledged` | Point-of-risk notice displayed / confirmed (L3) and AI disclosure (L5); M03: the intensity notice (`first_hiit`) is recorded as shown, and Start stays disabled until it is acknowledged, before the first high-intensity session; M09: the Fair Challenge notice (`pair_challenge`) and each person's first-workout notice, in each partner's own ledger, before a pair session starts | notice id, version, locale, jurisdiction, SHA-256 of the text shown |
 | `safety.event` | An S1–S7 gate blocks, substitutes, caps or ends a session; M05: an S3 red flag (in a session or at the readiness check-in: "session ended" and "intensity locked") and a pain report that makes a joint red (S2 "joint flagged"), each written in the same transaction as the synced execution log, and on the device chain at once; M03: S1 when a program's intervals become steady, S2 "blocked" when a conditioning movement is left out because it loads a red joint | invariant, reason code, action, engine version |
 | `prescription.issued` | A session the engine prescribed is started (M02; M03: cardio sessions and cardio finishers too, with the cardio block's and its zones' reason codes); written in the same transaction as the synced session record | prescription (plan) id, engine version, session rules version, every reason code of the plan |
 | `safety.attested` | The user attests the review that lifts a safety lock (S3: the M05 two-step self-attestation of a medical review after a red-flag stop; the execution log keeps the statement version) | invariant, reason code, engine version |
 | `program.generated` | A program (M08) is stored; written in the same transaction as the program record | program id, engine version, program rules version, template id, reason codes |
 | `program.reflowed` | The engine shifts, merges or skips a session the user could not do (M08); same transaction as the reflow record | program id, session id, outcome, engine version |
+| `pair.joined` | M09 Fair Pair: a person takes part in a pair session (single device: in their own device chain, a guest in their own; multi-device: in the join transaction) | pair session id, role (host/partner), mode, the sharing scopes they chose, partner-sharing consent version |
+| `pair.timeline_built` | M09: the pair planner ordered the two plans into one timeline (device chain of each person) | pair session id, the person's own plan id, engine version, pair rules version, reason codes |
+| `pair.challenge_started` | M09: both partners chose the Fair Challenge and acknowledged its notice (`pair_challenge`); each in their own chain, in the same transaction | pair session id, pair rules version |
+| `pair.left` | M09: a person left the pair session, in their OWN chain only (completed, stopped, safety stop, consent withdrawn); written with the relayed event | pair session id, reason |
+| `pair.partner_left` | M09: the partner left — in the other person's chain, never with the partner's reason (a safety stop is not revealed) | pair session id |
 | `content.approved` | Exercise, notice or copy approved by a council seat | content id, version, reviewer seat, sign-off record path |
 | `incident.recorded` | Each step of incident-procedure.md | incident id, category, step |
 | `legal_hold.placed` / `released` | Legal hold on a subject | hold id, reason code |
@@ -35,4 +40,4 @@ Events are keyed by a pseudonymous subject reference (keyed hash of the user id,
 
 ## Legal-hold export
 
-`pnpm legal:export --user <user-id> [--out <file>] [--actor <role>]` places a legal hold, logs the access and writes a JSON file with the subject's acceptances, consents, notices, safety events, prescriptions, engine versions, holds, access log, the full chain and its verification result. KPI: produced in < 1 day (`legalHoldExportTargetHours`); in practice seconds.
+`pnpm legal:export --user <user-id> [--out <file>] [--actor <role>]` places a legal hold, logs the access and writes a JSON file with the subject's acceptances, consents, notices, safety events, prescriptions, programs, pair sessions (M09), engine versions, holds, access log, the full chain and its verification result. KPI: produced in < 1 day (`legalHoldExportTargetHours`); in practice seconds.

@@ -39,4 +39,9 @@
 - **EN** — Stop now: You reported a symptom that needs medical attention. The session has ended. Please contact a doctor before exercising again. If this is an emergency, call your local emergency number now.
 - **FR** — Arrêtez maintenant: Vous avez signalé un symptôme qui nécessite un avis médical. La séance est terminée. Consultez un médecin avant de reprendre l’exercice. En cas d’urgence, appelez maintenant le numéro d’urgence local.
 
+## `pair_challenge` v1 — trigger `pair.challenge.start`, once per version, acknowledgement required
+
+- **EN** — Before the Fair Challenge: The challenge compares each of you with your own plan, never with each other’s loads. Train at your own pace: you can skip or stop at any time, and nothing counts once you report pain. Stop at once if you feel chest pain, faintness or unusual breathlessness.
+- **FR** — Avant le Défi équitable: Le défi compare chacun à son propre programme, jamais aux charges de l’autre. Entraînez-vous à votre rythme : vous pouvez passer ou arrêter à tout moment, et plus rien ne compte dès que vous signalez une douleur. Arrêtez-vous immédiatement en cas de douleur thoracique, de malaise ou d’essoufflement inhabituel.
+
 Persistent AI label (every AI coach screen): EN "AI assistant", FR "Assistant IA".

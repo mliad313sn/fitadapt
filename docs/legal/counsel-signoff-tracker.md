@@ -49,6 +49,12 @@ Launch KPI (M20 spec): open legal gates at launch = 0.
 | `consent.analytics` | 1 | SN | pending | — | — | — |
 | `consent.analytics` | 1 | CI | pending | — | — | — |
 | `consent.analytics` | 1 | DEFAULT | pending | — | — | — |
+| `consent.partner_sharing` | 1 | EU_FR | pending | — | — | — |
+| `consent.partner_sharing` | 1 | GB | pending | — | — | — |
+| `consent.partner_sharing` | 1 | US | pending | — | — | — |
+| `consent.partner_sharing` | 1 | SN | pending | — | — | — |
+| `consent.partner_sharing` | 1 | CI | pending | — | — | — |
+| `consent.partner_sharing` | 1 | DEFAULT | pending | — | — | — |
 | `exercise_risk` | 1 | EU_FR | pending | — | — | — |
 | `exercise_risk` | 1 | GB | pending | — | — | — |
 | `exercise_risk` | 1 | US | pending | — | — | — |
@@ -115,4 +121,10 @@ Launch KPI (M20 spec): open legal gates at launch = 0.
 | notice `seek_care` | 1 | SN | pending | — | — | — |
 | notice `seek_care` | 1 | CI | pending | — | — | — |
 | notice `seek_care` | 1 | DEFAULT | pending | — | — | — |
+| notice `pair_challenge` | 1 | EU_FR | pending | — | — | — |
+| notice `pair_challenge` | 1 | GB | pending | — | — | — |
+| notice `pair_challenge` | 1 | US | pending | — | — | — |
+| notice `pair_challenge` | 1 | SN | pending | — | — | — |
+| notice `pair_challenge` | 1 | CI | pending | — | — | — |
+| notice `pair_challenge` | 1 | DEFAULT | pending | — | — | — |
 <!-- generated:tracker:end -->
