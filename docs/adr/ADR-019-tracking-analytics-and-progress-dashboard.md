@@ -68,6 +68,6 @@ Only `screen_viewed` (progress, photos), `progress_export_requested` (format, wi
 
 ## Consequences
 
-- M10 must consume the guardrail inbox (`createGuardrailInbox().consume()`) and decide what follows (e.g. pausing any deficit suggestion, S4).
+- M10 must consume the guardrail inbox (`createGuardrailInbox().consume()`) and decide what follows (e.g. pausing any deficit suggestion, S4). **Done in M10 (ADR-022):** `createGuardrailInbox(kv, onReceive)` hands each event to the nutrition store at once; the engine pauses any planned deficit, then caps the pace (S4 `deficit_reduced`); the inbox is consumed when the user acknowledges M10's supportive notice.
 - The coach portal and the AI coach must read progress through these engine functions.
 - The adherence window, chart limits and every analytics threshold await the seats above; the forecast model awaits A5/A3.
