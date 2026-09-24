@@ -1,4 +1,4 @@
-import { NUTRITION_SAFETY_CONFIG, ageInYears, evaluateScreening, notScreenedSafetyProfile, nutritionTargetViolations } from '@fitadapt/safety';
+import { NUTRITION_SAFETY_CONFIG, S4_MIN_ENERGY_KCAL_PER_DAY, ageInYears, evaluateScreening, notScreenedSafetyProfile, nutritionTargetViolations } from '@fitadapt/safety';
 import { ACTIVITY_LEVELS, ESTIMATE_SEXES, NUTRITION_GOALS, NutritionTargetSchema, SCREENING_QUESTION_IDS, type NutritionInput, type ScreeningQuestionId } from '@fitadapt/shared';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
@@ -66,6 +66,9 @@ describe('S4 over random profiles, through computeNutritionTarget (goal conditio
         const bmr = 10 * i.weightKg! + 6.25 * i.heightCm! - 5 * age + SEX[i.sexForEstimate];
         expect(target.energy.targetKcal).toBeGreaterThanOrEqual(bmr);
         expect(target.energy.floorKcal).toBeGreaterThanOrEqual(bmr);
+        // A4/A6: never a number below the absolute energy floor.
+        expect(target.energy.targetKcal).toBeGreaterThanOrEqual(S4_MIN_ENERGY_KCAL_PER_DAY);
+        expect(target.energy.floorKcal).toBeGreaterThanOrEqual(S4_MIN_ENERGY_KCAL_PER_DAY);
         const maintenance = target.energyModel!.expenditureKcal;
         const deficit = Math.max(0, maintenance - target.energy.targetKcal);
         // The implied weekly loss, with ±0.5 kcal of the rounded expenditure.
@@ -75,6 +78,21 @@ describe('S4 over random profiles, through computeNutritionTarget (goal conditio
       }),
       RUNS,
     );
+  });
+
+  it('A4/A6: below the absolute energy floor the target has no number (supportive mode, with its reason)', () => {
+    fc.assert(
+      fc.property(input, (i) => {
+        const { target, safetyEvents } = computeNutritionTarget(i, ctx);
+        if (!target.reasonCodes.includes('nutrition.supportive.low_energy')) return;
+        expect(target).toMatchObject({ mode: 'supportive', energy: null, protein: null, deficitAllowed: false, plannedLossPercentPerWeek: 0 });
+        expect(safetyEvents).toContainEqual({ invariant: 'S4', reasonCode: 'safety.s4.absolute_floor', action: 'blocked' });
+      }),
+      RUNS,
+    );
+    // A small, older, sedentary woman (BMR ≈ 951): no number (the BMR floor alone gave 960 kcal/day).
+    const small = computeNutritionTarget({ schemaVersion: 1, goal: 'fat_loss', trackingStyle: 'numbers', activityLevel: 'sedentary', sexForEstimate: 'female', weightKg: 50, heightCm: 150, birthDate: { year: 1961, month: 1, day: 1 }, today: TODAY, plannedLossPercentPerWeek: 0.5, goalWeightKg: null, safetyProfile: evaluateScreening({ answers: allNo, clearanceAttested: false, birthDate: { year: 1961, month: 1, day: 1 }, answeredOn: today, limitations: [], excludedExerciseIds: [] }), guardrailEvents: [], adaptive: null, previousExpenditureKcal: null }, ctx);
+    expect(small.target).toMatchObject({ mode: 'supportive', energy: null, reasonCodes: ['nutrition.supportive.low_energy'] });
   });
 
   it('deficit features disabled under 18 and for "advised against calorie restriction": no calorie number at all', () => {

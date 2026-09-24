@@ -5,6 +5,7 @@ import {
   NUTRITION_SAFETY_CONFIG,
   S4_DEFICIT_MINIMUM_AGE_YEARS,
   S4_MAX_PLANNED_LOSS_PERCENT_PER_WEEK,
+  S4_MIN_ENERGY_KCAL_PER_DAY,
   S4_MIN_GOAL_BMI,
   deficitFeatures,
   deficitForLossPercent,
@@ -42,6 +43,7 @@ describe('S4 constants are invariants, not configuration', () => {
     expect(S4_MAX_PLANNED_LOSS_PERCENT_PER_WEEK).toBe(1);
     expect(S4_MIN_GOAL_BMI).toBe(18.5);
     expect(S4_DEFICIT_MINIMUM_AGE_YEARS).toBe(18);
+    expect(S4_MIN_ENERGY_KCAL_PER_DAY).toBe(1200);
     expect(Object.keys(NUTRITION_SAFETY_CONFIG)).toEqual(['energyDensityKcalPerKg']);
     expect(NUTRITION_SAFETY_CONFIG.energyDensityKcalPerKg.validated).toBe(false);
     expect(NUTRITION_SAFETY_CONFIG.energyDensityKcalPerKg.source).toMatch(/not checked against a source/);
@@ -116,6 +118,18 @@ describe('enforceNutritionFloors', () => {
     const r = enforceNutritionFloors({ targetKcal: 900, plannedLossPercentPerWeek: 1, goalWeightKg: null }, ctx({ weightKg: 70, heightCm: 160, bmrKcal: 1400, maintenanceKcal: 1680 }));
     expect(r).toMatchObject({ status: 'ok', targetKcal: 1400, floorKcal: 1400, deficitKcal: 280 });
     if (r.status === 'ok') expect(r.adjustments.map((a) => a.reasonCode)).toContain('safety.s4.bmr_floor');
+  });
+
+  it('A4/A6: never a number below 1,200 kcal/day whatever the BMR; below it the supportive mode (no number)', () => {
+    // A small, older, sedentary adult (BMR ≈ 951, maintenance ≈ 1141): the BMR floor alone allowed 960 kcal/day.
+    const small = ctx({ weightKg: 50, heightCm: 150, bmrKcal: 951, maintenanceKcal: 1141 });
+    expect(enforceNutritionFloors({ targetKcal: 900, plannedLossPercentPerWeek: 0.5, goalWeightKg: null }, small)).toEqual({ status: 'supportive', deficitAllowed: false, adjustments: expect.arrayContaining([{ invariant: 'S4', reasonCode: 'safety.s4.absolute_floor' }]) });
+    // Maintenance itself below the floor: no number for maintaining either.
+    expect(enforceNutritionFloors({ targetKcal: 1141, plannedLossPercentPerWeek: 0, goalWeightKg: null }, small).status).toBe('supportive');
+    // At or above the floor: a number, and the floor reported is the higher of BMR and 1,200.
+    const r = enforceNutritionFloors({ targetKcal: 1200, plannedLossPercentPerWeek: 0.5, goalWeightKg: null }, ctx({ weightKg: 60, heightCm: 160, bmrKcal: 1150, maintenanceKcal: 1500 }));
+    expect(r).toMatchObject({ status: 'ok', targetKcal: 1200, floorKcal: 1200 });
+    expect(nutritionTargetViolations({ targetKcal: 1199, deficitKcal: 0, plannedLossPercentPerWeek: 0, goalWeightKg: null }, ctx({ bmrKcal: 1000, maintenanceKcal: 1199 }))).toContainEqual({ invariant: 'S4', reasonCode: 'safety.s4.absolute_floor' });
   });
 
   it('refuses a goal weight below BMI 18.5', () => {
@@ -206,6 +220,8 @@ describe('S4 properties over random profiles and adversarial proposals (goal con
         return (
           Number.isInteger(r.targetKcal) &&
           r.targetKcal >= c.bmrKcal &&
+          r.targetKcal >= S4_MIN_ENERGY_KCAL_PER_DAY &&
+          r.floorKcal >= S4_MIN_ENERGY_KCAL_PER_DAY &&
           r.plannedLossPercentPerWeek >= 0 &&
           r.plannedLossPercentPerWeek <= 1 &&
           impliedLossPercentPerWeek(Math.max(0, c.maintenanceKcal - r.targetKcal), c.weightKg) <= 1 + 1e-9 &&
@@ -224,7 +240,20 @@ describe('S4 properties over random profiles and adversarial proposals (goal con
         const age = TODAY.year - c.birthDate.year - (TODAY.month < c.birthDate.month || (TODAY.month === c.birthDate.month && TODAY.day < c.birthDate.day) ? 1 : 0);
         const mustBeOff = age < 18 || !c.safetyProfile.deficitNutritionAllowed || c.safetyProfile.screeningOutcome === 'not_screened' || c.safetyProfile.specialPopulation !== 'none';
         if (!mustBeOff) return true;
-        return r.deficitAllowed === false && (r.status === 'invalid' || (r.plannedLossPercentPerWeek === 0 && r.deficitKcal === 0 && r.targetKcal >= c.maintenanceKcal));
+        // 'supportive' (below the absolute floor) and 'invalid' give no number at all, so no deficit either.
+        return r.deficitAllowed === false && (r.status !== 'ok' || (r.plannedLossPercentPerWeek === 0 && r.deficitKcal === 0 && r.targetKcal >= c.maintenanceKcal));
+      }),
+      RUNS,
+    );
+  });
+
+  it('A4/A6 absolute floor: a number is never below max(BMR, 1,200 kcal/day); the supportive mode exactly when the S4 target would be', () => {
+    fc.assert(
+      fc.property(proposal, context, (p, c) => {
+        const r = enforceNutritionFloors(p, c);
+        if (r.status === 'ok') return r.targetKcal >= Math.max(Math.ceil(c.bmrKcal), S4_MIN_ENERGY_KCAL_PER_DAY) && nutritionTargetViolations(r, c).length === 0;
+        if (r.status === 'supportive') return r.deficitAllowed === false && r.adjustments.some((a) => a.reasonCode === 'safety.s4.absolute_floor');
+        return r.deficitAllowed === false;
       }),
       RUNS,
     );
@@ -239,6 +268,7 @@ describe('S4 properties over random profiles and adversarial proposals (goal con
         const deficit = Math.max(0, c.maintenanceKcal - targetKcal);
         const unsafe =
           targetKcal < Math.ceil(c.bmrKcal) ||
+          targetKcal < S4_MIN_ENERGY_KCAL_PER_DAY ||
           rate > 1 ||
           impliedLossPercentPerWeek(deficit, c.weightKg) > 1 + 1e-9 ||
           (goal !== null && goal < minGoal) ||

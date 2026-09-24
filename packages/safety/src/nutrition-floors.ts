@@ -8,7 +8,11 @@ import { S4_DEFICIT_MINIMUM_AGE_YEARS } from './screening.js';
  * S4 — nutrition floors (docs/specs/00-product-vision.md), owned by M10.
  * Invariants in code, never configuration:
  *
- * - the energy target is never below the estimated BMR;
+ * - the energy target is never below the estimated BMR, and never a number
+ *   below an absolute minimum of 1,200 kcal/day: below it the user gets the
+ *   supportive mode (habits, no calorie number) instead (A4/A6 pre-review,
+ *   PO decision: stricter; NICE NG246 as cited there treats 800–1,200 kcal/day
+ *   as a low-energy diet for specialist services only);
  * - the planned loss rate is at most 1 % of body weight per week;
  * - no goal weight below BMI 18.5 for the user's height;
  * - deficit features are disabled under 18 and for a user who reports being
@@ -24,6 +28,16 @@ import { S4_DEFICIT_MINIMUM_AGE_YEARS } from './screening.js';
  */
 export const S4_MAX_PLANNED_LOSS_PERCENT_PER_WEEK = 1 as const;
 export const S4_MIN_GOAL_BMI = 18.5 as const;
+/**
+ * The absolute energy floor (kcal/day): no target number below it, whatever
+ * the estimated BMR (docs/governance/ai-reviews/A4-A6-nutrition-behaviour.md,
+ * items M10-16 and the S4 section: "the higher of the estimated BMR and an
+ * absolute minimum, for example 1,200 kcal/day … below that the app should
+ * show supportive mode"). An invariant like the others: a constant, never
+ * configuration, and it may only ever be raised. NOT VALIDATED: seats A4 and
+ * A1 settle the number (listed in docs/status/M10.md).
+ */
+export const S4_MIN_ENERGY_KCAL_PER_DAY = 1200 as const;
 
 const energyDensity = () => NUTRITION_SAFETY_CONFIG.energyDensityKcalPerKg.value;
 const positive = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n > 0;
@@ -100,6 +114,8 @@ export type S4Result =
       /** What S4 changed in the proposal (each one is a safety event for the defensibility log). */
       readonly adjustments: readonly SafetyViolation[];
     }
+  /** The S4 target would fall below the absolute energy floor: no number, the supportive mode (habits) instead. */
+  | { readonly status: 'supportive'; readonly deficitAllowed: false; readonly adjustments: readonly SafetyViolation[] }
   | { readonly status: 'invalid'; readonly deficitAllowed: false; readonly adjustments: readonly SafetyViolation[] };
 
 const s4 = (reasonCode: string): SafetyViolation => ({ invariant: 'S4', reasonCode });
@@ -154,10 +170,12 @@ export function enforceNutritionFloors(proposal: EnergyProposal, ctx: S4Context)
       adjustments.push(s4('safety.s4.bmr_floor'));
     }
     const targetKcal = Math.ceil(target);
+    const unique = (list: readonly SafetyViolation[]) => [...new Map(list.map((a) => [a.reasonCode, a])).values()];
+    // The absolute floor: a target that would still be below it is never given as a number.
+    if (!(targetKcal >= S4_MIN_ENERGY_KCAL_PER_DAY)) return { status: 'supportive', deficitAllowed: false, adjustments: unique([...adjustments, s4('safety.s4.absolute_floor')]) };
     const deficitKcal = Math.max(0, Math.floor(maintenance) - targetKcal);
     rate = deficitAllowed ? Math.min(rate, impliedLossPercentPerWeek(deficitKcal, ctx.weightKg)) : 0;
-    const unique = [...new Map(adjustments.map((a) => [a.reasonCode, a])).values()];
-    return { status: 'ok', targetKcal, floorKcal, deficitKcal, plannedLossPercentPerWeek: Math.round(rate * 1000) / 1000, goalWeightKg, deficitAllowed, adjustments: unique };
+    return { status: 'ok', targetKcal, floorKcal: Math.max(floorKcal, S4_MIN_ENERGY_KCAL_PER_DAY), deficitKcal, plannedLossPercentPerWeek: Math.round(rate * 1000) / 1000, goalWeightKg, deficitAllowed, adjustments: unique(adjustments) };
   } catch {
     return { status: 'invalid', deficitAllowed: false, adjustments: [s4('safety.s4.check_failed')] };
   }
@@ -187,6 +205,7 @@ export function nutritionTargetViolations(target: StoredNutritionTarget, ctx: S4
     if (target.targetKcal !== null) {
       if (!positive(ctx.bmrKcal) || !positive(ctx.maintenanceKcal) || !Number.isFinite(target.targetKcal)) return [...out, s4('safety.s4.invalid_input')];
       if (target.targetKcal < Math.ceil(ctx.bmrKcal)) out.push(s4('safety.s4.bmr_floor'));
+      if (target.targetKcal < S4_MIN_ENERGY_KCAL_PER_DAY) out.push(s4('safety.s4.absolute_floor'));
       const deficit = Math.max(0, ctx.maintenanceKcal - target.targetKcal);
       if (impliedLossPercentPerWeek(deficit, ctx.weightKg) > S4_MAX_PLANNED_LOSS_PERCENT_PER_WEEK + 1e-9) out.push(s4('safety.s4.rate_capped'));
       if (!deficitAllowed && deficit >= 1) out.push(s4('safety.s4.deficit_disabled'));
