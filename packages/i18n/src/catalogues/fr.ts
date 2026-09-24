@@ -2,6 +2,8 @@ import type { MessageKey } from './en.js';
 import { assessmentFr } from './assessment.fr.js';
 import { programFr } from './program.fr.js';
 import { sessionFr } from './session.fr.js';
+import { recoveryFr } from './recovery.fr.js';
+import { recoveryMedicalFr } from './recovery-medical.fr.js';
 import { legalFr } from './legal.fr.js';
 import { libraryFr } from './library.fr.js';
 import { onboardingFr } from './onboarding.fr.js';
@@ -119,4 +121,10 @@ export const fr: Record<MessageKey, string> = {
 
   // M02 : codes de raison des séances et écrans de séance (sans pression ni culpabilisation).
   ...sessionFr,
+
+  // M05 : récupération, échauffement, auto-évaluation, semaines allégées, mobilité.
+  ...recoveryFr,
+
+  // M05 : textes liés à la santé — RELECTURE MÉDICALE REQUISE (sièges A1, A2 ; avocat pour la déclaration).
+  ...recoveryMedicalFr,
 };

@@ -1,6 +1,8 @@
 import { assessmentEn } from './assessment.en.js';
 import { programEn } from './program.en.js';
 import { sessionEn } from './session.en.js';
+import { recoveryEn } from './recovery.en.js';
+import { recoveryMedicalEn } from './recovery-medical.en.js';
 import { legalEn } from './legal.en.js';
 import { libraryEn } from './library.en.js';
 import { onboardingEn } from './onboarding.en.js';
@@ -132,6 +134,12 @@ export const en = {
 
   // M02 session engine reason codes and the workout screens (no pressure, no guilt).
   ...sessionEn,
+
+  // M05 recovery: warm-up, cool-down, readiness, deloads, mobility sessions (no pressure, no guilt).
+  ...recoveryEn,
+
+  // M05 health-related wording: REQUIRES PHYSICIAN REVIEW (seats A1, A2; counsel for the review statement).
+  ...recoveryMedicalEn,
 } as const;
 
 export type MessageKey = keyof typeof en;
