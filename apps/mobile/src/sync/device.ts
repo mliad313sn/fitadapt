@@ -18,6 +18,8 @@ export interface DeviceSyncDeps {
   getAccessToken?: () => string | Promise<string>;
   /** Defaults to React Native's __DEV__. */
   isDevelopment?: boolean;
+  /** Tests: the fetch of the HTTP transport (defaults to the global fetch). */
+  fetch?: typeof fetch;
 }
 
 function notSignedIn(): never {
@@ -62,6 +64,7 @@ export function createDeviceSyncClient(deps: DeviceSyncDeps): SyncClient {
     new HttpTransport({
       baseUrl: apiBaseUrl(deps.apiUrl, deps.isDevelopment ?? isDevelopmentBuild()),
       getAccessToken: deps.getAccessToken ?? notSignedIn,
+      ...(deps.fetch ? { fetch: deps.fetch } : {}),
     });
   return new SyncClient({ deviceId, store, transport, newId: deps.randomUUID });
 }

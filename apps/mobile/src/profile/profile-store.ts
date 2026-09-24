@@ -39,6 +39,8 @@ import {
   type SetLog,
   type WorkoutSessionRecord,
   type ReadinessCheck,
+  ServerIntensityLockSchema,
+  type ServerIntensityLock,
 } from '@fitadapt/shared';
 import type { SyncClient } from '@fitadapt/sync';
 import type { z } from 'zod';
@@ -48,6 +50,25 @@ import type { KeyValueStore } from '../storage/app-state';
 
 const DRAFT_KEY = 'onboarding_draft';
 const NEW_CONDITION_KEY = 'health_new_condition_reported_at';
+/** MOB-08 × FIX-D: the last S3 lock the server said it retains (kept on the device, so it applies offline too). */
+const SERVER_LOCK_KEY = 'safety_server_intensity_lock';
+
+function loadServerLock(kv: KeyValueStore): ServerIntensityLock | null {
+  try {
+    const raw = kv.get(SERVER_LOCK_KEY);
+    return raw ? ServerIntensityLockSchema.parse(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The attestation's flags plus the server-retained ones no earlier attestation on the device named. */
+function attestedWithServerFlags(attests: readonly string[], lock: ServerIntensityLock | null, existing: readonly ExecutionLog[]): string[] {
+  if (!lock?.locked) return [...attests];
+  const named = new Set(existing.flatMap((e) => (e.kind === 'medical_review_attested' ? (e.attests ?? []) : [])));
+  return [...new Set([...attests, ...lock.flagIds.filter((f) => !named.has(f))])];
+}
+
 /** Rejected screening/assessment mutations a later screening (or assessment) of the user answered. */
 const RESOLVED_REJECTIONS_KEY = 'health_resolved_rejections';
 
@@ -173,6 +194,13 @@ export interface ProfileState {
   readinessChecks: StoredReadinessCheck[];
   /** FIX-B × FIX-E: the server rejected the latest screening or assessment and the user has not answered again (fail closed). */
   screeningRejected: boolean;
+  /**
+   * MOB-08 × FIX-D: the S3 lock the server retains (`GET /v1/safety/intensity-lock`, read when online), or
+   * null before the first answer. Survives a health-consent withdrawal, as on the server (ADR-027).
+   */
+  serverLock: ServerIntensityLock | null;
+  /** Stores the server's answer (validated); the device then treats a server-retained lock as locked. */
+  receiveServerLock(lock: unknown): void;
   draft: OnboardingDraft;
   newConditionReportedAt: string | null;
   /** Re-reads the synced records (after a pull). */
@@ -303,8 +331,14 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
       ...read(),
       draft: loadDraft(kv),
       newConditionReportedAt: kv.get(NEW_CONDITION_KEY) ?? null,
+      serverLock: loadServerLock(kv),
+      receiveServerLock(lock) {
+        const parsedLock = ServerIntensityLockSchema.parse(lock);
+        kv.set(SERVER_LOCK_KEY, JSON.stringify(parsedLock));
+        set({ serverLock: parsedLock });
+      },
       reload: () => set(read()),
-      reset: () => set({ ...read(), draft: loadDraft(kv), newConditionReportedAt: kv.get(NEW_CONDITION_KEY) ?? null }),
+      reset: () => set({ ...read(), draft: loadDraft(kv), newConditionReportedAt: kv.get(NEW_CONDITION_KEY) ?? null, serverLock: loadServerLock(kv) }),
       updateDraft(patch) {
         const draft = { ...get().draft, ...patch };
         kv.set(DRAFT_KEY, JSON.stringify(draft));
@@ -412,7 +446,10 @@ export function createProfileStore({ sync, kv, now, onWrite }: ProfileStoreDeps)
       logExecution(event) {
         // ADR-023: pain reports, red flags and attestations carry their causal links (the record id names the event).
         const id = sync.newRecordId();
-        const data = ExecutionLogSchema.parse(executionLinks(event, id, get().executionLogs.map((e) => e.data)));
+        const linked = executionLinks(event, id, get().executionLogs.map((e) => e.data));
+        // MOB-08 × FIX-D: the medical-review attestation also names the red flags the server retains (flagIds), so
+        // it lifts a lock this device no longer holds the flag of (new phone, consent withdrawn and re-granted).
+        const data = ExecutionLogSchema.parse(linked.kind === 'medical_review_attested' ? { ...linked, attests: attestedWithServerFlags(linked.attests ?? [], get().serverLock, get().executionLogs.map((e) => e.data)) } : linked);
         sync.insert(SESSION_COLLECTIONS.executionLogs, data, id);
         written();
         return data;

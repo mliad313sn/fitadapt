@@ -1,17 +1,12 @@
-import { ErrorResponseSchema, IsoDateTimeSchema, UuidSchema } from '@fitadapt/shared';
+import { ErrorResponseSchema, ServerIntensityLockSchema } from '@fitadapt/shared';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
-import { z } from 'zod';
 import type { AuthService } from '../auth/service.js';
 import type { Database } from '../db/client.js';
 import { authenticate, requireAuth } from '../plugins/authenticate.js';
 import { retainedIntensityLock } from '../profile/intensity-lock.js';
 
-const IntensityLockResponseSchema = z.object({
-  locked: z.boolean(),
-  since: IsoDateTimeSchema.nullable(),
-  /** The red flags (ids) an attestation must name to lift the lock (ADR-023). */
-  flagIds: z.array(UuidSchema),
-});
+/** The red flags (ids) an attestation must name to lift the lock (ADR-023); shared with the device (FIX-D). */
+const IntensityLockResponseSchema = ServerIntensityLockSchema;
 
 /**
  * MOB-08 (ADR-027): the S3 intensity lock the server retains apart from the

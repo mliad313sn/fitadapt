@@ -190,7 +190,10 @@ describe('MOB-07: the device data and the upload ledger belong to one account', 
     const toB = calls.slice(mark).filter((c) => c.auth === 'Bearer access-b');
     // Nothing is pushed to B (the outbox left with A's data); the only record B receives is its own consent.
     expect(toB.some((c) => c.path === '/v1/sync/push')).toBe(false);
-    expect(toB.filter((c) => c.path !== '/v1/sync/pull').map((c) => [c.path, (c.body as { id?: string }).id])).toEqual([['/v1/privacy/consents', own.id]]);
+    // Reads send no record: the pull, and (FIX-C × FIX-D) B's own server-retained S3 lock, read with no body.
+    const reads = ['/v1/sync/pull', '/v1/safety/intensity-lock'];
+    expect(toB.filter((c) => c.path === '/v1/safety/intensity-lock').every((c) => c.body === null || c.body === undefined)).toBe(true);
+    expect(toB.filter((c) => !reads.includes(c.path)).map((c) => [c.path, (c.body as { id?: string }).id])).toEqual([['/v1/privacy/consents', own.id]]);
     expect(app.syncClient.pendingCount()).toBe(0);
   });
 

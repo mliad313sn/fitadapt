@@ -133,7 +133,8 @@ export function useJointFlags(): JointFlags {
 /** M02 (S3): the intensity lock after a red-flag stop. */
 export function useIntensityLock(): IntensityLock {
   const executionLogs = useProfile((s) => s.executionLogs);
-  return useMemo(() => selectIntensityLock(executionLogs), [executionLogs]);
+  const serverLock = useProfile((s) => s.serverLock);
+  return useMemo(() => selectIntensityLock(executionLogs, serverLock), [executionLogs, serverLock]);
 }
 
 export interface FirstWorkoutAccess {

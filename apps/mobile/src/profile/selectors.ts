@@ -1,7 +1,7 @@
 import { featureOn } from '../privacy/consents';
-import { intensityLockStatus, jointFlagsFromPain, lastScreenedAt, notScreenedSafetyProfile, physioRecommendations, rescreenStatus, safetyProfileFromScreenings, type PhysioRecommendation, type RescreenStatus } from '@fitadapt/safety';
+import { intensityLockStatus, jointFlagsFromPain, lastScreenedAt, notScreenedSafetyProfile, physioRecommendations, rescreenStatus, safetyProfileFromScreenings, type PhysioRecommendation, type RescreenStatus, type SafetyStopEvent } from '@fitadapt/safety';
 import { buildSessionHistory, deloadStatus, fixedClock, painReportsFrom, readinessLevelOn, reassessmentDateFor, reassessmentStatus, safetyStopsFrom, type ReassessmentStatus } from '@fitadapt/engine';
-import type { CapacityModel, ConsentRecord, DeloadEvent, IntensityLock, IsoDate, Joint, JointFlags, ProgramRecord, ReadinessCheck, ReflowRecord, SafetyProfile, SessionHistoryEntry } from '@fitadapt/shared';
+import type { CapacityModel, ConsentRecord, DeloadEvent, IntensityLock, IsoDate, Joint, JointFlags, ProgramRecord, ReadinessCheck, ReflowRecord, SafetyProfile, ServerIntensityLock, SessionHistoryEntry } from '@fitadapt/shared';
 import { latestAssessment, latestProgram } from './history';
 import type { StoredAssessment, StoredExecutionLog, StoredProgram, StoredReadinessCheck, StoredReflow, StoredScreening, StoredSetLog, StoredWorkout } from './profile-store';
 
@@ -138,6 +138,18 @@ export function selectMorningCheck(executionLogs: readonly StoredExecutionLog[],
 }
 
 /** M02 (S3): intensity stays locked after a red-flag stop until a medical review is attested (packages/safety). */
-export function selectIntensityLock(executionLogs: readonly StoredExecutionLog[]): IntensityLock {
-  return intensityLockStatus(executionLogs.map((e) => e.data));
+export function selectIntensityLock(executionLogs: readonly StoredExecutionLog[], serverLock: ServerIntensityLock | null = null): IntensityLock {
+  return intensityLockStatus([...serverLockEvents(serverLock), ...executionLogs.map((e) => e.data)]);
+}
+
+/**
+ * MOB-08 × FIX-D: a lock the server retains counts as locked on the device (the stricter wins). Its red flags
+ * enter the lock rule as flags at the lock's start, before the device's own events, so only an attestation
+ * that names them (or, for a flag without an id, one recorded after it) lifts them — the same packages/safety
+ * rule. Offline, the last answer received still applies; the local lock always does.
+ */
+export function serverLockEvents(serverLock: ServerIntensityLock | null): SafetyStopEvent[] {
+  if (!serverLock?.locked || !serverLock.since) return [];
+  const since = serverLock.since;
+  return serverLock.flagIds.length > 0 ? serverLock.flagIds.map((id) => ({ kind: 'red_flag', at: since, id })) : [{ kind: 'red_flag', at: since }];
 }

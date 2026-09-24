@@ -20,6 +20,7 @@ import { httpPhotoBackupApi } from './progress/photo-backup';
 import { PhotoVault, type PhotoFiles } from './progress/photo-vault';
 import { reportPhotoErasure } from './progress/ProgressProvider';
 import { createProgressStore } from './progress/progress-store';
+import { createServerLockApi, refreshServerLock } from './safety/server-lock';
 import { SqliteKeyValueStore, wipeLocalDatabase } from './storage/app-state';
 import type { DeviceKeyStore } from './storage/device-keys';
 import { apiBaseUrl, createDeviceSyncClient } from './sync/device';
@@ -38,6 +39,8 @@ export interface AppServicesDeps {
   readonly platform: DeviceInfo['platform'];
   /** FIX-B: the app version and native build, recorded with every acceptance (never personal data). */
   readonly appBuild?: string;
+  /** Tests: the HTTP fetch the API clients use (defaults to the global fetch). */
+  readonly fetch?: typeof fetch;
 }
 
 /**
@@ -45,16 +48,16 @@ export interface AppServicesDeps {
  * AppRoot mounts), built in one place so the whole local data lifecycle —
  * in particular the account wipe — can be tested end to end.
  */
-export function createAppServices({ db, jurisdiction, initialLocale, apiUrl, randomUUID, randomBytes, now, keys, photoFiles, tokenVault, platform, appBuild }: AppServicesDeps) {
+export function createAppServices({ db, jurisdiction, initialLocale, apiUrl, randomUUID, randomBytes, now, keys, photoFiles, tokenVault, platform, appBuild, fetch: doFetch }: AppServicesDeps) {
   const kv = new SqliteKeyValueStore(db);
   // M06: the exercise library lives in the on-device database (offline); installed or refreshed at start.
   const library = new LibraryStore(db);
   library.install();
-  const post = jsonPost(apiBaseUrl(apiUrl));
+  const post = jsonPost(apiBaseUrl(apiUrl), doFetch);
   // M01: the session provides access tokens to sync, privacy and the ledger upload (ADR-013).
   const sessionRef: { current?: SessionStore } = {};
   const getAccessToken = () => sessionRef.current!.getState().getAccessToken();
-  const syncClient = createDeviceSyncClient({ openDatabase: () => db, randomUUID, apiUrl, getAccessToken });
+  const syncClient = createDeviceSyncClient({ openDatabase: () => db, randomUUID, apiUrl, getAccessToken, ...(doFetch ? { fetch: doFetch } : {}) });
   // FIX-B (B pre-review §1.5 item 1): the country the user confirmed ("Where do you live?") wins over the device locale;
   // the legal store keeps it, and consents follow it.
   const legal = createLegalStore({ kv, newId: randomUUID, now, jurisdiction, ...(appBuild ? { appBuild } : {}) });
@@ -72,10 +75,13 @@ export function createAppServices({ db, jurisdiction, initialLocale, apiUrl, ran
   // MOB-07: the device data, and the record of what was uploaded, belong to one account.
   const binding = new AccountBinding(kv);
   const accountApi = createAccountApi(post, getAccessToken);
+  const fetchServerLock = createServerLockApi({ baseUrl: apiBaseUrl(apiUrl), getAccessToken, ...(doFetch ? { fetch: doFetch } : {}) });
   const ledger = new UploadLedger(kv, () => binding.boundTo());
   const accountSync = async () => {
     if (sessionRef.current?.getState().status !== 'signed_in') return;
     await runAccountSync({ api: accountApi, ledger, consents: consents.getState().records, acceptances: legal.getState().acceptances, notices: legal.getState().notices, sync: syncClient });
+    // MOB-08 × FIX-D: online, the S3 lock the server retains (after the push, so an attestation just uploaded counts).
+    await refreshServerLock(fetchServerLock, (lock) => profile.getState().receiveServerLock(lock), (error) => reportError(error, { area: 'sync' }));
     profile.getState().reload();
     progress.getState().reload();
     nutritionStore.getState().reload();

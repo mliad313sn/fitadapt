@@ -218,6 +218,12 @@ export type ProgramSessionContext = z.infer<typeof ProgramSessionContextSchema>;
 /** S3: after a red-flag stop, intensity stays locked until the user attests a medical review (packages/safety intensityLockStatus). */
 export const IntensityLockSchema = z.strictObject({ locked: z.boolean(), since: IsoDateTimeSchema.nullable() });
 export type IntensityLock = z.infer<typeof IntensityLockSchema>;
+/**
+ * MOB-08 (ADR-027) × FIX-D: `GET /v1/safety/intensity-lock` — the S3 lock the server retains (it outlives a
+ * health-consent withdrawal), with the red flags (ids) an attestation must name to lift it (ADR-023).
+ */
+export const ServerIntensityLockSchema = z.strictObject({ locked: z.boolean(), since: IsoDateTimeSchema.nullable(), flagIds: z.array(UuidSchema).max(256) });
+export type ServerIntensityLock = z.infer<typeof ServerIntensityLockSchema>;
 
 export const READINESS_LEVELS = ['normal', 'reduced'] as const;
 
