@@ -55,6 +55,8 @@ const EQUIPMENT_SPECS: Record<EquipmentId, EquipmentSpec> = {
   stationary_bike: ['cardio', ['gym', 'home']],
   rowing_machine: ['cardio', ['gym', 'home']],
   treadmill: ['cardio', ['gym', 'home']],
+  elliptical: ['cardio', ['gym', 'home']],
+  stair_climber: ['cardio', ['gym']],
 };
 
 export const EQUIPMENT: readonly Equipment[] = Object.freeze(

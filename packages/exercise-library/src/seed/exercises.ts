@@ -200,6 +200,13 @@ const SPECS: Record<string, ExerciseSpec> = {
   mountain_climber: { p: 'locomotion', m: ['deep_core', 'hip_flexors'], s: ['front_delts', 'quads'], j: 'mlhlmml', imp: 'low', sk: 'beginner', lt: 'bodyweight', bw: [0.6, 'estimate'], ci: ['loaded_wrist_extension', 'floor_transfer'], t: ['conditioning'] },
   stationary_bike_easy: { p: 'locomotion', m: ['quads'], s: ['glutes', 'hamstrings', 'calves'], eq: ['stationary_bike'], j: 'llllmml', sk: 'entry', lt: 'machine', t: ['conditioning', 'low_impact', 'supported'] },
   rowing_machine_steady: { p: 'locomotion', m: ['lats', 'quads'], s: ['glutes', 'hamstrings', 'upper_back'], eq: ['rowing_machine'], j: 'mmlmmml', sk: 'beginner', lt: 'machine', t: ['conditioning', 'low_impact'] },
+  // M03: steady-state modalities and venue-swap partners (seed content, same review status as every entry: A2/A3 pending).
+  treadmill_incline_walk: { p: 'locomotion', m: ['calves', 'glutes'], s: ['quads', 'hamstrings'], eq: ['treadmill'], j: 'llllmml', imp: 'low', sk: 'entry', lt: 'machine', t: ['conditioning', 'low_impact'] },
+  elliptical_steady: { p: 'locomotion', m: ['quads', 'glutes'], s: ['hamstrings', 'calves'], eq: ['elliptical'], j: 'llllmml', sk: 'entry', lt: 'machine', t: ['conditioning', 'low_impact', 'supported'] },
+  stair_climber_steady: { p: 'locomotion', m: ['quads', 'glutes'], s: ['calves', 'hamstrings'], eq: ['stair_climber'], j: 'llllmmm', imp: 'low', sk: 'beginner', lt: 'machine', t: ['conditioning', 'low_impact', 'supported'] },
+  brisk_walk: { p: 'locomotion', m: ['calves', 'glutes'], s: ['quads', 'hamstrings'], j: 'lllllll', imp: 'low', sk: 'entry', lt: 'none', t: ['conditioning', 'low_impact'] },
+  easy_run: { p: 'locomotion', m: ['calves', 'quads'], s: ['glutes', 'hamstrings'], j: 'lllmmhh', imp: 'high', sk: 'beginner', lt: 'none', ci: ['jumping_landing'], t: ['conditioning'] },
+  shadow_boxing: { p: 'locomotion', m: ['front_delts', 'obliques'], s: ['calves', 'triceps'], j: 'mmlllll', imp: 'low', sk: 'entry', lt: 'none', t: ['conditioning', 'low_impact'] },
 };
 
 export const SEED_EXERCISES: readonly Exercise[] = Object.freeze(Object.entries(SPECS).map(([id, spec]) => Object.freeze(defineExercise(id, spec))));

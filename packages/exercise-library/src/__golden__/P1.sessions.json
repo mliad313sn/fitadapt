@@ -13,6 +13,13 @@
         "mobility: band_pull_apart 60 s for horizontal_pull",
         "cool-down 2 min: open_book_rotation, band_pass_through"
       ],
+      "cardio": [
+        "steady finisher, impact ≤ low, zones by perceived_exertion, 540 s moderate + 0 s vigorous",
+        "movements: brisk_walk",
+        "0 s steady 540 s moderate brisk_walk",
+        "540 s cool_down 60 s light brisk_walk",
+        "reasons: cardio.protocol.steady, cardio.placement.finisher, cardio.intensity.moderate, cardio.cool_down.easy, cardio.impact.low_default.limited.knee, cardio.impact.low_default.bmi, cardio.impact.profile_ceiling.low"
+      ],
       "reasonCodes": [
         "session.program.from_program",
         "session.conditioning.steady_finisher",
@@ -114,6 +121,13 @@
         "mobility: band_face_pull 60 s for vertical_pull",
         "mobility: floor_w_raise 60 s for vertical_pull",
         "cool-down 2 min: open_book_rotation, band_pass_through"
+      ],
+      "cardio": [
+        "steady finisher, impact ≤ low, zones by perceived_exertion, 540 s moderate + 0 s vigorous",
+        "movements: brisk_walk",
+        "0 s steady 540 s moderate brisk_walk",
+        "540 s cool_down 60 s light brisk_walk",
+        "reasons: cardio.protocol.steady, cardio.placement.finisher, cardio.intensity.moderate, cardio.cool_down.easy, cardio.impact.low_default.limited.knee, cardio.impact.low_default.bmi, cardio.impact.profile_ceiling.low"
       ],
       "reasonCodes": [
         "session.program.from_program",
@@ -219,6 +233,13 @@
         "mobility: band_pass_through 60 s for horizontal_push",
         "cool-down 2 min: open_book_rotation, band_pass_through"
       ],
+      "cardio": [
+        "steady finisher, impact ≤ low, zones by perceived_exertion, 540 s moderate + 0 s vigorous",
+        "movements: brisk_walk",
+        "0 s steady 540 s moderate brisk_walk",
+        "540 s cool_down 60 s light brisk_walk",
+        "reasons: cardio.protocol.steady, cardio.placement.finisher, cardio.intensity.moderate, cardio.cool_down.easy, cardio.impact.low_default.limited.knee, cardio.impact.low_default.bmi, cardio.impact.profile_ceiling.low"
+      ],
       "reasonCodes": [
         "session.program.from_program",
         "session.conditioning.steady_finisher",
@@ -313,6 +334,13 @@
         "mobility: band_external_rotation 60 s for horizontal_push",
         "mobility: band_pass_through 60 s for horizontal_push",
         "cool-down 2 min: open_book_rotation, band_pass_through"
+      ],
+      "cardio": [
+        "steady finisher, impact ≤ low, zones by perceived_exertion, 540 s moderate + 0 s vigorous",
+        "movements: brisk_walk",
+        "0 s steady 540 s moderate brisk_walk",
+        "540 s cool_down 60 s light brisk_walk",
+        "reasons: cardio.protocol.steady, cardio.placement.finisher, cardio.intensity.moderate, cardio.cool_down.easy, cardio.impact.low_default.limited.knee, cardio.impact.low_default.bmi, cardio.impact.profile_ceiling.low"
       ],
       "reasonCodes": [
         "session.program.from_program",
@@ -429,6 +457,13 @@
         "mobility: floor_w_raise 49 s for vertical_pull",
         "cool-down 2 min: open_book_rotation, band_pass_through"
       ],
+      "cardio": [
+        "steady finisher, impact ≤ low, zones by perceived_exertion, 540 s moderate + 0 s vigorous",
+        "movements: brisk_walk",
+        "0 s steady 540 s moderate brisk_walk",
+        "540 s cool_down 60 s light brisk_walk",
+        "reasons: cardio.protocol.steady, cardio.placement.finisher, cardio.intensity.moderate, cardio.cool_down.easy, cardio.impact.low_default.limited.knee, cardio.impact.low_default.bmi, cardio.impact.profile_ceiling.low"
+      ],
       "reasonCodes": [
         "session.program.from_program",
         "session.conditioning.steady_finisher",
@@ -540,6 +575,13 @@
         "mobility: band_external_rotation 60 s for horizontal_push",
         "mobility: band_pass_through 60 s for horizontal_push",
         "cool-down 2 min: open_book_rotation, band_pass_through"
+      ],
+      "cardio": [
+        "steady finisher, impact ≤ low, zones by perceived_exertion, 540 s moderate + 0 s vigorous",
+        "movements: brisk_walk",
+        "0 s steady 540 s moderate brisk_walk",
+        "540 s cool_down 60 s light brisk_walk",
+        "reasons: cardio.protocol.steady, cardio.placement.finisher, cardio.intensity.moderate, cardio.cool_down.easy, cardio.impact.low_default.limited.knee, cardio.impact.low_default.bmi, cardio.impact.profile_ceiling.low"
       ],
       "reasonCodes": [
         "session.program.from_program",

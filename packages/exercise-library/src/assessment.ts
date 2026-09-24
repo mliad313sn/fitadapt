@@ -18,6 +18,7 @@ import {
 import type { AssessmentResult, CapacityModel, EquipmentId, Joint, JointFlags, PerformedSet, PlannedExercise, SafetyProfile, SessionPlan } from '@fitadapt/shared';
 import { seedLibrary, type ExerciseLibrary } from './library.js';
 import { WARM_UP_DRILLS } from './seed/warmups.js';
+import { STEADY_MODALITIES, VENUE_SWAPS } from './seed/cardio.js';
 
 /**
  * M07 and M02 bound to the M06 seed: the engine's assessment, capacity model
@@ -36,6 +37,11 @@ export function sessionLibrary(library: ExerciseLibrary = seedLibrary()): Sessio
     bodyweightLoad: (id) => library.byId.get(id)?.bodyweightLoad?.value ?? null,
     // M05: warm-up and cool-down drills per pattern (seed content, awaiting A2/A3), only those in this library.
     warmUpDrills: (pattern) => WARM_UP_DRILLS[pattern].filter((id) => library.byId.has(id)),
+    // M03: steady-state modalities and venue swaps (seed content, awaiting A3/A2), only those in this library.
+    cardio: {
+      steady: STEADY_MODALITIES.filter((id) => library.byId.has(id)),
+      swaps: (id) => (VENUE_SWAPS[id] ?? []).filter((x) => library.byId.has(x)),
+    },
   };
 }
 

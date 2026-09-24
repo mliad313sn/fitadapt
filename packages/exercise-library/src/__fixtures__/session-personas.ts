@@ -17,6 +17,8 @@ export interface PersonaSession {
   /** Loads per place (equipment profile id). */
   readonly loads: Readonly<Record<string, EquipmentLoads>>;
   readonly bodyweightKg: number;
+  /** M03: height where the vision document gives it (P1 178 cm, P2 165 cm), for the BMI impact default. */
+  readonly heightCm: number | null;
   readonly birthDate: CalendarDateValue;
   readonly experience: ExperienceLevel;
   readonly jointFlags: JointFlags;
@@ -34,6 +36,7 @@ export const PERSONA_SESSIONS: Record<'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6', P
     assessment: result('home', [done('push_reps', 'knee_push_up', { reps: 4 }), done('dead_hang_hold', 'dead_hang', { seconds: 12 }), done('row_reps', 'pull_up', { reps: 0 }), done('squat_reps', 'air_squat', { reps: 15 }), done('plank_hold', 'knee_plank', { seconds: 25 })]),
     loads: { [HOME_ID]: { ...EMPTY_EQUIPMENT_LOADS, dumbbellsKg: [10] } },
     bodyweightKg: 120,
+    heightCm: 178,
     birthDate: { year: 1988, month: 6, day: 1 },
     experience: 'beginner',
     jointFlags: { knee: 'amber' },
@@ -45,6 +48,7 @@ export const PERSONA_SESSIONS: Record<'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6', P
     assessment: result('home', [done('push_reps', 'knee_push_up', { reps: 12 }), done('dead_hang_hold', 'dead_hang', { seconds: 25 }), done('row_reps', 'pull_up', { reps: 0 }), done('squat_reps', 'air_squat', { reps: 20 }), done('plank_hold', 'front_plank', { seconds: 35 })]),
     loads: { [GYM_ID]: gym, [HOME_ID]: { ...EMPTY_EQUIPMENT_LOADS, dumbbellsKg: [10] } },
     bodyweightKg: 60,
+    heightCm: 165,
     birthDate: { year: 1994, month: 6, day: 1 },
     experience: 'beginner',
     jointFlags: {},
@@ -63,6 +67,7 @@ export const PERSONA_SESSIONS: Record<'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6', P
     ]),
     loads: { [GYM_ID]: gym },
     bodyweightKg: 82,
+    heightCm: null,
     birthDate: { year: 1982, month: 6, day: 1 },
     experience: 'intermediate',
     jointFlags: {},
@@ -74,6 +79,7 @@ export const PERSONA_SESSIONS: Record<'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6', P
     assessment: result('home_55plus', [done('chair_stand', 'box_squat', { reps: 10 }), done('push_reps_55', 'incline_push_up_high', { reps: 8 }), done('plank_hold_55', 'knee_plank', { seconds: 20 })]),
     loads: { [HOME_ID]: EMPTY_EQUIPMENT_LOADS },
     bodyweightKg: 70,
+    heightCm: null,
     birthDate: { year: 1964, month: 6, day: 1 },
     experience: 'returning',
     jointFlags: {},
@@ -92,6 +98,7 @@ export const PERSONA_SESSIONS: Record<'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6', P
     ]),
     loads: { [GYM_ID]: { ...gym, platePairsKg: [...gym.platePairsKg, 0.5, 0.25] } },
     bodyweightKg: 93,
+    heightCm: null,
     birthDate: { year: 1997, month: 6, day: 1 },
     experience: 'advanced',
     jointFlags: {},
@@ -103,6 +110,7 @@ export const PERSONA_SESSIONS: Record<'P1' | 'P2' | 'P3' | 'P4' | 'P5' | 'P6', P
     assessment: result('home', [done('push_reps', 'push_up', { reps: 25 }), done('dead_hang_hold', 'dead_hang', { seconds: 45 }), done('row_reps', 'pull_up', { reps: 14 }), done('squat_reps', 'air_squat', { reps: 30 }), done('plank_hold', 'front_plank', { seconds: 90 })]),
     loads: { [PARK_ID]: EMPTY_EQUIPMENT_LOADS },
     bodyweightKg: 58,
+    heightCm: null,
     birthDate: { year: 1999, month: 6, day: 1 },
     experience: 'advanced',
     jointFlags: {},

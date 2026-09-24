@@ -81,6 +81,7 @@ function simulate(persona: Persona): Simulated {
         programSession: programSessionContext(day!, session),
         history: buildSessionHistory(records, setLogs, events),
         bodyweightKg: p.bodyweightKg,
+        heightCm: p.heightCm,
         birthDate: p.birthDate,
         experience: p.experience,
         intensityLock: { locked: false, since: null },
@@ -116,6 +117,16 @@ function warmUpLines(plan: SessionPlan): string[] {
   return lines;
 }
 
+/** M03: the conditioning block as the device runs it (protocol, movements, zones and each step), readable. */
+function cardioLines(plan: SessionPlan): string[] {
+  const c = plan.cardio!;
+  const lines = [`${c.protocol} ${c.placement}${c.hiit ? ' (HIIT)' : ''}, impact ≤ ${c.impactCeiling}, zones by ${c.zones.method}, ${c.planned.moderateSeconds} s moderate + ${c.planned.vigorousSeconds} s vigorous`];
+  lines.push(`movements: ${c.movements.map((m) => m.exerciseId).join(', ') || 'any easy movement'}`);
+  for (const s of c.timeline) lines.push(`${s.startSeconds} s ${s.kind} ${s.durationSeconds} s ${s.intensity}${s.exerciseId ? ` ${s.exerciseId}` : ''}${s.round !== null ? ` round ${s.round}/${s.rounds}` : ''}`);
+  lines.push(`reasons: ${c.reasonCodes.join(', ')}`);
+  return lines;
+}
+
 /** A readable projection of a persona's sessions, for review. */
 function golden({ plans, reflows }: Simulated) {
   return {
@@ -125,6 +136,7 @@ function golden({ plans, reflows }: Simulated) {
       budget: `${plan.estimatedMinutes} of ${plan.minutesAvailable} min, warm-up ${plan.warmUp.minutes} min${plan.conditioning ? `, ${plan.conditioning.kind} ${plan.conditioning.placement} ${plan.conditioning.minutes} min` : ''}, reserve RIR ${plan.targetRir}`,
       // M05: what the warm-up and the cool-down are.
       warmUp: warmUpLines(plan),
+      ...(plan.cardio ? { cardio: cardioLines(plan) } : {}),
       reasonCodes: plan.reasonCodes,
       exercises: plan.exercises.map((e) => {
         const s = e.sets[0]!;

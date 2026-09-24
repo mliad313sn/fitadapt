@@ -482,7 +482,7 @@
           "invariant": "S5",
           "reasonCode": "safety.s5.load_ceiling",
           "action": "capped",
-          "engineVersion": "0.3.0"
+          "engineVersion": "0.4.0"
         }
       ]
     },
@@ -579,7 +579,7 @@
           "invariant": "S5",
           "reasonCode": "safety.s5.load_ceiling",
           "action": "capped",
-          "engineVersion": "0.3.0"
+          "engineVersion": "0.4.0"
         }
       ]
     },
