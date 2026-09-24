@@ -46,7 +46,7 @@ describe('M04 contracts', () => {
     expect(ProgressPhotoSchema.safeParse({ schemaVersion: 1, id, pose: 'front', takenOn: '2026-09-24', at, mimeType: 'image/jpeg', byteLength: 1200, backedUpAt: null }).success).toBe(true);
     expect(WrappedPhotoKeySchema.safeParse({ schemaVersion: 1, kdf: { name: 'scrypt', logN: 15, r: 8, p: 1 }, salt: 'AAAAAAAAAAAAAAAAAAAAAA==', wrappedKey: 'A'.repeat(80) }).success).toBe(true);
     expect(WrappedPhotoKeySchema.safeParse({ schemaVersion: 1, kdf: { name: 'pbkdf2', logN: 15, r: 8, p: 1 }, salt: 'AAAAAAAAAAAAAAAAAAAAAA==', wrappedKey: 'A'.repeat(80) }).success).toBe(false);
-    expect(AdherenceStatSchema.safeParse({ from: '2026-09-01', to: '2026-09-24', planned: 10, completed: 8, rate: 0.8, currentStreakDays: 5, longestStreakDays: 9, extra: 1 }).success).toBe(true);
+    expect(AdherenceStatSchema.safeParse({ from: '2026-09-01', to: '2026-09-24', planned: 10, completed: 8, rate: 0.8, currentStreakDays: 5, longestStreakDays: 9, extra: 1, protectedDays: 0 }).success).toBe(true);
     expect(GuardrailEventSchema.safeParse({ kind: 'bodyweight.sustained_loss', detectedOn: '2026-09-24', weeks: [{ weekEnd: '2026-09-24', percentPerWeek: -1.4 }], thresholdPercentPerWeek: 1, reasonCodes: ['progress.guardrail.sustained_loss'] }).success).toBe(true);
   });
 
