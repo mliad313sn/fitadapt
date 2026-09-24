@@ -9,9 +9,9 @@
 | `acceptance.recorded` | Terms, Privacy Policy, exercise-risk acknowledgment, subscription terms, community guidelines accepted | document id, version, locale, jurisdiction, SHA-256 of the exact text shown, source |
 | `consent.recorded` | Any M17 consent grant or withdrawal (health-data consent included) | data type, decision, version, locale, jurisdiction |
 | `notice.shown` / `notice.acknowledged` | Point-of-risk notice displayed / confirmed (L3) and AI disclosure (L5) | notice id, version, locale, jurisdiction, SHA-256 of the text shown |
-| `safety.event` | An S1–S7 gate blocks, substitutes, caps or ends a session | invariant, reason code, action, engine version |
+| `safety.event` | An S1–S7 gate blocks, substitutes, caps or ends a session; M05: an S3 red flag (in a session or at the readiness check-in: "session ended" and "intensity locked") and a pain report that makes a joint red (S2 "joint flagged"), each written in the same transaction as the synced execution log, and on the device chain at once | invariant, reason code, action, engine version |
 | `prescription.issued` | A session the engine prescribed is started (M02); written in the same transaction as the synced session record | prescription (plan) id, engine version, session rules version, every reason code of the plan |
-| `safety.attested` | The user attests the review that lifts a safety lock (M02 S3 hook: a medical review after a red-flag stop) | invariant, reason code, engine version |
+| `safety.attested` | The user attests the review that lifts a safety lock (S3: the M05 two-step self-attestation of a medical review after a red-flag stop; the execution log keeps the statement version) | invariant, reason code, engine version |
 | `program.generated` | A program (M08) is stored; written in the same transaction as the program record | program id, engine version, program rules version, template id, reason codes |
 | `program.reflowed` | The engine shifts, merges or skips a session the user could not do (M08); same transaction as the reflow record | program id, session id, outcome, engine version |
 | `content.approved` | Exercise, notice or copy approved by a council seat | content id, version, reviewer seat, sign-off record path |

@@ -141,9 +141,6 @@ function workout(input: GenerateSessionInput, at = MON, seed = 7, firstWorkout =
   return { schemaVersion: 1, input: input as WorkoutSessionRecord['input'], plan: r.plan, safetyEvents: [...r.safetyEvents], startedAt: new Date(at + 60_000).toISOString(), jurisdiction: 'GB', firstWorkout };
 }
 
-const setLog = (planId: string, exerciseIndex: number, exerciseId: string, index: number, loadKg: number | null, reps = 10): SetLog => ({ schemaVersion: 1, planId, exerciseIndex, exerciseId, set: { index, status: 'done', reps, seconds: null, loadKg, rir: 2 }, loggedAt: new Date(MON + 120_000).toISOString(), correctionOf: null });
-
-
 const at = (ms: number) => new Date(ms).toISOString();
 const types = async (s: Session) => (await chain(s)).map((e) => [e.type, (e.payload as { invariant?: string; action?: string; reasonCode?: string }).reasonCode ?? null]);
 
