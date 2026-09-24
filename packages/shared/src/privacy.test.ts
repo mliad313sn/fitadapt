@@ -14,7 +14,7 @@ const now = '2026-09-23T10:00:00.000Z';
 
 describe('privacy schemas', () => {
   it('lists the five consent data types of the M17 scope', () => {
-    expect([...CONSENT_DATA_TYPES]).toEqual(['health', 'photos', 'wearables', 'ai_coach', 'analytics']);
+    expect([...CONSENT_DATA_TYPES]).toEqual(['health', 'photos', 'wearables', 'ai_coach', 'analytics', 'partner_sharing']);
   });
 
   it('parses a versioned consent record', () => {

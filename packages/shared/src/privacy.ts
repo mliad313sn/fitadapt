@@ -9,8 +9,12 @@ import { ChangeSchema } from './sync.js';
  * docs/adr/ADR-005-data-subject-rights.md.
  */
 
-/** Data types that need their own, separately recorded consent (M17 scope). */
-export const CONSENT_DATA_TYPES = ['health', 'photos', 'wearables', 'ai_coach', 'analytics'] as const;
+/**
+ * Data types that need their own, separately recorded consent (M17 scope).
+ * M09 adds `partner_sharing`: sharing anything with a training partner (Fair Pair); what exactly is shared is
+ * chosen per pair session (PairSharing scopes), and body weight is never shared without its own scope.
+ */
+export const CONSENT_DATA_TYPES = ['health', 'photos', 'wearables', 'ai_coach', 'analytics', 'partner_sharing'] as const;
 export const ConsentDataTypeSchema = z.enum(CONSENT_DATA_TYPES);
 export type ConsentDataType = z.infer<typeof ConsentDataTypeSchema>;
 

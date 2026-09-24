@@ -72,6 +72,9 @@ export const legalFr: Record<keyof typeof legalEn, string> = {
   'legal.consent.analytics.v1.title': 'Consentement aux statistiques d’usage',
   'legal.consent.analytics.v1.body': 'J’accepte que l’application envoie des statistiques sur son utilisation, sans mon nom, mon e-mail ni mes données de santé, pour aider à l’améliorer.',
   'legal.consent.analytics.v1.withdraw': 'Vous pouvez retirer ce consentement à tout moment. Les statistiques s’arrêtent aussitôt.',
+  'legal.consent.partner_sharing.v1.title': 'Consentement au partage avec un partenaire d’entraînement',
+  'legal.consent.partner_sharing.v1.body': 'J’accepte de partager avec le partenaire d’entraînement que je choisis, pendant une séance à deux : mon prénom affiché, à qui c’est le tour et la série en cours. Pour chaque séance, je choisis si je partage aussi mes exercices, répétitions et charges, mon poids et mon score du Défi équitable. Mes réponses au questionnaire de santé, mes signalements de douleur et mes arrêts de sécurité ne sont jamais partagés.',
+  'legal.consent.partner_sharing.v1.withdraw': 'Vous pouvez retirer ce consentement à tout moment. Le partage s’arrête aussitôt et votre partenaire ne reçoit plus rien de vous.',
 
   'legal.exerciseRisk.v1.title': 'Avant votre première séance',
   'legal.exerciseRisk.v1.risk': 'L’exercice est bénéfique pour la plupart des gens, mais il comporte des risques, notamment courbatures, blessures et, rarement, problèmes cardiaques graves.',
@@ -107,6 +110,8 @@ export const legalFr: Record<keyof typeof legalEn, string> = {
   'legal.notice.firstWorkout.v1.body': 'Commencez doucement. Arrêtez-vous en cas de douleur, de vertige ou de gêne dans la poitrine. Le bouton d’arrêt est toujours à l’écran.',
   'legal.notice.firstHiit.v1.title': 'Intervalles à haute intensité',
   'legal.notice.firstHiit.v1.body': 'Cette séance sollicite fortement le cœur et les poumons. Échauffez-vous, gardez un rythme que vous maîtrisez et arrêtez-vous immédiatement en cas de douleur thoracique, de malaise ou d’essoufflement inhabituel.',
+  'legal.notice.pairChallenge.v1.title': 'Avant le Défi équitable',
+  'legal.notice.pairChallenge.v1.body': 'Le défi compare chacun à son propre programme, jamais aux charges de l’autre. Entraînez-vous à votre rythme : vous pouvez passer ou arrêter à tout moment, et plus rien ne compte dès que vous signalez une douleur. Arrêtez-vous immédiatement en cas de douleur thoracique, de malaise ou d’essoufflement inhabituel.',
   'legal.notice.assessment.v1.title': 'Avant ce test',
   'legal.notice.assessment.v1.body': 'Ce test demande un effort soutenu, jamais maximal. Arrêtez quand vous voulez ; un test interrompu n’est pas un échec.',
   'legal.notice.nutritionDeficit.v1.title': 'Manger moins pour perdre du poids',

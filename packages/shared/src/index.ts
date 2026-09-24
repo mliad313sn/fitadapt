@@ -12,3 +12,4 @@ export * from './recovery.js';
 export * from './cardio.js';
 export * from './session.js';
 export * from './progress.js';
+export * from './pair.js';

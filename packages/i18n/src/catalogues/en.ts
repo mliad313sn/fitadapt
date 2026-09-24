@@ -66,6 +66,8 @@ export const en = {
   'privacy.consent.ai_coach.description': 'Conversations with the AI coach, an automated assistant',
   'privacy.consent.analytics.label': 'Usage statistics',
   'privacy.consent.analytics.description': 'Statistics about how the app is used, without your name or email',
+  'privacy.consent.partner_sharing.label': 'Training partner sharing',
+  'privacy.consent.partner_sharing.description': 'What your training partner sees during a pair session; you choose the details each time',
   'privacy.consent.renewal': 'The terms for this setting have changed. Turn it on again to keep using it.',
   'privacy.export.button': 'Download my data',
   'privacy.export.hint': 'Prepares a copy of all your data to save or share',

@@ -64,6 +64,8 @@ export const fr: Record<MessageKey, string> = {
   'privacy.consent.ai_coach.description': 'Conversations avec le coach IA, un assistant automatisé',
   'privacy.consent.analytics.label': 'Statistiques d’utilisation',
   'privacy.consent.analytics.description': 'Statistiques sur l’utilisation de l’application, sans votre nom ni votre e-mail',
+  'privacy.consent.partner_sharing.label': 'Partage avec un partenaire',
+  'privacy.consent.partner_sharing.description': 'Ce que votre partenaire voit pendant une séance à deux ; vous choisissez les détails à chaque fois',
   'privacy.consent.renewal': 'Les conditions de ce réglage ont changé. Réactivez-le pour continuer à l’utiliser.',
   'privacy.export.button': 'Télécharger mes données',
   'privacy.export.hint': 'Prépare une copie de toutes vos données à enregistrer ou partager',

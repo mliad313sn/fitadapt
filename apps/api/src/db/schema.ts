@@ -127,7 +127,7 @@ export const consentRecords = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    dataType: text('data_type', { enum: ['health', 'photos', 'wearables', 'ai_coach', 'analytics'] }).notNull(),
+    dataType: text('data_type', { enum: ['health', 'photos', 'wearables', 'ai_coach', 'analytics', 'partner_sharing'] }).notNull(),
     decision: text('decision', { enum: ['granted', 'withdrawn'] }).notNull(),
     version: integer('version').notNull(),
     locale: text('locale', { enum: ['fr', 'en'] }).notNull(),
@@ -169,7 +169,7 @@ export const auditEntries = pgTable(
     action: text('action', {
       enum: ['consent.granted', 'consent.withdrawn', 'data.exported', 'data.corrected', 'account.deleted', 'backup.purged'],
     }).notNull(),
-    dataType: text('data_type', { enum: ['health', 'photos', 'wearables', 'ai_coach', 'analytics'] }),
+    dataType: text('data_type', { enum: ['health', 'photos', 'wearables', 'ai_coach', 'analytics', 'partner_sharing'] }),
     version: integer('version'),
     occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
   },

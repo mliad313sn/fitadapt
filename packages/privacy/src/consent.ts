@@ -46,6 +46,8 @@ export const CONSENT_POLICIES: ConsentPolicySet = Object.freeze({
     wearables: v1('wearables'),
     ai_coach: v1('ai_coach'),
     analytics: v1('analytics'),
+    /** M09 Fair Pair: sharing with a training partner (what is shared is chosen per pair session). */
+    partner_sharing: v1('partner_sharing'),
   }),
   byJurisdiction: Object.freeze({}),
 });

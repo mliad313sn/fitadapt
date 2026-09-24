@@ -75,6 +75,9 @@ export const legalEn = {
   'legal.consent.analytics.v1.title': 'Usage statistics consent',
   'legal.consent.analytics.v1.body': 'I agree that the app sends statistics about how it is used, without my name, email or health data, to help improve it.',
   'legal.consent.analytics.v1.withdraw': 'You can withdraw this consent at any time. Statistics stop at once.',
+  'legal.consent.partner_sharing.v1.title': 'Training partner sharing consent',
+  'legal.consent.partner_sharing.v1.body': 'I agree to share with the training partner I choose, during a pair session: my display name, whose turn it is and which set I am on. For each session I choose whether to also share my exercises, reps and loads, my body weight, and my Fair Challenge score. My screening answers, pain check-ins and safety stops are never shared.',
+  'legal.consent.partner_sharing.v1.withdraw': 'You can withdraw this consent at any time. Sharing stops at once and your partner no longer receives anything from you.',
 
   // Exercise-risk acknowledgment, version 1 (one screen, before the first workout)
   'legal.exerciseRisk.v1.title': 'Before your first workout',
@@ -115,6 +118,8 @@ export const legalEn = {
   'legal.notice.firstWorkout.v1.body': 'Start easy. Stop if you feel pain, dizziness or chest discomfort. The stop button is always on screen.',
   'legal.notice.firstHiit.v1.title': 'High-intensity intervals',
   'legal.notice.firstHiit.v1.body': 'This session is hard on your heart and lungs. Warm up, keep a pace you can control, and stop at once if you feel chest pain, faintness or unusual breathlessness.',
+  'legal.notice.pairChallenge.v1.title': 'Before the Fair Challenge',
+  'legal.notice.pairChallenge.v1.body': 'The challenge compares each of you with your own plan, never with each other’s loads. Train at your own pace: you can skip or stop at any time, and nothing counts once you report pain. Stop at once if you feel chest pain, faintness or unusual breathlessness.',
   'legal.notice.assessment.v1.title': 'Before this test',
   'legal.notice.assessment.v1.body': 'This test asks for a sustained effort, never a maximal one. Stop whenever you want; a stopped test is not a failure.',
   'legal.notice.nutritionDeficit.v1.title': 'Eating less to lose weight',

@@ -9,7 +9,7 @@ import { sha256Hex } from './sha256.js';
  * not buried in the terms. Wording: packages/i18n `legal.notice.*` (drafts,
  * require counsel review).
  */
-export const NOTICE_IDS = ['first_workout', 'first_hiit', 'assessment', 'nutrition_deficit', 'ai_coach', 'camera_mode', 'seek_care'] as const;
+export const NOTICE_IDS = ['first_workout', 'first_hiit', 'assessment', 'nutrition_deficit', 'ai_coach', 'camera_mode', 'seek_care', 'pair_challenge'] as const;
 export type NoticeId = (typeof NOTICE_IDS)[number];
 
 export const NOTICE_TRIGGERS = [
@@ -20,6 +20,8 @@ export const NOTICE_TRIGGERS = [
   'ai_coach.conversation_start',
   'camera.start',
   'safety.red_flag',
+  /** M09: a Fair Challenge between partners is a point of risk (legal risk register: injury during a partner challenge). */
+  'pair.challenge.start',
 ] as const;
 export type NoticeTrigger = (typeof NOTICE_TRIGGERS)[number];
 
@@ -53,6 +55,8 @@ export const NOTICES: readonly NoticeDefinition[] = Object.freeze([
   { id: 'ai_coach', trigger: 'ai_coach.conversation_start', frequency: 'every_time', version: 1, title: 'legal.notice.aiCoach.v1.title', body: 'legal.notice.aiCoach.v1.body', requiresAcknowledgement: false, emergencyGuidance: false, approvals: pending() },
   { id: 'camera_mode', trigger: 'camera.start', frequency: 'once_per_version', version: 1, title: 'legal.notice.camera.v1.title', body: 'legal.notice.camera.v1.body', requiresAcknowledgement: true, emergencyGuidance: false, approvals: pending() },
   { id: 'seek_care', trigger: 'safety.red_flag', frequency: 'every_time', version: 1, title: 'legal.notice.seekCare.v1.title', body: 'legal.notice.seekCare.v1.body', requiresAcknowledgement: true, emergencyGuidance: true, approvals: pending() },
+  // M09: shown to each participant (in their own ledger) before a Fair Challenge; once per version until acknowledged.
+  { id: 'pair_challenge', trigger: 'pair.challenge.start', frequency: 'once_per_version', version: 1, title: 'legal.notice.pairChallenge.v1.title', body: 'legal.notice.pairChallenge.v1.body', requiresAcknowledgement: true, emergencyGuidance: false, approvals: pending() },
 ] satisfies NoticeDefinition[]);
 
 /** L5: persistent label shown on every AI coach screen, in addition to the conversation-start notice. */

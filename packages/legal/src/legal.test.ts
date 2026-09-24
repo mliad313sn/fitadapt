@@ -271,7 +271,8 @@ describe('point-of-risk notices (L3, L5)', () => {
 
   it('covers first workout, HIIT, assessment, nutrition deficit, AI coach and camera mode', () => {
     expect(NOTICES.map((x) => x.trigger).sort()).toEqual(
-      ['ai_coach.conversation_start', 'assessment.start', 'camera.start', 'hiit.start', 'nutrition.deficit_setup', 'safety.red_flag', 'workout.start'].sort(),
+      // M09 adds the Fair Challenge between partners (legal risk register: injury during a partner challenge).
+      ['ai_coach.conversation_start', 'assessment.start', 'camera.start', 'hiit.start', 'nutrition.deficit_setup', 'pair.challenge.start', 'safety.red_flag', 'workout.start'].sort(),
     );
   });
 

@@ -24,6 +24,11 @@ export const FEATURE_CONSENTS = Object.freeze({
   'wearables.import': Object.freeze(['wearables', 'health']),
   /** AI coach conversations (M11). */
   'ai_coach.chat': Object.freeze(['ai_coach']),
+  /**
+   * M09 Fair Pair: anything shared with a training partner (turns, and per session the chosen scopes:
+   * performance, body weight, the Fair Challenge). Each participant's own consent; never the owner's for a guest.
+   */
+  'pair.share_with_partner': Object.freeze(['partner_sharing']),
   /** Product analytics events (M18). */
   'analytics.product': Object.freeze(['analytics']),
 } satisfies Record<string, readonly ConsentDataType[]>);

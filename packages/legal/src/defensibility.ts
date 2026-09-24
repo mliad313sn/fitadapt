@@ -49,6 +49,19 @@ export const DefensibilityPayloads = {
   'program.generated': z.strictObject({ programId: z.uuid(), engineVersion, rulesVersion: engineVersion, templateId: code, reasonCodes: z.array(code).max(50) }),
   /** M08: a session the user could not do was shifted, merged or skipped by the engine; written with the stored reflow. */
   'program.reflowed': z.strictObject({ programId: z.uuid(), sessionId: code, outcome: z.enum(['shifted', 'merged', 'skipped']), engineVersion }),
+  /**
+   * M09 Fair Pair (each participant's own chain, written with the pair data in one transaction, ADR-009/ADR-021).
+   * pair.joined: the participant took part, with the sharing scopes they chose and the consent version;
+   * pair.timeline_built: the pair planner ordered the two plans (the participant's own plan id, pair rules version);
+   * pair.challenge_started: both partners opted in to the Fair Challenge after the L3 notice;
+   * pair.left: the participant's own reason (a safety stop is recorded here, in their chain only);
+   * pair.partner_left: the partner left (never the partner's reason).
+   */
+  'pair.joined': z.strictObject({ pairSessionId: z.uuid(), role: z.enum(['host', 'partner']), mode: z.enum(['single_device', 'multi_device']), scopes: z.array(z.enum(['performance', 'bodyweight', 'challenge'])).max(3), consentVersion: version }),
+  'pair.timeline_built': z.strictObject({ pairSessionId: z.uuid(), planId: z.uuid(), engineVersion, rulesVersion: engineVersion, reasonCodes: z.array(code).max(50) }),
+  'pair.challenge_started': z.strictObject({ pairSessionId: z.uuid(), rulesVersion: engineVersion }),
+  'pair.left': z.strictObject({ pairSessionId: z.uuid(), reason: z.enum(['completed', 'stopped', 'safety_stop', 'consent_withdrawn']) }),
+  'pair.partner_left': z.strictObject({ pairSessionId: z.uuid() }),
   'content.approved': z.strictObject({ contentId: code, contentVersion: version, reviewerSeat: z.string().regex(/^[A-Z]\d{1,2}$/), signOffRecord: z.string().regex(/^[\w./-]{1,200}$/) }),
   'incident.recorded': z.strictObject({
     incidentId: z.uuid(),
@@ -161,6 +174,8 @@ export interface LegalHoldExport {
   readonly prescriptions: readonly DefensibilityEvent[];
   /** M08: programs generated and reflows decided by the engine. */
   readonly programs: readonly DefensibilityEvent[];
+  /** M09: Fair Pair sessions taken part in (joined, timeline, challenge, left). */
+  readonly pairSessions: readonly DefensibilityEvent[];
   readonly engineVersions: readonly { readonly engineVersion: string; readonly firstSeen: string; readonly lastSeen: string; readonly events: number }[];
   readonly legalHolds: readonly DefensibilityEvent[];
   readonly accessLog: readonly DefensibilityEvent[];
@@ -172,7 +187,7 @@ export interface LegalHoldExport {
 export function buildLegalHoldExport(subjectRef: string, chain: readonly DefensibilityEvent[], generatedAt: string): LegalHoldExport {
   const of = (...types: DefensibilityEventType[]) => chain.filter((e) => types.includes(e.type));
   const versions = new Map<string, { engineVersion: string; firstSeen: string; lastSeen: string; events: number }>();
-  for (const e of of('safety.event', 'safety.attested', 'prescription.issued', 'program.generated', 'program.reflowed')) {
+  for (const e of of('safety.event', 'safety.attested', 'prescription.issued', 'program.generated', 'program.reflowed', 'pair.timeline_built')) {
     const v = (e.payload as { engineVersion: string }).engineVersion;
     const entry = versions.get(v) ?? { engineVersion: v, firstSeen: e.occurredAt, lastSeen: e.occurredAt, events: 0 };
     entry.events += 1;
@@ -193,6 +208,7 @@ export function buildLegalHoldExport(subjectRef: string, chain: readonly Defensi
     safetyEvents: of('safety.event', 'safety.attested'),
     prescriptions: of('prescription.issued'),
     programs: of('program.generated', 'program.reflowed'),
+    pairSessions: of('pair.joined', 'pair.timeline_built', 'pair.challenge_started', 'pair.left', 'pair.partner_left'),
     engineVersions: [...versions.values()],
     legalHolds: of('legal_hold.placed', 'legal_hold.released'),
     accessLog: of('log.accessed'),

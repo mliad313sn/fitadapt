@@ -156,6 +156,7 @@ export const LEGAL_DOCUMENTS: readonly LegalDocument[] = Object.freeze([
   consentDocument('wearables', 'Wearables and health apps consent', false),
   consentDocument('ai_coach', 'AI coach consent', false),
   consentDocument('analytics', 'Usage statistics consent', false),
+  consentDocument('partner_sharing', 'Training partner sharing consent', false),
   {
     id: 'exercise_risk',
     name: 'Exercise-risk acknowledgment',
