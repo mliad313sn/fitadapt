@@ -136,7 +136,7 @@ const fold = (text: string) =>
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
     .replace(/[‘’ʼ]/g, "'")
-    .replace(/[  ]/g, ' ')
+    .replace(/[\u00a0\u202f]/g, ' ')
     .toLowerCase();
 
 const isLetter = (ch: string | undefined) => ch !== undefined && /\p{L}/u.test(ch);
