@@ -15,3 +15,4 @@ export * from './progress.js';
 export * from './pair.js';
 export * from './nutrition.js';
 export * from './record-chain.js';
+export * from './coach.js';

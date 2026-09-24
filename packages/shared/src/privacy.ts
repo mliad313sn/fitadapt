@@ -180,5 +180,21 @@ export const DataExportSchema = z.object({
     })
     // Exports produced before M09 have no pair section.
     .default({ participations: [], events: [] }),
+  /** M11: AI-coach conversations (health data: what was typed, the replies, every tool call and its outcome). */
+  coach: z
+    .object({
+      conversations: z.array(
+        z.object({
+          conversationId: UuidSchema,
+          locale: z.enum(['fr', 'en']),
+          jurisdiction: z.string(),
+          startedAt: IsoDateTimeSchema,
+          messages: z.array(z.object({ id: UuidSchema, role: z.enum(['disclosure', 'user', 'coach']), content: z.unknown(), at: IsoDateTimeSchema })),
+          toolCalls: z.array(z.object({ id: UuidSchema, tool: z.string(), input: z.unknown(), status: z.string(), reasonCode: z.string(), reasonCodes: z.array(z.string()), engineVersion: z.string(), at: IsoDateTimeSchema })),
+        }),
+      ),
+    })
+    // Exports produced before M11 have no coach section.
+    .default({ conversations: [] }),
 });
 export type DataExport = z.infer<typeof DataExportSchema>;

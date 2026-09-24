@@ -12,6 +12,7 @@ import { libraryFr } from './library.fr.js';
 import { onboardingFr } from './onboarding.fr.js';
 import { screeningFr } from './screening.fr.js';
 import { nutritionFr } from './nutrition.fr.js';
+import { coachFr } from './coach.fr.js';
 import { flattenFoodText } from './foods.js';
 
 /** Catalogue français (ICU MessageFormat). Mêmes clés et mêmes variables que en.ts. */
@@ -146,6 +147,9 @@ export const fr: Record<MessageKey, string> = {
 
   // M10 : nutrition (ni « mériter », ni « éliminer », ni « triche », sans culpabilisation ni jugement sur le corps ; repères généraux).
   ...nutritionFr,
+
+  // M11 coach IA : écran, réponses de sécurité déterministes, résultats des outils, mode hors ligne, registre de connaissances (brouillons).
+  ...coachFr,
 
   // M10 : noms des aliments (contenu original ; valeurs estimées non validées dans packages/food-library).
   ...flattenFoodText('fr'),
