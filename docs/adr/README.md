@@ -24,3 +24,4 @@ One ADR per significant decision (template: context, decision, alternatives, con
 | [ADR-018](ADR-018-cardio-conditioning-and-eyes-free-intervals.md) | Cardio and conditioning: protocols in the one generator, HIIT and impact gates, zones, eyes-free wall-clock interval timer, weekly aerobic ledger | M03 |
 | [ADR-019](ADR-019-tracking-analytics-and-progress-dashboard.md) | Tracking and analytics: pure engine analytics, the progress dashboard, body data, the M10 guardrail hand-off, export and import | M04 |
 | [ADR-020](ADR-020-device-encryption-and-photo-backup.md) | Health data encrypted at rest on the device (SQLCipher, keystore key, fail closed) and progress photos with an end-to-end-encrypted backup | M04 |
+| [ADR-021](ADR-021-fair-pair-partner-training.md) | Fair Pair: one engine per person, shared timeline, relative Fair Challenge Score, partner consent and privacy, multi-device WebSocket relay | M09 |

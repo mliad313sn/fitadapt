@@ -41,5 +41,5 @@ Unknown collections are rejected. All payloads cross the boundary as zod-validat
 - Set logs cannot conflict, by construction. Tests prove that concurrent logs from two devices both survive, including a property test over random interleavings of three devices.
 - Mutable records resolve deterministically and visibly (rejected outbox items keep `lastError: 'conflict'`). A later module can surface this to the user if needed.
 - The server keeps every change (useful for the L11 defensibility file). Compaction and retention are decided with M17 (privacy).
-- Pushes for one user are serialised. That is fine for per-person data; a very active shared object (e.g., a Fair Pair session on two phones) goes over WebSocket in M09, not through this path.
+- Pushes for one user are serialised. That is fine for per-person data; a very active shared object (e.g., a Fair Pair session on two phones) goes over WebSocket in M09, not through this path. **M09 (ADR-021):** the pair session is an append-only relay log over the WebSocket; each partner's set logs still go through this sync path, to their own account.
 - Payload `data` may contain health data. It is never logged (redaction list, route-only request logs), is stored per user, and encryption at rest is part of M17.

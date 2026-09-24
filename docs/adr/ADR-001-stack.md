@@ -15,7 +15,7 @@ The v2.1 committee review found that the original stack table listed alternative
 | Path | Role | Key choices |
 |---|---|---|
 | `apps/mobile` | Expo app | Expo SDK 57 (React Native 0.86.3, React 19.2.3, versions from Expo's `bundledNativeModules.json`), expo-router, expo-sqlite + Drizzle, Zustand, NetInfo |
-| `apps/api` | HTTP API | Fastify 5, zod 4 with `fastify-type-provider-zod`, OpenAPI 3.1 via `@fastify/swagger`, Drizzle on PostgreSQL 16 (`pg`), Redis 7 via ioredis (rate limits, later queues, never timer state), jose for JWTs |
+| `apps/api` | HTTP API | Fastify 5, zod 4 with `fastify-type-provider-zod`, OpenAPI 3.1 via `@fastify/swagger`, Drizzle on PostgreSQL 16 (`pg`), Redis 7 via ioredis (rate limits, later queues, never timer state), jose for JWTs; M09: `ws` (MIT) for the multi-device Fair Pair WebSocket only (ADR-021) |
 | `apps/coach-web` | Coach portal stub | Next.js 16 (App Router) |
 | `packages/engine` | Pure deterministic engine | No I/O; injected `Clock` and seeded `Rng`, enforced by lint rules |
 | `packages/safety` | S1–S7 skeleton | Frozen registry, fail-closed evaluator |
