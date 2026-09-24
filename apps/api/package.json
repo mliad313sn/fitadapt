@@ -17,7 +17,9 @@
     "test:integration": "turbo run build --filter=@fitadapt/api^... --output-logs=errors-only && vitest run --config vitest.integration.config.ts --coverage",
     "legal:export": "tsx src/legal/export-cli.ts",
     "legal:demo-seed": "tsx src/legal/demo-seed-cli.ts",
-    "build:deps": "turbo run build --filter=@fitadapt/api^... --output-logs=errors-only"
+    "build:deps": "turbo run build --filter=@fitadapt/api^... --output-logs=errors-only",
+    "eval": "pnpm -s build:deps && tsx eval/run.ts && node ../../tooling/legal/scripts/claims.mjs --file reports/evals/m11-outputs.txt",
+    "eval:live": "pnpm -s build:deps && tsx eval/run.ts --live && node ../../tooling/legal/scripts/claims.mjs --file reports/evals/m11-outputs-live.txt"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.128.0",
@@ -44,6 +46,7 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
+    "@fitadapt/i18n": "workspace:*",
     "@types/pg": "8.23.1",
     "@types/ws": "8.18.1",
     "@vitest/coverage-v8": "5.0.1",

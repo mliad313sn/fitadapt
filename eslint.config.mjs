@@ -52,7 +52,7 @@ export default defineConfig(
   // The security tooling scripts touch the file system; keep the SAST rule on
   // here so their justified suppressions stay checked in normal lint too.
   {
-    files: ['tooling/security/scripts/**/*.mjs', 'tooling/legal/scripts/**/*.mjs', 'tooling/legal/lib/**/*.mjs', 'apps/api/src/legal/cli.ts', 'apps/api/src/ai-coach/prompts.ts'],
+    files: ['tooling/security/scripts/**/*.mjs', 'tooling/legal/scripts/**/*.mjs', 'tooling/legal/lib/**/*.mjs', 'apps/api/src/legal/cli.ts', 'apps/api/src/ai-coach/prompts.ts', 'apps/api/eval/run.ts'],
     rules: { 'security/detect-non-literal-fs-filename': 'error' },
   },
   // CLAUDE.md rule 5: no user-facing string outside packages/i18n.
