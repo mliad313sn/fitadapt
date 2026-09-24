@@ -24,16 +24,71 @@ export function loadPolicy(path = POLICY_PATH) {
 }
 
 /**
- * Evaluates a simple SPDX expression: OR = any allowed, AND = all allowed.
+ * Evaluates an SPDX licence expression (PKG-08): parentheses, `AND` binding
+ * tighter than `OR`, `WITH` exceptions. `OR` = any branch allowed, `AND` =
+ * every operand allowed. `A WITH B` is allowed only if the whole
+ * `A WITH B` string is listed. Operators are upper case, as SPDX requires.
+ * Anything malformed (unbalanced parentheses, a dangling operator, an empty
+ * expression) is not allowed: the gate fails closed.
  * @param {string} expression
  * @param {Set<string>} allowed
  * @returns {boolean}
  */
 export function isAllowed(expression, allowed) {
-  const expr = expression.replace(/^\(|\)$/g, '').trim();
-  if (expr.includes(' OR ')) return expr.split(' OR ').some((part) => isAllowed(part, allowed));
-  if (expr.includes(' AND ')) return expr.split(' AND ').every((part) => isAllowed(part, allowed));
-  return allowed.has(expr);
+  const tokens = tokenizeSpdx(expression);
+  if (!tokens) return false;
+  let at = 0;
+  /** @returns {boolean | null} null = malformed */
+  const parseOr = () => {
+    let value = parseAnd();
+    while (value !== null && tokens[at] === 'OR') {
+      at += 1;
+      const right = parseAnd();
+      value = right === null ? null : value || right;
+    }
+    return value;
+  };
+  const parseAnd = () => {
+    let value = parseAtom();
+    while (value !== null && tokens[at] === 'AND') {
+      at += 1;
+      const right = parseAtom();
+      value = right === null ? null : value && right;
+    }
+    return value;
+  };
+  /** @returns {boolean | null} */
+  const parseAtom = () => {
+    const token = tokens[at];
+    if (token === '(') {
+      at += 1;
+      const inner = parseOr();
+      if (inner === null || tokens[at] !== ')') return null;
+      at += 1;
+      return inner;
+    }
+    if (token === undefined || SPDX_OPERATORS.has(token)) return null;
+    at += 1;
+    if (tokens[at] === 'WITH') {
+      const exception = tokens[at + 1];
+      if (exception === undefined || SPDX_OPERATORS.has(exception)) return null;
+      at += 2;
+      return allowed.has(`${token} WITH ${exception}`);
+    }
+    return allowed.has(token);
+  };
+  const result = parseOr();
+  return result === true && at === tokens.length;
+}
+
+const SPDX_OPERATORS = new Set(['AND', 'OR', 'WITH', '(', ')']);
+
+/** @param {string} expression @returns {string[] | null} */
+function tokenizeSpdx(expression) {
+  const tokens = expression.replace(/[()]/g, ' $& ').trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return null;
+  // Licence ids and LicenseRef-/DocumentRef- references only (letters, digits, '.', '-', '+', ':').
+  return tokens.every((t) => SPDX_OPERATORS.has(t) || /^[A-Za-z0-9.+:-]+$/.test(t)) ? tokens : null;
 }
 
 /**

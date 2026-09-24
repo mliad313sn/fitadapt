@@ -143,6 +143,26 @@ describe('pnpm legal:licences (L6)', () => {
     expect(isAllowed('(Apache-2.0 OR MIT)', new Set(policy.dependencies.allowed))).toBe(true);
   });
 
+  it('parses SPDX expressions with parentheses and precedence (PKG-08)', () => {
+    const allowed = new Set([...policy.dependencies.allowed, 'GPL-2.0-only WITH Classpath-exception-2.0']);
+    // The review's bypasses: a copyleft AND-operand outside or inside the parentheses.
+    expect(isAllowed('(MIT OR Apache-2.0) AND GPL-3.0', allowed)).toBe(false);
+    expect(isAllowed('GPL-3.0 AND (MIT OR Apache-2.0)', allowed)).toBe(false);
+    expect(isAllowed('(MIT OR GPL-3.0)', allowed)).toBe(true);
+    expect(isAllowed('(MIT OR Apache-2.0) AND ISC', allowed)).toBe(true);
+    // AND binds tighter than OR.
+    expect(isAllowed('GPL-3.0 OR MIT AND ISC', allowed)).toBe(true);
+    expect(isAllowed('MIT AND GPL-3.0 OR GPL-2.0', allowed)).toBe(false);
+    expect(isAllowed('((MIT))', allowed)).toBe(true);
+    expect(isAllowed('MIT AND (GPL-3.0 OR (BSD-3-Clause AND ISC))', allowed)).toBe(true);
+    expect(isAllowed('MIT AND (GPL-3.0 OR (BSD-3-Clause AND LGPL-2.1))', allowed)).toBe(false);
+    // WITH: only the listed combination.
+    expect(isAllowed('GPL-2.0-only WITH Classpath-exception-2.0', allowed)).toBe(true);
+    expect(isAllowed('MIT WITH Some-exception', allowed)).toBe(false);
+    // Malformed fails closed.
+    for (const bad of ['', '()', '(MIT', 'MIT)', 'MIT OR', 'AND MIT', 'MIT OR OR ISC', 'MIT WITH', 'mit or isc', 'MIT, ISC', 'MIT ISC']) expect(isAllowed(bad, allowed), bad).toBe(false);
+  });
+
   it('keeps the M00 policy: same allowlist and the same reviewed exceptions', () => {
     expect(policy.dependencies.allowed).toEqual(['MIT', 'MIT-0', 'ISC', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', '0BSD', 'BlueOak-1.0.0', 'Unlicense', 'CC0-1.0', 'Python-2.0', 'Zlib']);
     expect(Object.keys(policy.dependencies.exceptions).sort()).toEqual(['caniuse-lite', 'lightningcss', 'lightningcss-darwin-arm64', 'lightningcss-darwin-x64', 'lightningcss-linux-x64-gnu', 'lightningcss-linux-x64-musl']);
