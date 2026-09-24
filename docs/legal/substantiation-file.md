@@ -10,6 +10,7 @@
 | SUB-D4 | "nous ne garantissons aucun résultat particulier" | fr | disclaimer | L1 interdit les résultats garantis ; énoncé négatif | Conditions d'utilisation | pending |
 | SUB-D5 | "estimate, not a guarantee" | en | disclaimer | L1 forbids guaranteed results; M04 labels every milestone forecast with this negative statement (component test `apps/mobile/__tests__/progress.test.tsx`, docs/status/M04.md) | Progress dashboard: milestone forecasts | pending |
 | SUB-D6 | "estimation, pas une garantie" | fr | disclaimer | L1 interdit les résultats garantis ; M04 affiche cet énoncé négatif sur chaque estimation d'étape (même test) | Tableau de progression : estimations d'étapes | pending |
+| SUB-D7 | "do not offer medical, rehabilitation or medical-nutrition advice" | en | disclaimer | Negative statement bounding the AI coach (L3, S6); flagged by the FIX-B rule en.rehab (B pre-review §3.6), allowed only as this exact refusal | AI-coach legal preamble (packages/legal/prompts) | pending |
 | SUB-C1 | "Sessions work offline" | en | claim | Offline outbox and sync tests: packages/sync, apps/mobile (M00 goal condition 3, docs/status/M00.md) | Store listing, home screen | pending |
 | SUB-C2 | "Les séances fonctionnent hors ligne" | fr | claim | Same evidence as SUB-C1 | Store listing | pending |
 | SUB-C3 | "Every recommendation explains itself" | en | claim | Not yet built: reason codes with FR/EN explanations (CLAUDE.md rule 3, M02). Do not publish before M02 evidence exists | Store listing | pending |

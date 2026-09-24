@@ -58,7 +58,7 @@ export const CLAIM_DENYLIST: readonly DenyRule[] = Object.freeze([
     locale: 'en',
     category: 'medical',
     description: 'recover from (an) injury',
-    pattern: /(?<!\p{L})recover(?:s|ed|ing|y)?\s{1,3}from\s{1,3}(?:an?\s|your\s|the\s)?injur(?:y|ies)(?!\p{L})/giu,
+    pattern: /(?<!\p{L})recover(?:s|ed|ing|y)?\s{1,3}from\s(?:an\s|your\s|the\s)?injur(?:y|ies)(?!\p{L})/giu,
   },
 
   { id: 'fr.diagnostic', locale: 'fr', category: 'medical', description: 'diagnostic / diagnostiquer', pattern: /(?<!\p{L})diagnosti(?:c|cs|que|quer|quons|quez|qué|quée|qués)(?!\p{L})/giu },
