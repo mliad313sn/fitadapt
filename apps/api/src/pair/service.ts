@@ -1,12 +1,13 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import { challengeOn, projectPairEvent, type PartnerScopes } from '@fitadapt/privacy';
-import { PairEventSchema, PairSharingScopeSchema, type PairEvent, type PairSharingScope, type ParticipantSlot } from '@fitadapt/shared';
+import { PAIR_JOIN_CODE_ALPHABET, PAIR_JOIN_CODE_LENGTH, PairEventSchema, PairSharingScopeSchema, type PairEvent, type PairSharingScope, type ParticipantSlot } from '@fitadapt/shared';
 import { PAIR_RULES_VERSION } from '@fitadapt/engine';
 import { CONSENT_POLICIES, policyFor } from '@fitadapt/privacy';
 import { and, asc, eq, gt, max, or } from 'drizzle-orm';
 import { z } from 'zod';
 import { keyedHash } from '../auth/crypto.js';
 import { ApiError } from '../auth/errors.js';
+import type { RateLimiter } from '../auth/rate-limit.js';
 import { pairValue } from '../config/pair.config.js';
 import { lockUser, type Database, type DbExecutor } from '../db/client.js';
 import { pairEvents, pairParticipants, pairSessions } from '../db/schema.js';
@@ -46,9 +47,20 @@ export const pairErrors = {
   challengeOff: () => new ApiError(403, 'pair.challenge_off'),
   tooMany: () => new ApiError(429, 'pair.too_many_events'),
   consent: () => new ApiError(403, 'pair.consent_required'),
+  rateLimited: () => new ApiError(429, 'pair.rate_limited'),
 };
 
-const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+/** A random join code (API-4: PAIR_JOIN_CODE_LENGTH characters of a 32-letter alphabet, crypto RNG). */
+export function newJoinCode(): string {
+  return Array.from({ length: PAIR_JOIN_CODE_LENGTH }, () => PAIR_JOIN_CODE_ALPHABET[randomInt(PAIR_JOIN_CODE_ALPHABET.length)]).join('');
+}
+
+const isUniqueViolation = (error: unknown) => {
+  for (let e: unknown = error; e && typeof e === 'object'; e = (e as { cause?: unknown }).cause) {
+    if ((e as { code?: unknown }).code === '23505') return true;
+  }
+  return false;
+};
 
 export interface PairServiceDeps {
   readonly db: Database;
@@ -56,6 +68,10 @@ export interface PairServiceDeps {
   readonly legal: LegalService;
   readonly pepper: string;
   readonly now: () => Date;
+  /** API-4 / API-10: join attempts and session creation are rate-limited (none: unlimited, tests only). */
+  readonly rateLimiter?: RateLimiter;
+  /** Join-code source (tests inject collisions). */
+  readonly newJoinCode?: () => string;
 }
 
 export interface Participation {
@@ -92,9 +108,29 @@ export class PairService {
     return policyFor('partner_sharing', jurisdiction, CONSENT_POLICIES).currentVersion;
   }
 
+  private async limit(bucket: string, subject: string, key: 'joinAttemptsPerUserPerWindow' | 'joinAttemptsPerIpPerWindow' | 'createsPerUserPerWindow') {
+    const ok = await this.deps.rateLimiter?.hit(bucket, subject, pairValue(key), pairValue('pairRateLimitWindowSeconds'));
+    if (ok === false) throw pairErrors.rateLimited();
+  }
+
+  private subjectRef(userId: string) {
+    return keyedHash(this.deps.pepper, 'subject', userId);
+  }
+
   async create(userId: string, input: { displayName: string; scopes: PairSharingScope[]; jurisdiction: string }): Promise<{ pairSessionId: string; joinCode: string }> {
+    await this.limit('relay-create', this.subjectRef(userId), 'createsPerUserPerWindow');
+    // API-12: a code that collides with a stored one (the hash is unique) is drawn again instead of failing.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this.createWithCode(userId, input, (this.deps.newJoinCode ?? newJoinCode)());
+      } catch (error) {
+        if (!isUniqueViolation(error) || attempt >= pairValue('joinCodeDrawAttempts')) throw error;
+      }
+    }
+  }
+
+  private async createWithCode(userId: string, input: { displayName: string; scopes: PairSharingScope[]; jurisdiction: string }, joinCode: string): Promise<{ pairSessionId: string; joinCode: string }> {
     const now = this.deps.now();
-    const joinCode = Array.from({ length: 6 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join('');
     const pairSessionId = randomUUID();
     const scopes = [...new Set(input.scopes)];
     await this.deps.db.transaction(async (tx) => {
@@ -108,7 +144,10 @@ export class PairService {
     return { pairSessionId, joinCode };
   }
 
-  async join(userId: string, input: { joinCode: string; displayName: string; scopes: PairSharingScope[]; jurisdiction: string }): Promise<{ pairSessionId: string; slot: ParticipantSlot; challenge: boolean }> {
+  /** `clientIp`: the caller's address (API-4: guessing is limited per account and per address). */
+  async join(userId: string, input: { joinCode: string; displayName: string; scopes: PairSharingScope[]; jurisdiction: string }, clientIp = 'unknown'): Promise<{ pairSessionId: string; slot: ParticipantSlot; challenge: boolean }> {
+    await this.limit('relay-join-user', this.subjectRef(userId), 'joinAttemptsPerUserPerWindow');
+    await this.limit('relay-join-ip', keyedHash(this.deps.pepper, 'ip', clientIp), 'joinAttemptsPerIpPerWindow');
     const now = this.deps.now();
     const scopes = [...new Set(input.scopes)];
     return this.deps.db.transaction(async (tx) => {

@@ -28,6 +28,8 @@ import { keyedHash } from '../auth/crypto.js';
 import { ApiError } from '../auth/errors.js';
 import type { Database, DbExecutor } from '../db/client.js';
 import { consentRecords, legalAcceptances, noticeImpressions } from '../db/schema.js';
+import type { RateLimiter } from '../auth/rate-limit.js';
+import { privacyValue } from '../config/privacy.config.js';
 import { clientTime } from '../lib/client-time.js';
 import { DefensibilityLog } from './defensibility-log.js';
 
@@ -37,10 +39,13 @@ export const legalErrors = {
   unknownDocument: () => new ApiError(404, 'legal.unknown_document'),
   notAcceptable: (code: string) => new ApiError(409, code),
   unknownNotice: () => new ApiError(404, 'legal.unknown_notice'),
+  rateLimited: () => new ApiError(429, 'legal.rate_limited'),
 };
 
 export interface LegalServiceDeps {
   db: Database;
+  /** API-10: acceptances and notices append to never-purged tables and the defensibility log: limited per user. */
+  rateLimiter?: RateLimiter;
   pepper: string;
   now: () => Date;
   registry?: LegalRegistry;
@@ -140,7 +145,13 @@ export class LegalService {
     if (!firstWorkout.allowed) throw new ApiError(403, 'legal.acceptance_required');
   }
 
+  private async limit(bucket: string, userId: string, key: 'acceptancesPerWindow' | 'noticesPerWindow') {
+    const ok = await this.deps.rateLimiter?.hit(bucket, this.subjectRef(userId), privacyValue(key), privacyValue('privacyRateLimitWindowSeconds'));
+    if (ok === false) throw legalErrors.rateLimited();
+  }
+
   async recordAcceptance(userId: string, input: AcceptanceInput): Promise<DocumentAcceptanceState> {
+    await this.limit('legal-acceptance', userId, 'acceptancesPerWindow');
     const now = this.deps.now();
     // M01: an acceptance given offline keeps its device time and is checked against the texts in force then.
     const acceptedAt = clientTime(input.acceptedAt, now, 'legal.client_time_out_of_range');
@@ -169,6 +180,7 @@ export class LegalService {
     if (!def) throw legalErrors.unknownNotice();
     if (def.version !== input.version) throw legalErrors.notAcceptable('legal.version_not_acceptable');
     if (renderNotice(def, input.locale, input.jurisdiction).contentHash !== input.contentHash) throw legalErrors.notAcceptable('legal.content_mismatch');
+    await this.limit('legal-notice', userId, 'noticesPerWindow');
     const now = this.deps.now();
     const occurredAt = clientTime(input.occurredAt, now, 'legal.client_time_out_of_range');
     const { id, occurredAt: _deviceTime, ...fields } = input;

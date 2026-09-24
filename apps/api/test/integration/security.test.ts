@@ -1,12 +1,14 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { EMPTY_BIOMETRICS, PROFILE_RECORD_ID, type CalendarDateValue, type Profile, type WrappedPhotoKey } from '@fitadapt/shared';
+import { notice, renderNotice } from '@fitadapt/legal';
+import { EMPTY_BIOMETRICS, PAIR_JOIN_CODE_ALPHABET, PAIR_JOIN_CODE_LENGTH, PROFILE_RECORD_ID, type CalendarDateValue, type Profile, type WrappedPhotoKey } from '@fitadapt/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import pg from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { photoBackups, syncChanges, syncMutations } from '../../src/db/schema.js';
-import { bearer, createHarness, device, signIn, truncateAll, uniqueEmail, type Harness } from './harness.js';
+import { PairService } from '../../src/pair/service.js';
+import { PEPPER, bearer, createHarness, device, signIn, truncateAll, uniqueEmail, type Harness } from './harness.js';
 import { integrationEnv } from './env.js';
 
 /**
@@ -250,5 +252,100 @@ describe('API-3: the idempotency ledger keeps no copy of a record', () => {
     await h.database.db.execute(sql.raw(migration));
     const [row] = await h.database.db.select().from(syncMutations).where(eq(syncMutations.mutationId, legacy.mutationId));
     expect(row!.result).toEqual({ mutationId: legacy.mutationId, status: 'conflict', currentRef: { collection: 'profile', recordId: PROFILE_RECORD_ID } });
+  });
+});
+
+const joinPair = (u: Session, joinCode: string, ip?: string) =>
+  h.app.inject({ method: 'POST', url: '/v1/pair/sessions/join', headers: bearer(u.token), payload: { joinCode, displayName: 'Guest', scopes: [], jurisdiction: 'GB' }, ...(ip ? { remoteAddress: ip } : {}) });
+const guess = () => Array.from({ length: PAIR_JOIN_CODE_LENGTH }, () => PAIR_JOIN_CODE_ALPHABET[Math.floor(Math.random() * PAIR_JOIN_CODE_ALPHABET.length)]).join('');
+
+describe('API-4: pair join codes cannot be brute-forced', () => {
+  it('codes are eight characters; the 11th join attempt of an account within the window answers 429', async () => {
+    const host = await pairReady();
+    const created = (await createPair(host)).json() as { joinCode: string };
+    expect(created.joinCode).toMatch(new RegExp(`^[${PAIR_JOIN_CODE_ALPHABET}]{8}$`));
+    const { pairConfig } = await import('../../src/config/pair.config.js');
+    const s = await pairReady();
+    const statuses: number[] = [];
+    for (let i = 0; i < pairConfig.joinAttemptsPerUserPerWindow.value + 1; i++) statuses.push((await joinPair(s, guess())).statusCode);
+    expect(statuses.slice(0, -1).every((c) => c === 404)).toBe(true);
+    const limited = await joinPair(s, created.joinCode);
+    expect(statuses.at(-1)).toBe(429);
+    // Even the right code is refused once limited: guessing gains nothing.
+    expect(limited.statusCode).toBe(429);
+    expect(limited.json()).toEqual({ error: { code: 'pair.rate_limited' } });
+    // A six-character code (the old format) is not a code any more.
+    expect((await joinPair(host, 'ABCDEF')).statusCode).toBe(400);
+  });
+
+  it('attempts from one address are limited across accounts', async () => {
+    const { pairConfig } = await import('../../src/config/pair.config.js');
+    const perUser = pairConfig.joinAttemptsPerUserPerWindow.value;
+    const users = await manySessions(Math.ceil(pairConfig.joinAttemptsPerIpPerWindow.value / perUser) + 1);
+    for (const u of users) await pairReady(u);
+    let sent = 0;
+    const statuses: number[] = [];
+    for (const u of users) {
+      for (let i = 0; i < perUser && sent <= pairConfig.joinAttemptsPerIpPerWindow.value; i++, sent++) statuses.push((await joinPair(u, guess(), '198.51.100.7')).statusCode);
+    }
+    expect(statuses.filter((c) => c === 404)).toHaveLength(pairConfig.joinAttemptsPerIpPerWindow.value);
+    expect(statuses.at(-1)).toBe(429);
+    // Another address is not affected.
+    expect((await joinPair(users.at(-1)!, guess(), '203.0.113.9')).statusCode).toBe(404);
+  });
+});
+
+describe('API-12: a join code that collides with a stored one is drawn again', () => {
+  it('creates the session with a fresh code instead of failing with 500', async () => {
+    const host = await pairReady();
+    const other = await pairReady();
+    const codes = ['AAAAAAAA', 'AAAAAAAA', 'BBBBBBBB'];
+    const pair = new PairService({ db: h.database.db, privacy: h.app.services.privacy, legal: h.app.services.legal, pepper: PEPPER, now: h.clock.now, newJoinCode: () => codes.shift()! });
+    expect((await pair.create(host.userId, { displayName: 'Host', scopes: [], jurisdiction: 'GB' })).joinCode).toBe('AAAAAAAA');
+    expect((await pair.create(other.userId, { displayName: 'Other', scopes: [], jurisdiction: 'GB' })).joinCode).toBe('BBBBBBBB');
+    expect(codes).toEqual([]);
+  });
+});
+
+describe('API-10: per-user limits on appends to never-purged tables', () => {
+  it('consent decisions: the next one after the limit answers 429, but a withdrawal that takes effect is never refused', async () => {
+    const { privacyConfig } = await import('../../src/config/privacy.config.js');
+    const s = await session();
+    for (let i = 0; i < privacyConfig.consentDecisionsPerWindow.value; i++) {
+      expect((await consent(s, 'analytics', i % 2 === 0 ? 'granted' : 'withdrawn')).statusCode).toBe(201);
+    }
+    // Over the limit: a grant is refused...
+    const refused = await consent(s, 'analytics', 'granted');
+    expect(refused.statusCode).toBe(429);
+    expect(refused.json()).toEqual({ error: { code: 'privacy.rate_limited' } });
+    // ...a withdrawal of a consent that is not granted adds nothing and is refused too...
+    expect((await consent(s, 'analytics', 'withdrawn')).statusCode).toBe(429);
+    // ...but withdrawing a consent that is granted always goes through (GDPR Art. 7(3)).
+    await h.redis.del(...(await h.redis.keys(`${h.redisPrefix}rl:privacy-consent:*`)));
+    expect((await consent(s, 'photos', 'granted')).statusCode).toBe(201);
+    for (let i = 0; i < privacyConfig.consentDecisionsPerWindow.value; i++) await consent(s, 'analytics', 'withdrawn');
+    expect((await consent(s, 'photos', 'withdrawn')).statusCode).toBe(201);
+  });
+
+  it('legal acceptances and notices: 429 after the limit', async () => {
+    const { privacyConfig } = await import('../../src/config/privacy.config.js');
+    const s = await session();
+    const terms = (await h.app.inject({ method: 'GET', url: '/v1/legal/documents/terms?locale=en&jurisdiction=GB' })).json() as { version: number; contentHash: string };
+    const accept = () => h.app.inject({ method: 'POST', url: '/v1/legal/acceptances', headers: bearer(s.token), payload: { documentId: 'terms', version: terms.version, locale: 'en', jurisdiction: 'GB', source: 'mobile', contentHash: terms.contentHash } });
+    for (let i = 0; i < privacyConfig.acceptancesPerWindow.value; i++) expect((await accept()).statusCode).toBe(201);
+    expect((await accept()).statusCode).toBe(429);
+    const hash = renderNotice(notice('first_workout'), 'en', 'GB').contentHash;
+    const shown = () => h.app.inject({ method: 'POST', url: '/v1/legal/notices', headers: bearer(s.token), payload: { noticeId: 'first_workout', version: 1, kind: 'shown', locale: 'en', jurisdiction: 'GB', contentHash: hash } });
+    for (let i = 0; i < privacyConfig.noticesPerWindow.value; i++) expect((await shown()).statusCode).toBe(204);
+    const limited = await shown();
+    expect(limited.statusCode).toBe(429);
+    expect(limited.json()).toEqual({ error: { code: 'legal.rate_limited' } });
+  }, 60_000);
+
+  it('pair sessions: the next one after the limit answers 429', async () => {
+    const { pairConfig } = await import('../../src/config/pair.config.js');
+    const host = await pairReady();
+    for (let i = 0; i < pairConfig.createsPerUserPerWindow.value; i++) expect((await createPair(host)).statusCode).toBe(201);
+    expect((await createPair(host)).statusCode).toBe(429);
   });
 });

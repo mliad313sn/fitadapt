@@ -35,7 +35,7 @@ const DocumentSchema = z.object({
 export const legalRoutes =
   (auth: AuthService, legal: LegalService): FastifyPluginAsyncZod =>
   async (app) => {
-    const errors = { 400: ErrorResponseSchema, 401: ErrorResponseSchema };
+    const errors = { 400: ErrorResponseSchema, 401: ErrorResponseSchema, 429: ErrorResponseSchema };
     const security = [{ bearerAuth: [] }];
     const preHandler = authenticate(auth);
 

@@ -149,9 +149,12 @@ export class PrivacyService {
     await tx.insert(auditEntries).values({ id: randomUUID(), subjectRef: this.subjectRef(userId), action, dataType, version, occurredAt: now });
   }
 
-  private async limit(bucket: string, userId: string, key: 'exportRequestsPerWindow' | 'deletionRequestsPerWindow' | 'analyticsBatchesPerWindow') {
-    const ok = await this.deps.rateLimiter.hit(bucket, this.subjectRef(userId), privacyValue(key), privacyValue('privacyRateLimitWindowSeconds'));
-    if (!ok) throw privacyErrors.rateLimited();
+  private async limit(bucket: string, userId: string, key: 'exportRequestsPerWindow' | 'deletionRequestsPerWindow' | 'analyticsBatchesPerWindow' | 'consentDecisionsPerWindow') {
+    if (!(await this.withinLimit(bucket, userId, key))) throw privacyErrors.rateLimited();
+  }
+
+  private withinLimit(bucket: string, userId: string, key: 'exportRequestsPerWindow' | 'deletionRequestsPerWindow' | 'analyticsBatchesPerWindow' | 'consentDecisionsPerWindow') {
+    return this.deps.rateLimiter.hit(bucket, this.subjectRef(userId), privacyValue(key), privacyValue('privacyRateLimitWindowSeconds'));
   }
 
   /** `db`: the caller's transaction when the answer gates a write in it (API-1, API-2). */
@@ -185,6 +188,11 @@ export class PrivacyService {
   async recordConsent(userId: string, update: ConsentUpdateRequest): Promise<ConsentState> {
     const check = checkDecision(update.decision, update.dataType, update.version, update.jurisdiction, this.policies);
     if (!check.ok) throw privacyErrors.consentVersionOutdated();
+    // API-10: decisions append to a never-purged ledger and to the defensibility log: limited per user. A withdrawal
+    // that takes effect (the consent is granted now) is never refused (GDPR Art. 7(3)).
+    if (!(await this.withinLimit('privacy-consent', userId, 'consentDecisionsPerWindow'))) {
+      if (update.decision !== 'withdrawn' || !(await this.hasConsent(userId, update.dataType))) throw privacyErrors.rateLimited();
+    }
     const now = this.deps.now();
     // M01: a decision made offline keeps its device time; the upload can be retried with the same id.
     const recordedAt = clientTime(update.recordedAt, now, 'privacy.client_time_out_of_range');
@@ -332,7 +340,7 @@ export class PrivacyService {
     });
     // Rate-limit counters are keyed hashes with a short TTL; clear them anyway.
     await this.deps.rateLimiter.clear(['otp-request-email', 'otp-verify-email'], emailHash);
-    await this.deps.rateLimiter.clear(['privacy-export', 'analytics'], this.subjectRef(userId));
+    await this.deps.rateLimiter.clear(['privacy-export', 'analytics', 'privacy-consent', 'legal-acceptance', 'legal-notice', 'relay-create', 'relay-join-user'], this.subjectRef(userId));
     return { requestId, status: 'backup_purge_pending', primaryDeletedAt: iso(now), backupPurgeDueAt: iso(due), emailHash };
   }
 

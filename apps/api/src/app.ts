@@ -128,7 +128,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     pepper: deps.pepper,
     now,
   });
-  const legal = new LegalService({ db: deps.db, pepper: deps.pepper, now, registry: deps.legalRegistry, notices: deps.notices, consentPolicies: deps.consentPolicies });
+  const legal = new LegalService({ db: deps.db, pepper: deps.pepper, now, registry: deps.legalRegistry, notices: deps.notices, consentPolicies: deps.consentPolicies, rateLimiter });
   const privacy = new PrivacyService({
     db: deps.db,
     rateLimiter,
@@ -153,7 +153,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   // in the sync transaction (L11: a screening and its safety events commit together or not at all).
   const profileHooks = { privacy, legal, now, db: deps.db };
   const sync = new SyncServer({ store: new PgServerStore(deps.db), validate: profileSyncValidator(profileHooks), onApplied: profileSyncListener(profileHooks) });
-  const pair = new PairService({ db: deps.db, privacy, legal, pepper: deps.pepper, now });
+  const pair = new PairService({ db: deps.db, privacy, legal, pepper: deps.pepper, now, rateLimiter });
   app.decorate('services', { privacy, legal, pair });
 
   app.get('/health', { schema: { hide: true } }, async () => ({ status: 'ok' }));

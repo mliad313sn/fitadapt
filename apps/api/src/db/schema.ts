@@ -297,7 +297,7 @@ export const pairSessions = pgTable('pair_sessions', {
   hostUserId: uuid('host_user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  /** Keyed hash of the six-character join code (the code itself is never stored). */
+  /** Keyed hash of the join code (PAIR_JOIN_CODE_LENGTH characters; the code itself is never stored). */
   joinCodeHash: text('join_code_hash').notNull().unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 });

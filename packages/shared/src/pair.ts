@@ -264,9 +264,16 @@ export const CreatePairSessionRequestSchema = z.strictObject({
   scopes: z.array(PairSharingScopeSchema).max(PAIR_SHARING_SCOPES.length),
   jurisdiction: JurisdictionSchema,
 });
-export const CreatePairSessionResponseSchema = z.strictObject({ pairSessionId: UuidSchema, joinCode: z.string().regex(/^[A-Z2-9]{6}$/) });
+/**
+ * Characters of a multi-device join code (API-4: 32^8 ≈ 1.1·10^12 codes, with the join rate limits on
+ * the server; six characters could be guessed). Alphabet without 0/O and 1/I, which are easy to confuse.
+ */
+export const PAIR_JOIN_CODE_LENGTH = 8;
+export const PAIR_JOIN_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export const JoinCodeSchema = z.string().regex(new RegExp(`^[${PAIR_JOIN_CODE_ALPHABET}]{${PAIR_JOIN_CODE_LENGTH}}$`));
+export const CreatePairSessionResponseSchema = z.strictObject({ pairSessionId: UuidSchema, joinCode: JoinCodeSchema });
 export const JoinPairSessionRequestSchema = z.strictObject({
-  joinCode: z.string().regex(/^[A-Z2-9]{6}$/),
+  joinCode: JoinCodeSchema,
   displayName: DisplayNameSchema,
   scopes: z.array(PairSharingScopeSchema).max(PAIR_SHARING_SCOPES.length),
   jurisdiction: JurisdictionSchema,

@@ -169,7 +169,7 @@ describe('each participant accepts their own texts and gives their own consent (
     expect(await h.database.db.select().from(pairParticipants)).toHaveLength(1);
     // Own session, unknown code, full session.
     expect((await join(a, joinCode)).json()).toEqual({ error: { code: 'pair.own_session' } });
-    expect((await join(await ready(), 'ZZZZZZ')).json()).toEqual({ error: { code: 'pair.not_found' } });
+    expect((await join(await ready(), 'ZZZZZZZZ')).json()).toEqual({ error: { code: 'pair.not_found' } });
     expect((await join(await ready(), joinCode)).statusCode).toBe(200);
     expect((await join(await ready(), joinCode)).json()).toEqual({ error: { code: 'pair.full' } });
     // A code expires after the join window.
@@ -198,7 +198,7 @@ describe('two devices, one pair session over the WebSocket (goal condition 5)', 
     const b = await ready();
     // Ibrahima shares his performance; Awa shares nothing beyond taking part (no performance, no body weight).
     const created = (await create(a, ['performance'])).json() as { pairSessionId: string; joinCode: string };
-    expect(created.joinCode).toMatch(/^[A-Z2-9]{6}$/);
+    expect(created.joinCode).toMatch(/^[A-Z2-9]{8}$/);
     expect((await join(b, created.joinCode, [])).json()).toEqual({ pairSessionId: created.pairSessionId, slot: 'b', challenge: false });
     const ca = new Client(a, created.pairSessionId);
     const cb = new Client(b, created.pairSessionId);
