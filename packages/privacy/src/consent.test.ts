@@ -122,7 +122,8 @@ describe('features stay off without consent and switch off on withdrawal', () =>
     expect(isFeatureEnabled('wearables.import', wearables)).toBe(false);
     const both = [...wearables, record('health', 'granted', T2)];
     expect(isFeatureEnabled('wearables.import', both)).toBe(true);
-    expect(enabledFeatures(both)).toEqual(['health.screening', 'health.pain_checkins', 'wearables.import']);
+    // M10 adds nutrition.tracking, gated by the health consent.
+    expect(enabledFeatures(both)).toEqual(['health.screening', 'health.pain_checkins', 'wearables.import', 'nutrition.tracking']);
     expect(isFeatureEnabled('wearables.import', [...both, record('health', 'withdrawn', T3)])).toBe(false);
   });
 
