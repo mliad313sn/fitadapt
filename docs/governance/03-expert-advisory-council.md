@@ -78,6 +78,24 @@ Any config value, threshold, coefficient, text or dataset carrying `validated: f
 
 A **withheld** item stays `validated: false`. If it's safety-relevant, the gate doesn't clear. The PO's options are to change the item and resubmit it, or to remove the feature from the release.
 
+### AI pre-review layer (before a human seat reviews)
+
+By the founder's instruction of 24 Sep 2026, every seat's *subject* is also covered by an AI reviewer that reads the public literature and official texts. Its output lives in `docs/governance/ai-reviews/`:
+
+| File | Seats covered |
+|---|---|
+| `A3-A5-training-science.md` | A3, A5 |
+| `A4-A6-nutrition-behaviour.md` | A4, A6 |
+| `A1-A2-clinical-safety.md` | A1, A2 |
+| `B-legal-regulatory.md` | B1–B4, C1 |
+
+Rules for this layer:
+
+1. An AI pre-review is **not a sign-off**. It holds the seat's subject, not its authority. It never changes `validated: false`, never supplies `validatedBy` or `signOff`, and never marks a legal text counsel-approved (L5).
+2. It speeds up step 3 above: the sign-off record links the pre-review, and the human member confirms or rejects each AI position with their own signed statement.
+3. A correction the AI recommends may be applied **before** the human review only if it is **stricter** (safer for the user, or narrower in claims). The changed value stays `validated: false`, and its `source` cites the pre-review file. Anything that loosens a limit waits for the human.
+4. Where the AI could not read a full source (network limits, paywalls), the pre-review says so, and the human checks that source first.
+
 ## 6. Operating rhythm
 
 | What | When | Who | Meridian |
