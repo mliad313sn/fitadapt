@@ -29,7 +29,7 @@ import { keyedHash } from '../auth/crypto.js';
 import { ApiError, authErrors } from '../auth/errors.js';
 import type { RateLimiter } from '../auth/rate-limit.js';
 import { privacyValue } from '../config/privacy.config.js';
-import type { Database } from '../db/client.js';
+import { lockUser, type Database, type DbExecutor } from '../db/client.js';
 import {
   auditEntries,
   authSessions,
@@ -153,8 +153,9 @@ export class PrivacyService {
     if (!ok) throw privacyErrors.rateLimited();
   }
 
-  async consentHistory(userId: string): Promise<ConsentRecord[]> {
-    const rows = await this.deps.db
+  /** `db`: the caller's transaction when the answer gates a write in it (API-1, API-2). */
+  async consentHistory(userId: string, db: DbExecutor = this.deps.db): Promise<ConsentRecord[]> {
+    const rows = await db
       .select()
       .from(consentRecords)
       .where(eq(consentRecords.userId, userId))
@@ -166,13 +167,18 @@ export class PrivacyService {
     return consentStates(await this.consentHistory(userId), { policies: this.policies });
   }
 
-  async hasConsent(userId: string, dataType: ConsentDataType): Promise<boolean> {
-    return hasConsent(await this.consentHistory(userId), dataType, { policies: this.policies });
+  /**
+   * Pass the transaction of the write the answer gates, after `lockUser`: a
+   * withdrawal then either committed before (and is seen) or waits for the
+   * write to commit (and erases it). API-2.
+   */
+  async hasConsent(userId: string, dataType: ConsentDataType, db: DbExecutor = this.deps.db): Promise<boolean> {
+    return hasConsent(await this.consentHistory(userId, db), dataType, { policies: this.policies });
   }
 
   /** Throws 403 `privacy.consent_required` unless the consent is currently granted. */
-  async requireConsent(userId: string, dataType: ConsentDataType): Promise<void> {
-    if (!(await this.hasConsent(userId, dataType))) throw privacyErrors.consentRequired();
+  async requireConsent(userId: string, dataType: ConsentDataType, db: DbExecutor = this.deps.db): Promise<void> {
+    if (!(await this.hasConsent(userId, dataType, db))) throw privacyErrors.consentRequired();
   }
 
   async recordConsent(userId: string, update: ConsentUpdateRequest): Promise<ConsentState> {
@@ -183,8 +189,12 @@ export class PrivacyService {
     const recordedAt = clientTime(update.recordedAt, now, 'privacy.client_time_out_of_range');
     const { id, recordedAt: _deviceTime, supersedes: sent, ...fields } = update;
     // ADR-023: a decision made here (web, API) replaces what the server holds; a device names what it knew.
-    const supersedes = sent ?? (update.source === 'mobile' ? null : consentHeads(await this.consentHistory(userId), update.dataType));
     await this.deps.db.transaction(async (tx) => {
+      // API-2: the same per-user lock as a sync push and the consent-gated writes, so a push (or photo
+      // upload, or pair event) that passed its consent check commits before this decision, and the
+      // withdrawal handlers below erase it; one that has not checked yet sees the decision.
+      await lockUser(tx, userId);
+      const supersedes = sent ?? (update.source === 'mobile' ? null : consentHeads(await this.consentHistory(userId, tx), update.dataType));
       const inserted = await tx
         .insert(consentRecords)
         .values({ id: id ?? randomUUID(), userId, ...fields, recordedAt, receivedAt: now, supersedes })

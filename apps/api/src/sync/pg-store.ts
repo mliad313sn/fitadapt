@@ -1,10 +1,8 @@
 import { PushResultSchema, type Change, type PushResult } from '@fitadapt/shared';
 import type { NewChange, ServerStore, ServerTx } from '@fitadapt/sync';
 import { and, asc, desc, eq, gt, sql } from 'drizzle-orm';
-import type { Database } from '../db/client.js';
+import { lockUser, type Database, type DbTx as Tx } from '../db/client.js';
 import { syncChanges, syncHeads, syncMutations } from '../db/schema.js';
-
-type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 /** The sync transaction, with the underlying PostgreSQL transaction for records that must commit with the change (L11). */
 export interface PgServerTx extends ServerTx {
@@ -71,7 +69,7 @@ export class PgServerStore implements ServerStore<PgServerTx> {
 
   transaction<T>(userId: string, fn: (tx: PgServerTx) => Promise<T>): Promise<T> {
     return this.db.transaction(async (tx) => {
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${userId}, 0))`);
+      await lockUser(tx, userId);
       return fn(txFor(tx));
     });
   }

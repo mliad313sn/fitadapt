@@ -3,7 +3,7 @@ import { ENGINE_VERSION, PROGRAM_RULES_VERSION, createEngineContext, decideReflo
 import { generateProgram } from '@fitadapt/exercise-library';
 import { EquipmentProfileSchema, PROFILE_COLLECTIONS, PROGRAM_COLLECTIONS, ProgramRecordSchema, ReflowRecordSchema, orderChain, type ProgramRecord, type ReflowRecord, type SafetyProfile } from '@fitadapt/shared';
 import { and, asc, desc, eq } from 'drizzle-orm';
-import type { Database } from '../db/client.js';
+import type { DbExecutor } from '../db/client.js';
 import { syncChanges } from '../db/schema.js';
 import type { LegalService } from '../legal/service.js';
 import type { PgServerTx } from '../sync/pg-store.js';
@@ -18,7 +18,7 @@ import type { PgServerTx } from '../sync/pg-store.js';
  * are written in the sync transaction (ADR-009).
  */
 
-async function latestRows(db: Database, userId: string, collection: string) {
+async function latestRows(db: DbExecutor, userId: string, collection: string) {
   return db
     .select({ recordId: syncChanges.recordId, op: syncChanges.op, data: syncChanges.data, revision: syncChanges.revision })
     .from(syncChanges)
@@ -27,7 +27,7 @@ async function latestRows(db: Database, userId: string, collection: string) {
 }
 
 /** The latest stored state of an equipment profile (null if never stored or deleted). */
-async function storedEquipmentProfile(db: Database, userId: string, recordId: string) {
+async function storedEquipmentProfile(db: DbExecutor, userId: string, recordId: string) {
   const [row] = await db
     .select({ op: syncChanges.op, data: syncChanges.data })
     .from(syncChanges)
@@ -41,7 +41,7 @@ async function storedEquipmentProfile(db: Database, userId: string, recordId: st
 
 const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && new Set(a).size === new Set([...a, ...b]).size;
 
-export async function validateProgram(db: Database, userId: string, data: unknown, latestProfile: SafetyProfile): Promise<string | null> {
+export async function validateProgram(db: DbExecutor, userId: string, data: unknown, latestProfile: SafetyProfile): Promise<string | null> {
   const parsed = ProgramRecordSchema.safeParse(data);
   if (!parsed.success) return 'program.invalid';
   const { input, program } = parsed.data;
@@ -64,7 +64,7 @@ export async function validateProgram(db: Database, userId: string, data: unknow
   return null;
 }
 
-async function storedProgram(db: Database, userId: string, programId: string): Promise<ProgramRecord | null> {
+async function storedProgram(db: DbExecutor, userId: string, programId: string): Promise<ProgramRecord | null> {
   for (const row of await latestRows(db, userId, PROGRAM_COLLECTIONS.programs)) {
     const parsed = ProgramRecordSchema.safeParse(row.data);
     if (parsed.success && parsed.data.program.programId === programId) return parsed.data;
@@ -86,11 +86,11 @@ export function orderedReflows(rows: readonly { recordId: string; op: string; da
   return orderChain(list, (r) => ({ id: r.id, supersedes: r.data.supersedes, at: r.data.decidedAt })).ordered.map((r) => r.data);
 }
 
-async function storedReflows(db: Database, userId: string, programId: string): Promise<ReflowRecord[]> {
+async function storedReflows(db: DbExecutor, userId: string, programId: string): Promise<ReflowRecord[]> {
   return orderedReflows(await latestRows(db, userId, PROGRAM_COLLECTIONS.reflows), programId);
 }
 
-export async function validateReflow(db: Database, userId: string, data: unknown): Promise<string | null> {
+export async function validateReflow(db: DbExecutor, userId: string, data: unknown): Promise<string | null> {
   const parsed = ReflowRecordSchema.safeParse(data);
   if (!parsed.success) return 'program.reflow_invalid';
   const record = parsed.data;

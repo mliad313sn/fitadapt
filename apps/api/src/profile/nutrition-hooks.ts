@@ -4,7 +4,7 @@ import { estimateIntake } from '@fitadapt/food-library';
 import { nutritionTargetViolations } from '@fitadapt/safety';
 import { HabitCheckSchema, IntakeLogSchema, NUTRITION_COLLECTIONS, NutritionPlanRecordSchema, PROFILE_COLLECTIONS, ProfileSchema, type NutritionPlanRecord, type SafetyProfile } from '@fitadapt/shared';
 import { and, desc, eq } from 'drizzle-orm';
-import type { Database } from '../db/client.js';
+import type { DbExecutor } from '../db/client.js';
 import { syncChanges } from '../db/schema.js';
 import type { LegalService } from '../legal/service.js';
 import type { PgServerTx } from '../sync/pg-store.js';
@@ -20,7 +20,7 @@ import type { PgServerTx } from '../sync/pg-store.js';
  * go to the defensibility log in the sync transaction (ADR-009).
  */
 
-async function storedBirthDate(db: Database, userId: string) {
+async function storedBirthDate(db: DbExecutor, userId: string) {
   const [row] = await db
     .select({ data: syncChanges.data })
     .from(syncChanges)
@@ -36,7 +36,7 @@ function rederive(record: NutritionPlanRecord): NutritionResult {
   return computeNutritionTarget(record.input, createEngineContext({ clock: fixedClock(Date.parse(record.createdAt)), seed: 1 }));
 }
 
-export async function validateNutritionPlan(db: Database, userId: string, data: unknown, latestProfile: SafetyProfile): Promise<string | null> {
+export async function validateNutritionPlan(db: DbExecutor, userId: string, data: unknown, latestProfile: SafetyProfile): Promise<string | null> {
   const parsed = NutritionPlanRecordSchema.safeParse(data);
   if (!parsed.success) return 'nutrition.invalid';
   const record = parsed.data;

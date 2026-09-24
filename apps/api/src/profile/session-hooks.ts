@@ -41,7 +41,7 @@ import {
 } from '@fitadapt/shared';
 import { and, asc, eq } from 'drizzle-orm';
 import { ApiError } from '../auth/errors.js';
-import type { Database } from '../db/client.js';
+import type { DbExecutor } from '../db/client.js';
 import { syncChanges } from '../db/schema.js';
 import type { LegalService } from '../legal/service.js';
 import type { PgServerTx } from '../sync/pg-store.js';
@@ -72,7 +72,7 @@ import { orderedReflows } from './program-hooks.js';
  * readiness check of that day is.
  */
 
-async function rows(db: Database, userId: string, collection: string) {
+async function rows(db: DbExecutor, userId: string, collection: string) {
   return db
     .select({ recordId: syncChanges.recordId, op: syncChanges.op, data: syncChanges.data })
     .from(syncChanges)
@@ -91,7 +91,7 @@ function parsedRows<T>(list: { recordId: string; op: string; data: unknown }[], 
 }
 
 /** What the server stores about the user's execution: sessions, set logs, execution logs (in the order stored). */
-async function storedExecution(db: Database, userId: string) {
+async function storedExecution(db: DbExecutor, userId: string) {
   const sessions = parsedRows(await rows(db, userId, SESSION_COLLECTIONS.workoutSessions), (d) => WorkoutSessionRecordSchema.safeParse(d)).map((r) => r.data);
   const setLogs: StoredSetLog[] = parsedRows(await rows(db, userId, SESSION_COLLECTIONS.setLogs), (d) => SetLogSchema.safeParse(d));
   const events: ExecutionLog[] = parsedRows(await rows(db, userId, SESSION_COLLECTIONS.executionLogs), (d) => ExecutionLogSchema.safeParse(d)).map((r) => r.data);
@@ -100,7 +100,7 @@ async function storedExecution(db: Database, userId: string) {
 
 const sameSet = (a: readonly string[], b: readonly string[]) => a.length === b.length && new Set(a).size === new Set([...a, ...b]).size;
 
-async function latestState<T>(db: Database, userId: string, collection: string, recordId: string, parse: (d: unknown) => { success: true; data: T } | { success: false }): Promise<T | null> {
+async function latestState<T>(db: DbExecutor, userId: string, collection: string, recordId: string, parse: (d: unknown) => { success: true; data: T } | { success: false }): Promise<T | null> {
   const list = (await rows(db, userId, collection)).filter((r) => r.recordId === recordId);
   const last = list.at(-1);
   if (!last || last.op === 'delete') return null;
@@ -108,7 +108,7 @@ async function latestState<T>(db: Database, userId: string, collection: string, 
   return p.success ? p.data : null;
 }
 
-async function checkInputs(db: Database, userId: string, record: WorkoutSessionRecord, latestProfile: SafetyProfile): Promise<string | null> {
+async function checkInputs(db: DbExecutor, userId: string, record: WorkoutSessionRecord, latestProfile: SafetyProfile): Promise<string | null> {
   const { input, plan } = record;
   // S1/S7: the SafetyProfile of the latest stored screening, never a looser one.
   if (!isDeepStrictEqual(input.safetyProfile, latestProfile)) return 'session.safety_profile_mismatch';
@@ -166,14 +166,14 @@ async function checkInputs(db: Database, userId: string, record: WorkoutSessionR
   return null;
 }
 
-export async function validateWorkoutSession(db: Database, legal: LegalService, userId: string, data: unknown, latestProfile: SafetyProfile): Promise<string | null> {
+export async function validateWorkoutSession(db: DbExecutor, legal: LegalService, userId: string, data: unknown, latestProfile: SafetyProfile): Promise<string | null> {
   const parsed = WorkoutSessionRecordSchema.safeParse(data);
   if (!parsed.success) return 'session.invalid';
   const record = parsed.data;
   if (record.plan.engineVersion !== ENGINE_VERSION || record.plan.rulesVersion !== SESSION_RULES_VERSION) return 'session.engine_version_unsupported';
   // L2: the first workout (and every later one) needs the current Terms, Privacy, health consent and exercise-risk acknowledgment.
   try {
-    await legal.requireFirstWorkoutAcceptance(userId, record.jurisdiction);
+    await legal.requireFirstWorkoutAcceptance(userId, record.jurisdiction, db);
   } catch (error) {
     if (error instanceof ApiError) return error.code;
     throw error;
@@ -191,7 +191,7 @@ export async function validateWorkoutSession(db: Database, legal: LegalService, 
   return null;
 }
 
-export async function validateExecutionLog(db: Database, userId: string, data: unknown): Promise<string | null> {
+export async function validateExecutionLog(db: DbExecutor, userId: string, data: unknown): Promise<string | null> {
   const parsed = ExecutionLogSchema.safeParse(data);
   if (!parsed.success) return 'execution_log.invalid';
   const log = parsed.data;

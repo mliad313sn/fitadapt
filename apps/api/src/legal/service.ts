@@ -26,7 +26,7 @@ import type { ConsentRecord, Locale } from '@fitadapt/shared';
 import { asc, eq } from 'drizzle-orm';
 import { keyedHash } from '../auth/crypto.js';
 import { ApiError } from '../auth/errors.js';
-import type { Database } from '../db/client.js';
+import type { Database, DbExecutor } from '../db/client.js';
 import { consentRecords, legalAcceptances, noticeImpressions } from '../db/schema.js';
 import { clientTime } from '../lib/client-time.js';
 import { DefensibilityLog } from './defensibility-log.js';
@@ -107,8 +107,8 @@ export class LegalService {
     return renderDocument(doc, versionInForce(doc, this.deps.now()), locale, jurisdiction);
   }
 
-  private async acceptances(userId: string): Promise<AcceptanceRecord[]> {
-    const rows = await this.deps.db.select().from(legalAcceptances).where(eq(legalAcceptances.userId, userId)).orderBy(asc(legalAcceptances.acceptedAt), asc(legalAcceptances.seq));
+  private async acceptances(userId: string, db: DbExecutor = this.deps.db): Promise<AcceptanceRecord[]> {
+    const rows = await db.select().from(legalAcceptances).where(eq(legalAcceptances.userId, userId)).orderBy(asc(legalAcceptances.acceptedAt), asc(legalAcceptances.seq));
     return rows.map((r) => ({
       id: r.id,
       documentId: r.documentId as LegalDocumentId,
@@ -121,21 +121,22 @@ export class LegalService {
     }));
   }
 
-  private async consents(userId: string): Promise<ConsentRecord[]> {
-    const rows = await this.deps.db.select().from(consentRecords).where(eq(consentRecords.userId, userId)).orderBy(asc(consentRecords.recordedAt), asc(consentRecords.seq));
+  private async consents(userId: string, db: DbExecutor = this.deps.db): Promise<ConsentRecord[]> {
+    const rows = await db.select().from(consentRecords).where(eq(consentRecords.userId, userId)).orderBy(asc(consentRecords.recordedAt), asc(consentRecords.seq));
     return rows.map((r) => ({ id: r.id, dataType: r.dataType, decision: r.decision, version: r.version, locale: r.locale, jurisdiction: r.jurisdiction, source: r.source, recordedAt: r.recordedAt.toISOString() }));
   }
 
-  async status(userId: string, jurisdiction: string): Promise<LegalStatus> {
+  /** `db`: the caller's transaction when the answer gates a write in it (API-1: never a second pooled connection). */
+  async status(userId: string, jurisdiction: string, db: DbExecutor = this.deps.db): Promise<LegalStatus> {
     const ctx = { jurisdiction, now: this.deps.now(), registry: this.registry, consentPolicies: this.deps.consentPolicies };
-    const acceptances = await this.acceptances(userId);
+    const acceptances = await this.acceptances(userId, db);
     const documents = this.registry.documents.filter((d) => d.kind === 'acceptance').map((d) => acceptanceState(acceptances, d.id, ctx));
-    return { jurisdiction, documents, firstWorkout: firstWorkoutGate(acceptances, await this.consents(userId), ctx) };
+    return { jurisdiction, documents, firstWorkout: firstWorkoutGate(acceptances, await this.consents(userId, db), ctx) };
   }
 
   /** L2 guard for workout endpoints (M02/M03): throws 403 legal.acceptance_required until the gate is open. */
-  async requireFirstWorkoutAcceptance(userId: string, jurisdiction: string): Promise<void> {
-    const { firstWorkout } = await this.status(userId, jurisdiction);
+  async requireFirstWorkoutAcceptance(userId: string, jurisdiction: string, db: DbExecutor = this.deps.db): Promise<void> {
+    const { firstWorkout } = await this.status(userId, jurisdiction, db);
     if (!firstWorkout.allowed) throw new ApiError(403, 'legal.acceptance_required');
   }
 

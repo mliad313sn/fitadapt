@@ -2,7 +2,7 @@ import { PHOTO_ENVELOPE_MIN_BYTES, PHOTO_ENVELOPE_VERSION, WrappedPhotoKeySchema
 import { and, asc, count, eq } from 'drizzle-orm';
 import { ApiError } from '../auth/errors.js';
 import { photosValue } from '../config/photos.config.js';
-import type { Database } from '../db/client.js';
+import { lockUser, type Database } from '../db/client.js';
 import { photoBackupKeys, photoBackups } from '../db/schema.js';
 import type { ConsentWithdrawalHandler, PrivacyService } from '../privacy/service.js';
 
@@ -36,12 +36,16 @@ export class PhotoBackupService {
   }
 
   async putKey(userId: string, key: WrappedPhotoKey): Promise<void> {
-    await this.consent(userId);
     const data = WrappedPhotoKeySchema.parse(key);
-    await this.deps.db
-      .insert(photoBackupKeys)
-      .values({ userId, data, updatedAt: this.deps.now() })
-      .onConflictDoUpdate({ target: photoBackupKeys.userId, set: { data, updatedAt: this.deps.now() } });
+    await this.deps.db.transaction(async (tx) => {
+      // API-2: consent read under the user's lock, in the writing transaction (a withdrawal waits, then erases).
+      await lockUser(tx, userId);
+      await this.deps.privacy.requireConsent(userId, 'photos', tx);
+      await tx
+        .insert(photoBackupKeys)
+        .values({ userId, data, updatedAt: this.deps.now() })
+        .onConflictDoUpdate({ target: photoBackupKeys.userId, set: { data, updatedAt: this.deps.now() } });
+    });
   }
 
   async getKey(userId: string): Promise<WrappedPhotoKey | null> {
@@ -52,11 +56,15 @@ export class PhotoBackupService {
 
   /** Stores (or replaces) one encrypted photo. A backup key must be stored first: without it nobody could ever open the photo. */
   async putPhoto(userId: string, photoId: string, envelope: Buffer): Promise<PhotoBackupEntry> {
-    await this.consent(userId);
     if (envelope.length > photosValue('maxEnvelopeBytes')) throw photoErrors.tooLarge();
     if (envelope.length < PHOTO_ENVELOPE_MIN_BYTES || envelope[0] !== PHOTO_ENVELOPE_VERSION) throw photoErrors.invalidEnvelope();
     const storedAt = this.deps.now();
     return this.deps.db.transaction(async (tx) => {
+      // API-2: the consent is read under the user's lock, in the writing transaction, so a withdrawal either
+      // committed before (and is seen) or waits for this upload and erases it. API-12: the same lock
+      // serialises a user's uploads, so the quota count below cannot be raced past.
+      await lockUser(tx, userId);
+      await this.deps.privacy.requireConsent(userId, 'photos', tx);
       const [key] = await tx.select({ userId: photoBackupKeys.userId }).from(photoBackupKeys).where(eq(photoBackupKeys.userId, userId));
       if (!key) throw photoErrors.noKey();
       const [existing] = await tx.select({ photoId: photoBackups.photoId }).from(photoBackups).where(and(eq(photoBackups.userId, userId), eq(photoBackups.photoId, photoId)));

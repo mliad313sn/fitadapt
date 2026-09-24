@@ -8,7 +8,7 @@ import { z } from 'zod';
 import { keyedHash } from '../auth/crypto.js';
 import { ApiError } from '../auth/errors.js';
 import { pairValue } from '../config/pair.config.js';
-import type { Database } from '../db/client.js';
+import { lockUser, type Database, type DbExecutor } from '../db/client.js';
 import { pairEvents, pairParticipants, pairSessions } from '../db/schema.js';
 import type { LegalService } from '../legal/service.js';
 import type { ConsentWithdrawalHandler, PrivacyService } from '../privacy/service.js';
@@ -83,9 +83,9 @@ export class PairService {
   }
 
   /** L2 + M17 for THIS person: their own texts, health consent and partner_sharing consent. */
-  async requireEligible(userId: string, jurisdiction: string): Promise<void> {
-    await this.deps.legal.requireFirstWorkoutAcceptance(userId, jurisdiction);
-    if (!(await this.deps.privacy.hasConsent(userId, 'partner_sharing'))) throw pairErrors.consent();
+  async requireEligible(userId: string, jurisdiction: string, db: DbExecutor = this.deps.db): Promise<void> {
+    await this.deps.legal.requireFirstWorkoutAcceptance(userId, jurisdiction, db);
+    if (!(await this.deps.privacy.hasConsent(userId, 'partner_sharing', db))) throw pairErrors.consent();
   }
 
   private consentVersion(jurisdiction: string) {
@@ -93,12 +93,14 @@ export class PairService {
   }
 
   async create(userId: string, input: { displayName: string; scopes: PairSharingScope[]; jurisdiction: string }): Promise<{ pairSessionId: string; joinCode: string }> {
-    await this.requireEligible(userId, input.jurisdiction);
     const now = this.deps.now();
     const joinCode = Array.from({ length: 6 }, () => CODE_ALPHABET[randomInt(CODE_ALPHABET.length)]).join('');
     const pairSessionId = randomUUID();
     const scopes = [...new Set(input.scopes)];
     await this.deps.db.transaction(async (tx) => {
+      // API-2: eligibility (partner_sharing consent) read under the user's lock, in the writing transaction.
+      await lockUser(tx, userId);
+      await this.requireEligible(userId, input.jurisdiction, tx);
       await tx.insert(pairSessions).values({ id: pairSessionId, hostUserId: userId, joinCodeHash: this.codeHash(joinCode), createdAt: now });
       await tx.insert(pairParticipants).values({ pairSessionId, slot: 'a', userId, displayName: input.displayName, scopes, consentVersion: this.consentVersion(input.jurisdiction), joinedAt: now });
       await this.deps.legal.recordPairEvent(userId, 'pair.joined', { pairSessionId, role: 'host', mode: 'multi_device', scopes, consentVersion: this.consentVersion(input.jurisdiction) }, tx);
@@ -107,10 +109,12 @@ export class PairService {
   }
 
   async join(userId: string, input: { joinCode: string; displayName: string; scopes: PairSharingScope[]; jurisdiction: string }): Promise<{ pairSessionId: string; slot: ParticipantSlot; challenge: boolean }> {
-    await this.requireEligible(userId, input.jurisdiction);
     const now = this.deps.now();
     const scopes = [...new Set(input.scopes)];
     return this.deps.db.transaction(async (tx) => {
+      // API-2: eligibility read under the user's lock, in the writing transaction.
+      await lockUser(tx, userId);
+      await this.requireEligible(userId, input.jurisdiction, tx);
       const [session] = await tx.select().from(pairSessions).where(eq(pairSessions.joinCodeHash, this.codeHash(input.joinCode))).for('update');
       if (!session) throw pairErrors.notFound();
       if (session.hostUserId === userId) throw pairErrors.ownSession();
@@ -129,17 +133,17 @@ export class PairService {
     });
   }
 
-  async participants(pairSessionId: string): Promise<Participation[]> {
-    const rows = await this.deps.db.select().from(pairParticipants).where(eq(pairParticipants.pairSessionId, pairSessionId)).orderBy(asc(pairParticipants.slot));
+  async participants(pairSessionId: string, db: DbExecutor = this.deps.db): Promise<Participation[]> {
+    const rows = await db.select().from(pairParticipants).where(eq(pairParticipants.pairSessionId, pairSessionId)).orderBy(asc(pairParticipants.slot));
     return rows.map((r) => ({ pairSessionId: r.pairSessionId, slot: r.slot, userId: r.userId, displayName: r.displayName, scopes: ScopesSchema.parse(r.scopes) }));
   }
 
   /** The participation of a user in a pair session, with the connection-time checks (their consent may have been withdrawn). */
-  async connect(userId: string, pairSessionId: string): Promise<{ me: Participation; all: Participation[]; challenge: boolean }> {
-    const all = await this.participants(pairSessionId);
+  async connect(userId: string, pairSessionId: string, db: DbExecutor = this.deps.db): Promise<{ me: Participation; all: Participation[]; challenge: boolean }> {
+    const all = await this.participants(pairSessionId, db);
     const me = all.find((p) => p.userId === userId);
     if (!me) throw pairErrors.notParticipant();
-    if (!(await this.deps.privacy.hasConsent(userId, 'partner_sharing'))) throw pairErrors.consent();
+    if (!(await this.deps.privacy.hasConsent(userId, 'partner_sharing', db))) throw pairErrors.consent();
     return { me, all, challenge: all.length === 2 && challengeOn(all[0]!.scopes, all[1]!.scopes) };
   }
 
@@ -155,10 +159,13 @@ export class PairService {
   /** Stores one event from a participant (idempotent on its device id); returns it with its seq, and whether it was new. */
   async append(userId: string, pairSessionId: string, clientEventId: string, raw: unknown): Promise<{ relayed: RelayedEvent; fresh: boolean }> {
     const event = PairEventSchema.parse(raw);
-    const { me, all, challenge } = await this.connect(userId, pairSessionId);
-    if (event.type === 'bodyweight' && !me.scopes.includes('bodyweight')) throw pairErrors.scope();
-    if (event.type === 'score' && !challenge) throw pairErrors.challengeOff();
     return this.deps.db.transaction(async (tx) => {
+      // API-2: participation and partner_sharing consent read under the sender's lock, in the writing
+      // transaction: a withdrawal (which erases the relay data) either came first or waits for this event.
+      await lockUser(tx, userId);
+      const { me, all, challenge } = await this.connect(userId, pairSessionId, tx);
+      if (event.type === 'bodyweight' && !me.scopes.includes('bodyweight')) throw pairErrors.scope();
+      if (event.type === 'score' && !challenge) throw pairErrors.challengeOff();
       const [dup] = await tx.select().from(pairEvents).where(and(eq(pairEvents.pairSessionId, pairSessionId), eq(pairEvents.fromUserId, userId), eq(pairEvents.clientEventId, clientEventId)));
       if (dup) return { relayed: { seq: dup.seq, from: dup.fromSlot, clientEventId, event: PairEventSchema.parse(dup.event) }, fresh: false };
       // One writer at a time per pair session: the session row is locked, so seq has no gap and no fork.
