@@ -125,6 +125,10 @@ async function checkInputs(db: DbExecutor, userId: string, record: WorkoutSessio
   // M05: a triggered deload the stored records imply must be applied; a low readiness check that day must be too.
   const readiness = parsedRows(await rows(db, userId, RECOVERY_COLLECTIONS.readinessChecks), ReadinessCheckSchema).map((r) => r.data);
   const history = buildSessionHistory(sessions, setLogs, events);
+  // M03 HIIT ramp: the engine reads the device-sent history for the first-exposure ramp; it may never claim more
+  // completed HIIT sessions than the records the server stores give (that would skip the ramp).
+  const hiitDone = (entries: readonly { hiitCompleted?: boolean }[]) => entries.filter((e) => e.hiitCompleted === true).length;
+  if (hiitDone(input.history ?? []) > hiitDone(history)) return 'session.history_mismatch';
   // M03: HIIT needs ≥ 2 weeks of consistent training in the records the server stores (not only in the history the device sent).
   if (plan.cardio?.hiit && !consistentTraining(history, Date.parse(plan.generatedAt))) return 'session.hiit_not_allowed';
   const deload = deloadStatus({ asOfMs: Date.parse(plan.generatedAt), painReports: painReportsFrom(events), safetyStops: safetyStopsFrom(events), history, readinessChecks: readiness });

@@ -132,6 +132,15 @@ describe('M03 cardio sessions on the server', () => {
     expect(hiit.plan.cardio).toMatchObject({ protocol: 'tabata', hiit: true });
     expect(await r.push([insert('workout_sessions', hiit)])).toEqual(['applied']);
 
+    // The HIIT ramp reads the device's history: a history that claims completed HIIT sessions the server does not
+    // store (to skip the first-exposure ramp) is refused, whatever else it says.
+    expect(history.filter((e) => e.hiitCompleted === true)).toHaveLength(0);
+    const inflated = history.map((e, i) => (i >= history.length - 3 ? { ...e, hiitCompleted: true } : e));
+    const skipped = workout(r.input({ cardio: { protocol: 'tabata' }, history: inflated }), NOW + 3_000_000, 98, false);
+    expect(skipped.plan.cardio).toMatchObject({ protocol: 'tabata', hiit: true });
+    expect(await r.push([insert('workout_sessions', skipped)])).toEqual(['session.history_mismatch']);
+    expect((await r.chain()).filter((e) => e.type === 'prescription.issued' && (e.payload as { prescriptionId: string }).prescriptionId === skipped.plan.planId)).toEqual([]);
+
     // Another user sends the same history without having trained: refused.
     const other = await ready();
     const claimed = workout(other.input({ cardio: { protocol: 'hiit' }, history }), NOW, 5);
