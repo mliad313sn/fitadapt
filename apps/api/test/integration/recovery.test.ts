@@ -299,7 +299,7 @@ describe('M05 readiness checks on the server (goal condition 5)', () => {
 
   it('stores checks as health data (with or without wearable readings), refuses invalid ones, and a low check makes that day’s session lighter', async () => {
     const r = await ready();
-    expect(await push(r.s, [insert('readiness_checks', { ...check(false), sleep: 9 }), insert('readiness_checks', check(false, { wearable: { hrvMs: 55, hrvBaselineMs: 60, restingHr: null, restingHrBaseline: null } })), insert('readiness_checks', check(true))])).toEqual(['readiness_check.invalid', 'applied', 'applied']);
+    expect(await push(r.s, [insert('readiness_checks', { ...check(false), sleep: 9 }), insert('readiness_checks', check(false, { wearable: { hrvMs: 55, hrvBaselineMs: 60, restingHr: null, restingHrBaseline: null } })), insert('readiness_checks', check(true))])).toEqual(['readiness_checks.invalid', 'applied', 'applied']);
     expect(await push(r.s, [insert('workout_sessions', workout(sessionInput(r)))])).toEqual(['session.readiness_mismatch']);
     const lighter = workout(sessionInput(r, { readiness: 'reduced' }));
     expect(lighter.plan.reasonCodes).toContain('session.readiness.reduced');

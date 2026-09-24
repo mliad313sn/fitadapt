@@ -206,7 +206,7 @@ describe('M02 started sessions: re-derived on the server, prescription logged in
         insert('workout_sessions', olderUser),
         insert('workout_sessions', { schemaVersion: 1 }),
       ]),
-    ).toEqual(['session.mismatch', 'session.engine_version_unsupported', 'session.safety_profile_mismatch', 'session.equipment_mismatch', 'session.equipment_mismatch', 'session.capacity_mismatch', 'session.program_mismatch', 'session.profile_mismatch', 'session.invalid']);
+    ).toEqual(['session.mismatch', 'session.engine_version_unsupported', 'session.safety_profile_mismatch', 'session.equipment_mismatch', 'session.equipment_mismatch', 'session.capacity_mismatch', 'session.program_mismatch', 'session.profile_mismatch', 'workout_sessions.invalid']);
     expect((await chain(r.s)).some((e) => e.type === 'prescription.issued')).toBe(false);
   });
 
@@ -264,7 +264,7 @@ describe('M02 started sessions: re-derived on the server, prescription logged in
     const deload = { trigger: 'red_flag' as const, since: flag.at, until: new Date(MON + DAY + 7 * DAY).toISOString() };
     const afterReview = workout(sessionInput(r, { history: buildSessionHistory([first], [], [flag]), deload }, '2026-09-30'), MON + 2 * DAY, 11, false);
     expect(await push(r.s, [insert('workout_sessions', afterReview)])).toEqual(['applied']);
-    expect(await push(r.s, [insert('execution_logs', { kind: 'pain', planId: null, joint: 'knee', score: 12, at: flag.at })])).toEqual(['execution_log.invalid']);
+    expect(await push(r.s, [insert('execution_logs', { kind: 'pain', planId: null, joint: 'knee', score: 12, at: flag.at })])).toEqual(['execution_logs.invalid']);
   });
 
   it('stores a session and its prescription atomically: a failed log write persists neither, the client retries and then both exist (ADR-009)', async () => {

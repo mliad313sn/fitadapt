@@ -7,10 +7,10 @@ import {
   IntakeLogSchema,
   MeasurementSchema,
   NutritionPlanRecordSchema,
+  PreferencesRecordSchema,
   ProfileSchema,
   ProgramRecordSchema,
   ReadinessCheckSchema,
-  RecordDataSchema,
   ReflowRecordSchema,
   ScreeningRecordSchema,
   SetLogSchema,
@@ -41,10 +41,10 @@ export const SYNC_COLLECTIONS: CollectionRegistry = Object.freeze({
   /** Workout set logs: append-only (CLAUDE.md conventions). Corrections are new entries. */
   set_logs: policy(true, SetLogSchema),
   /**
-   * Per-user settings (locale, units, gym mode): mutable, revision-checked.
-   * No shared schema exists yet: any JSON object (open item, docs/status/FIX-packages-tooling.md).
+   * Per-user settings (locale, units, gym mode, Fair Pair display name): mutable, revision-checked.
+   * FIX-C's strict PreferencesRecordSchema (API-12): one schema on device, sync server and API.
    */
-  preferences: policy(false, RecordDataSchema),
+  preferences: policy(false, PreferencesRecordSchema),
   /** M01 profile (one record per user, PROFILE_RECORD_ID): mutable, revision-checked, server wins. */
   profile: policy(false, ProfileSchema),
   /** M01 equipment profiles (one per location): mutable, revision-checked. */

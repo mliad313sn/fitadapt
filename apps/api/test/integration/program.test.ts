@@ -113,7 +113,7 @@ describe('M08 program sync with server-side re-derivation', () => {
       'program.equipment_mismatch',
       'program.equipment_mismatch',
       'program.engine_version_unsupported',
-      'program.invalid',
+      'programs.invalid',
     ]);
     expect((await chain(s)).some((e) => e.type === 'program.generated')).toBe(false);
   });
@@ -124,7 +124,11 @@ describe('M08 program sync with server-side re-derivation', () => {
     // The input names the stored (S7) profile, but the program was generated for a cleared one: the engine gives no program.
     expect(await push(s, [insert('programs', { ...cleared, input: { ...cleared.input, safetyProfile: screening(['pregnancy_or_recent_birth']).safetyProfile } })])).toEqual(['program.not_allowed']);
     const other = await session();
-    expect(await push(other, [insert('programs', cleared), insert('program_reflows', {})])).toEqual(['privacy.consent_required', 'privacy.consent_required']);
+    // FIX-E × FIX-C: the sync server now checks the collection schema first, so the reflow is a well-formed one
+    // (an empty object would be `program_reflows.invalid`, another refusal): without consent it is still refused for consent.
+    const first = cleared.program.microcycles[0]!.sessions[0]!;
+    const wellFormed = reflowRecord(cleared.program, [], first.id, first.date, createEngineContext({ clock: fixedClock(h.clock.now().getTime()), seed: 1 }))!;
+    expect(await push(other, [insert('programs', cleared), insert('program_reflows', wellFormed)])).toEqual(['privacy.consent_required', 'privacy.consent_required']);
   });
 
   it('stores a reflow the engine decides (P3 misses Friday → Saturday) with its "reflowed" event, and refuses others', async () => {
@@ -143,7 +147,7 @@ describe('M08 program sync with server-side re-derivation', () => {
       'applied',
       // The same session again, now shifted to Saturday: a report on Friday would decide something else.
       'program.reflow_mismatch',
-      'program.reflow_invalid',
+      'program_reflows.invalid',
     ]);
     const reflowed = (await chain(s)).filter((e) => e.type === 'program.reflowed');
     expect(reflowed.map((e) => e.payload)).toEqual([{ programId: record.program.programId, sessionId: friday.id, outcome: 'shifted', engineVersion: ENGINE_VERSION }]);

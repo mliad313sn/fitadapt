@@ -84,6 +84,20 @@ describe('M01 profile sync with server-side validation', () => {
     expect(await push(s, [insert('screenings', screening()), insert('profile', profile(), PROFILE_RECORD_ID)])).toEqual(['applied', 'applied']);
   });
 
+  it('FIX-E × FIX-C (PKG-06): the API sync server checks every collection schema first; preferences use the strict PreferencesRecordSchema', async () => {
+    const s = await session();
+    await grantHealth(s);
+    const setLog = { schemaVersion: 1, planId: randomUUID(), exerciseIndex: 0, exerciseId: 'goblet_squat', set: { index: 1, status: 'done', reps: 8, seconds: null, loadKg: 20, rir: 2 }, loggedAt: h.clock.now().toISOString(), correctionOf: null };
+    expect(
+      await push(s, [
+        insert('preferences', { locale: 'fr', units: 'metric', gym: true }),
+        insert('preferences', { locale: 'fr', note: 'knee pain after the fall' }),
+        insert('preferences', { theme: 'dark' }),
+        insert('set_logs', { ...setLog, note: 'knee pain after the fall' }),
+      ]),
+    ).toEqual(['applied', 'preferences.invalid', 'preferences.invalid', 'set_logs.invalid']);
+  });
+
   it('re-evaluates the SafetyProfile: a looser profile than the answers give is refused', async () => {
     const s = await session();
     await grantHealth(s);
@@ -96,8 +110,8 @@ describe('M01 profile sync with server-side validation', () => {
       'applied',
     ]);
     expect(await push(s, [insert('screenings', { nonsense: true }), insert('equipment_profiles', { location: 'moon', equipment: [] }), insert('profile', { ...profile(), schemaVersion: 2 })])).toEqual([
-      'screening.invalid',
-      'equipment_profile.invalid',
+      'screenings.invalid',
+      'equipment_profiles.invalid',
       'profile.invalid',
     ]);
   });

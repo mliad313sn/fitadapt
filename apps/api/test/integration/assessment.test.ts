@@ -92,7 +92,7 @@ describe('M07 assessment records on the server', () => {
       'assessment.engine_version_unsupported',
       'assessment.invalid',
       'assessment.invalid',
-      'assessment.invalid',
+      'assessments.invalid',
     ]);
   });
 

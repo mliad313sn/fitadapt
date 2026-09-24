@@ -114,8 +114,9 @@ describe('M10 nutrition sync with server-side re-derivation and the S4 re-check'
         insert('nutrition_plans', { ...good, target: { ...t, mode: 'maybe' } }),
         insert('nutrition_plans', good),
       ]),
-      // A target below its BMR floor is already refused by the schema (S4 refinement): 'nutrition.invalid'.
-    ).toEqual(['nutrition.target_mismatch', 'nutrition.invalid', 'nutrition.engine_version_unsupported', 'nutrition.profile_mismatch', 'nutrition.safety_profile_mismatch', 'nutrition.invalid', 'applied']);
+      // A target below its BMR floor is already refused by the schema (S4 refinement): since FIX-E × FIX-C the sync
+      // server's collection schema refuses it first, as `nutrition_plans.invalid` (the same schema refusal).
+    ).toEqual(['nutrition.target_mismatch', 'nutrition_plans.invalid', 'nutrition.engine_version_unsupported', 'nutrition.profile_mismatch', 'nutrition.safety_profile_mismatch', 'nutrition_plans.invalid', 'applied']);
   });
 
   it('a user advised against calorie restriction, or under 18, cannot store a deficit: only the supportive plan is accepted', async () => {
@@ -181,7 +182,7 @@ describe('M10 nutrition sync with server-side re-derivation and the S4 re-check'
         insert('habit_checks', { schemaVersion: 1, habit: 'hydration', checkedOn: today(), done: true, at: h.clock.now().toISOString() }),
         insert('habit_checks', { schemaVersion: 1, habit: 'fasting', checkedOn: today(), done: true, at: h.clock.now().toISOString() }),
       ]),
-    ).toEqual(['applied', 'applied', 'intake_log.estimate_mismatch', 'intake_log.invalid', 'intake_log.invalid', 'applied', 'habit_check.invalid']);
+    ).toEqual(['applied', 'applied', 'intake_log.estimate_mismatch', 'intake_log.invalid', 'intake_logs.invalid', 'applied', 'habit_checks.invalid']);
   });
 
   it('stores a plan and its events atomically: a failed log write persists neither', async () => {

@@ -49,8 +49,8 @@ describe('body metrics and measurements are health data', () => {
     expect(await push(s, [insert('body_metrics', weight(61.2)), insert('measurements', waist(76)), insert('body_metrics', { ...weight(61.2), value: -3 }), insert('measurements', { ...waist(76), site: 'neckline' })])).toEqual([
       'applied',
       'applied',
-      'body_metric.invalid',
-      'measurement.invalid',
+      'body_metrics.invalid',
+      'measurements.invalid',
     ]);
     const stored = await h.database.db.select({ collection: syncChanges.collection }).from(syncChanges).where(eq(syncChanges.userId, s.userId));
     expect(stored.map((r) => r.collection).sort()).toEqual(['body_metrics', 'measurements']);

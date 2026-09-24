@@ -112,7 +112,7 @@ describe('M03 cardio sessions on the server', () => {
     expect(await r.push([insert('execution_logs', done(record, { moderateSeconds: 600, endedEarly: true, completedWork: 0 }))])).toEqual(['applied']);
     // Other execution logs are unaffected; an invalid one is still refused.
     expect(await r.push([insert('execution_logs', { kind: 'ended', planId: record.plan.planId, reason: 'completed', at: new Date(NOW + 1_800_000).toISOString() })])).toEqual(['applied']);
-    expect(await r.push([insert('execution_logs', { kind: 'cardio_done' })])).toEqual(['execution_log.invalid']);
+    expect(await r.push([insert('execution_logs', { kind: 'cardio_done' })])).toEqual(['execution_logs.invalid']);
   });
 
   it('HIIT needs two weeks of consistent training in the records the server stores: a device-side history alone is refused', async () => {

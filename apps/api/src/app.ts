@@ -157,7 +157,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   // S7 age check, SafetyProfile re-evaluation) and screenings write their safety gates to the defensibility log
   // in the sync transaction (L11: a screening and its safety events commit together or not at all).
   const profileHooks = { privacy, legal, now, db: deps.db };
-  const sync = new SyncServer({ store: new PgServerStore(deps.db), validate: profileSyncValidator(profileHooks), onApplied: profileSyncListener(profileHooks) });
+  // FIX-E × FIX-C (PKG-06): every record is checked against its collection's shared schema before the domain
+  // validator (fail closed: `<collection>.invalid`).
+  const sync = new SyncServer({ store: new PgServerStore(deps.db), validate: profileSyncValidator(profileHooks), onApplied: profileSyncListener(profileHooks), enforceCollectionSchemas: true });
   const pair = new PairService({ db: deps.db, privacy, legal, pepper: deps.pepper, now, rateLimiter });
   app.decorate('services', { privacy, legal, pair });
 

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { SetLogSchema, type PushRequest, type PushResponse } from '@fitadapt/shared';
+import { PreferencesRecordSchema, SetLogSchema, type PushRequest, type PushResponse } from '@fitadapt/shared';
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 import {
@@ -259,6 +259,13 @@ describe('PKG-06 (package side): every collection policy carries a schema', () =
     // Off by default (the API turns it on, FIX-C).
     const lenient = new SyncServer({ store: new MemoryServerStore() });
     expect((await lenient.push(USER, { deviceId: randomUUID(), mutations: [m({ free: 'form' })] })).results[0]!.status).toBe('applied');
+  });
+
+  it('integration FIX-E × FIX-C: preferences use the one strict PreferencesRecordSchema (no free field enters through sync)', () => {
+    expect(SYNC_COLLECTIONS.preferences!.schema).toBe(PreferencesRecordSchema);
+    expect(recordDataIssue(SYNC_COLLECTIONS, 'preferences', { locale: 'fr', units: 'metric', gym: true })).toBeNull();
+    expect(recordDataIssue(SYNC_COLLECTIONS, 'preferences', { locale: 'fr', note: 'knee pain' })).toBe('preferences.invalid');
+    expect(recordDataIssue(SYNC_COLLECTIONS, 'preferences', { theme: 'dark' })).toBe('preferences.invalid');
   });
 });
 
