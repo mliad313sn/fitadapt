@@ -21,3 +21,4 @@ One ADR per significant decision (template: context, decision, alternatives, con
 | [ADR-015](ADR-015-program-architect-and-m02-api.md) | Program architect: periodization, scheduling, reflow, and the API M02 builds on | M08 |
 | [ADR-016](ADR-016-session-engine-and-execution.md) | Session engine: one generator, double progression, increments, time-boxing, and offline execution | M02 |
 | [ADR-017](ADR-017-recovery-pain-monitoring-and-red-flag-flow.md) | Recovery: pain monitoring, triggered deloads, warm-ups, readiness and the S3 red-flag flow | M05 |
+| [ADR-018](ADR-018-cardio-conditioning-and-eyes-free-intervals.md) | Cardio and conditioning: protocols in the one generator, HIIT and impact gates, zones, eyes-free wall-clock interval timer, weekly aerobic ledger | M03 |

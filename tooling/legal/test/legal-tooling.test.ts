@@ -161,8 +161,8 @@ describe('pnpm legal:licences (L6)', () => {
 
   it('validates the asset/dataset licence register of the repository', () => {
     const md = readFileSync(join(root, ASSET_REGISTER), 'utf8');
-    // M06 added DATA-003 (exercise library seed): 4 → 5 entries, still an exact count.
-    expect(checkAssetRegister(md, [], () => true, policy)).toEqual({ problems: [], entries: 5 });
+    // M06 added DATA-003 (exercise library seed): 4 → 5 entries; M03 added AST-003 (spoken cues: the system voice, no sound file): 5 → 6. Still an exact count.
+    expect(checkAssetRegister(md, [], () => true, policy)).toEqual({ problems: [], entries: 6 });
   });
 
   it('fails on unregistered files, share-alike or unknown licences, missing evidence and missing paths', () => {
