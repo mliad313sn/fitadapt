@@ -89,3 +89,15 @@ describe('app.json and app.config.js for M04 (encrypted database, progress photo
     expect(Object.values(out.locales.fr!).every((t) => t.length > 0 && t !== en['photos.permission.camera'])).toBe(true);
   });
 });
+
+describe('M04 device configs (CLAUDE.md rule 4)', () => {
+  it('every photo-storage and dashboard value has a source and stays validated:false', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { photosConfig } = require('../src/config/photos.config') as { photosConfig: Record<string, { value: number; source: string; validated: boolean }> };
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { dashboardConfig } = require('../src/config/dashboard.config') as { dashboardConfig: Record<string, { value: number; source: string; validated: boolean }> };
+    const all = { ...photosConfig, ...dashboardConfig };
+    expect(Object.keys(all)).toHaveLength(9);
+    for (const [key, v] of Object.entries(all)) expect({ key, number: Number.isFinite(v.value), source: v.source.length > 10, validated: v.validated }).toEqual({ key, number: true, source: true, validated: false });
+  });
+});

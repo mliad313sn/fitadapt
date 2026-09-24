@@ -35,23 +35,21 @@ import {
   type WeeklyMuscleSets,
   type WeeklyRate,
 } from '@fitadapt/shared';
+import { dashboardValue } from '../config/dashboard.config';
 import type { StoredBodyMetric, StoredMeasurement } from './progress-store';
 
 /**
  * The dashboard's model, computed on the device from the stored records with
  * the engine's pure analytics (packages/engine `analytics`): nothing here
  * decides a prescription. Charts show a bounded number of points so two
- * years of data render quickly on modest phones.
+ * years of data render quickly on modest phones. The display limits are
+ * config with a source and a validation status (src/config/dashboard.config.ts).
  */
 export const DASHBOARD_LIMITS = Object.freeze({
-  /** Exercises listed in the strength card (most recent first). */
-  exercises: 6,
-  /** Points per chart (the most recent). */
-  chartPoints: 24,
-  /** Weeks of weigh-ins shown in the body chart. */
-  bodyWeeks: 26,
-  /** Days of the adherence window. */
-  adherenceDays: 28,
+  exercises: dashboardValue('exercises'),
+  chartPoints: dashboardValue('chartPoints'),
+  bodyWeeks: dashboardValue('bodyWeeks'),
+  adherenceDays: dashboardValue('adherenceDays'),
 });
 
 export interface DashboardInput {
